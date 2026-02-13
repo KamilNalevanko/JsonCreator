@@ -29,8 +29,6 @@ type FlyerProduct = {
   "Zaradenie": string;
   "Množstvo": string;
   "Merná jednotka": string;
-  "Bežná cena za bal.": string;
-  "Bežná jednotková cena": string;
   "Akciová cena": string;
   "Akciová jednotková cena": string;
   "Doplnková Informácia": string;
@@ -337,8 +335,6 @@ export default function Home() {
       
       // Uloži nahraný flyer bez zmeny produktov v UI
       setLoadedFlyer(data);
-      // Nastav názov súboru automaticky
-      setFileName(file.name);
       setStatus(t("status_loaded_file"));
       setError("");
       
