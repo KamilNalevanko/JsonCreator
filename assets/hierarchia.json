@@ -1,0 +1,2651 @@
+[
+  {
+    "Kategória": "m_so_ryby_a_deniny",
+    "Podkategórie": [
+      {
+        "Podkategória": "brav_ov",
+        "Zaradenia": [
+          {
+            "Zaradenie": "panenka_brav_ov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/panenka_result.png"
+          },
+          {
+            "Zaradenie": "pliecko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/pliecko_result.png"
+          },
+          {
+            "Zaradenie": "stehno_brav_ov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/stehno_result.png"
+          },
+          {
+            "Zaradenie": "krkovi_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/krkovicka_result.png"
+          },
+          {
+            "Zaradenie": "kar",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/kare_result.png"
+          },
+          {
+            "Zaradenie": "rebr_brav_ov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/rebra_result.png"
+          },
+          {
+            "Zaradenie": "b_ik",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/bocik_result.png"
+          },
+          {
+            "Zaradenie": "koleno",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/koleno_result.png"
+          },
+          {
+            "Zaradenie": "mlet_brav_ov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/mlete_result.png"
+          },
+          {
+            "Zaradenie": "vn_tornosti_brav_ov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/vnutornosti_result.png"
+          },
+          {
+            "Zaradenie": "gul_brav_ov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/gulas_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/bravcove/bravcove_result.png"
+      },
+      {
+        "Podkategória": "hov_dzie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "hru_hov_dzia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/hrud_result.png"
+          },
+          {
+            "Zaradenie": "bok_hov_dz",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/bok_result.png"
+          },
+          {
+            "Zaradenie": "rebr_hov_dzie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/rebra_result.png"
+          },
+          {
+            "Zaradenie": "krk_hov_dz",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/krk_result.png"
+          },
+          {
+            "Zaradenie": "no_ina",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/noziny_result.png"
+          },
+          {
+            "Zaradenie": "ro_tenka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/rostenka_result.png"
+          },
+          {
+            "Zaradenie": "svie_kov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/svieckova_result.png"
+          },
+          {
+            "Zaradenie": "stehno_hov_dzie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/stehno_result.png"
+          },
+          {
+            "Zaradenie": "gul_hov_dz",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/gulas_result.png"
+          },
+          {
+            "Zaradenie": "vn_tornosti_hov_dzie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/vnutornosti_result.png"
+          },
+          {
+            "Zaradenie": "mlet_hov_dzie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/mlete_result.png"
+          },
+          {
+            "Zaradenie": "m_so_na_v_var_hov_dz",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/vyvar_result.png"
+          },
+          {
+            "Zaradenie": "hov_dzieplece",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/hov_plece_result.png"
+          },
+          {
+            "Zaradenie": "dr_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/drzky_result.png"
+          },
+          {
+            "Zaradenie": "steak",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/steak_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hovadzie/hovadzie_result.png"
+      },
+      {
+        "Podkategória": "kuracie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "kur_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kuracie_result.png"
+          },
+          {
+            "Zaradenie": "tvrte_kuracie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kuracie_result.png"
+          },
+          {
+            "Zaradenie": "spodn_stehno_kuracie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kuracie_result.png"
+          },
+          {
+            "Zaradenie": "horn_stehno_kuracie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kuracie_result.png"
+          },
+          {
+            "Zaradenie": "prsia_kuracie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/prsia_result.png"
+          },
+          {
+            "Zaradenie": "kr_dla_kuracie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kridla_result.png"
+          },
+          {
+            "Zaradenie": "vn_tornosti_kuracie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/vnutornosti_result.png"
+          },
+          {
+            "Zaradenie": "m_so_na_v_var_kurac",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/vyvar_result.png"
+          },
+          {
+            "Zaradenie": "kurac_mix",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kuracie_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kuracie/kuracie_result.png"
+      },
+      {
+        "Podkategória": "mor_acie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "moriak",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/moriak_result.png"
+          },
+          {
+            "Zaradenie": "prsia_mor_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/prsia_result.png"
+          },
+          {
+            "Zaradenie": "stehn_mor_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/stehno_result.png"
+          },
+          {
+            "Zaradenie": "kr_dla_mor_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/kridla_result.png"
+          },
+          {
+            "Zaradenie": "mlet_mor_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/mlete_result.png"
+          },
+          {
+            "Zaradenie": "m_so_na_v_var_mor_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/vyvar_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morcacie/morcacie_result.png"
+      },
+      {
+        "Podkategória": "ka_acie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "ka_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kacacie/kacka_result.png"
+          },
+          {
+            "Zaradenie": "prsia_ka_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kacacie/prsia_result.png"
+          },
+          {
+            "Zaradenie": "stehn_ka_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kacacie/stehno_result.png"
+          },
+          {
+            "Zaradenie": "pe_e_ka_acia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kacacie/pecen_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/kacacie/kacacie_result.png"
+      },
+      {
+        "Podkategória": "husacie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "hus",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/husacie/hus_result.png"
+          },
+          {
+            "Zaradenie": "prsia_husacie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/husacie/prsia_result.png"
+          },
+          {
+            "Zaradenie": "stehn_husacie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/husacie/stehno_result.png"
+          },
+          {
+            "Zaradenie": "pe_e_husacia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/husacie/pecen_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/husacie/husacie_result.png"
+      },
+      {
+        "Podkategória": "jah_acie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "stehno_jah_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/stehno_result.png"
+          },
+          {
+            "Zaradenie": "kotlety_jah_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/kotlety_result.png"
+          },
+          {
+            "Zaradenie": "plece_jah_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/plece_result.png"
+          },
+          {
+            "Zaradenie": "krk_jah_ac",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/krk_result.png"
+          },
+          {
+            "Zaradenie": "hru_jah_acia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/hrud_result.png"
+          },
+          {
+            "Zaradenie": "koleno_jah_acie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/koleno_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/jahnacie/jahnacie_result.png"
+      },
+      {
+        "Podkategória": "zajac",
+        "Zaradenia": [
+          {
+            "Zaradenie": "zajac",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/zajacie/zajac_result.png"
+          },
+          {
+            "Zaradenie": "stehn_zaja_ie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/zajacie/stehno_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/zajacie/zajacie_result.png"
+      },
+      {
+        "Podkategória": "sladkovodn_ryby",
+        "Zaradenia": [
+          {
+            "Zaradenie": "pstruh",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/sladkovodne_ryby/pstruh_result.png"
+          },
+          {
+            "Zaradenie": "kapor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/sladkovodne_ryby/kapor_result.png"
+          },
+          {
+            "Zaradenie": "zub",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/sladkovodne_ryby/zubac_result.png"
+          },
+          {
+            "Zaradenie": "uka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/sladkovodne_ryby/stuka_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "morsk_ryby",
+        "Zaradenia": [
+          {
+            "Zaradenie": "losos",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_ryby/losos_result.png"
+          },
+          {
+            "Zaradenie": "tuniak",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_ryby/tuniak_result.png"
+          },
+          {
+            "Zaradenie": "treska",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_ryby/treska_result.png"
+          },
+          {
+            "Zaradenie": "in_morsk_ryby",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_ryby/ine_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "morsk_plody",
+        "Zaradenia": [
+          {
+            "Zaradenie": "krevety",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_plody/krevety_result.png"
+          },
+          {
+            "Zaradenie": "kalam_re",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_plody/kalamare_result.png"
+          },
+          {
+            "Zaradenie": "mu_le",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_plody/musle_result.png"
+          },
+          {
+            "Zaradenie": "chobotnica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_plody/chobotnica_result.png"
+          },
+          {
+            "Zaradenie": "krabie_ty_inky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "in_morsk_plody",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/morske_plody/ine_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "deniny",
+        "Zaradenia": [
+          {
+            "Zaradenie": "klob_sa",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/klobasa_result.png"
+          },
+          {
+            "Zaradenie": "such_sal_ma",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "p_rky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/parky_result.png"
+          },
+          {
+            "Zaradenie": "jemn_sal_ma",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "unka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/sunka_result.png"
+          },
+          {
+            "Zaradenie": "pek_iky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "slanina",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/slanina_result.png"
+          },
+          {
+            "Zaradenie": "den_ryby",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "den_m_so_bez_kosti",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "den_m_so_s_kos_ou",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "unkov_salama",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+          },
+          {
+            "Zaradenie": "tla_enka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/tlacenka_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/udeniny/udeniny_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/maso,_ryby_a_udeniny/hlavna_result.png"
+  },
+  {
+    "Kategória": "lah_dkov_al_ty_n_tierky_a_konzervy",
+    "Podkategórie": [
+      {
+        "Podkategória": "lah_dkov_al_ty",
+        "Zaradenia": [
+          {
+            "Zaradenie": "treska_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ryb_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "par_sky_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "vaj_kov_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "bulharsk_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pikantn_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "vla_sk_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "zemiakov_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "rusk_vajce",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "zavin_e",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "tuniakov_al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+      },
+      {
+        "Podkategória": "lah_dkov_n_tierky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "vaj_kov_n_tierka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/natierky/natierky_result.png"
+          },
+          {
+            "Zaradenie": "cesnakov_n_tierka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/natierky/natierky_result.png"
+          },
+          {
+            "Zaradenie": "tuniakov_n_tierka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/natierky/natierky_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/natierky/natierky_result.png"
+      },
+      {
+        "Podkategória": "konzervy",
+        "Zaradenia": [
+          {
+            "Zaradenie": "m_sov_konzervy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/konzervy/konzervy_result.png"
+          },
+          {
+            "Zaradenie": "om_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/konzervy/konzervy_result.png"
+          },
+          {
+            "Zaradenie": "pa_t_ta",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/konzervy/konzervy_result.png"
+          },
+          {
+            "Zaradenie": "rybie_konzervy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/konzervy/konzervy_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/konzervy/konzervy_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/lahodkove_salaty,_natierky_a_konzervy/hlavna_result.png"
+  },
+  {
+    "Kategória": "pe_ivo",
+    "Podkategórie": [
+      {
+        "Podkategória": "erstv_pe_ivo",
+        "Zaradenia": [
+          {
+            "Zaradenie": "chlieb",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/cerstve_pecivo/chlieb_result.png"
+          },
+          {
+            "Zaradenie": "ro_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "bagety",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/cerstve_pecivo/bagety_result.png"
+          },
+          {
+            "Zaradenie": "kaiserky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/cerstve_pecivo/kaiserky_result.png"
+          },
+          {
+            "Zaradenie": "slan_pe_ivo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+      },
+      {
+        "Podkategória": "erstv_sladk_pe_ivo",
+        "Zaradenia": [
+          {
+            "Zaradenie": "i_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "donuty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/cerstve_sladke_pecivo/donuty_result.png"
+          },
+          {
+            "Zaradenie": "croissanty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/cerstve_sladke_pecivo/croissanty_result.png"
+          },
+          {
+            "Zaradenie": "ostatn_sladk_pe_ivo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+      },
+      {
+        "Podkategória": "balen_pe_ivo",
+        "Zaradenia": [
+          {
+            "Zaradenie": "chlieb",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/balene_pecivo/chlieb_result.png"
+          },
+          {
+            "Zaradenie": "bagety",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/balene_pecivo/bagety_result.png"
+          },
+          {
+            "Zaradenie": "sendvi",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "toastov_chlieb",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "such_re",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "tortilly",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/balene_pecivo/tortilly_result.png"
+          },
+          {
+            "Zaradenie": "hamburgerov_emle",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+      },
+      {
+        "Podkategória": "balen_sladk_pe_ivo",
+        "Zaradenia": [
+          {
+            "Zaradenie": "viano_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "z_viny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "buchty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/balene_sladke_pecivo/buchty_result.png"
+          },
+          {
+            "Zaradenie": "muffiny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/balene_sladke_pecivo/muffiny_result.png"
+          },
+          {
+            "Zaradenie": "croissanty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/balene_sladke_pecivo/croissanty_result.png"
+          },
+          {
+            "Zaradenie": "b_bovka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "kol_e",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/pecivo/hlavna_result.png"
+  },
+  {
+    "Kategória": "cestoviny_ry_a_a_strukoviny",
+    "Podkategórie": [
+      {
+        "Podkategória": "ry_a",
+        "Zaradenia": [
+          {
+            "Zaradenie": "gulatozrnn_r_yza",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/ryza/ryza_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/ryza/ryza_result.png"
+      },
+      {
+        "Podkategória": "cestoviny",
+        "Zaradenia": [
+          {
+            "Zaradenie": "penne",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/penne_result.png"
+          },
+          {
+            "Zaradenie": "p_smenk",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "rezance",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/rezance_result.png"
+          },
+          {
+            "Zaradenie": "ni_ovky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "tarho_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "kolienka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/kolienka_result.png"
+          },
+          {
+            "Zaradenie": "vreten",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "flia_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "pagety",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "ma_li_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "mu_li_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "cestoviny_r_zne_druhy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          },
+          {
+            "Zaradenie": "plnen_cestoviny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/cestoviny/cestoviny_result.png"
+      },
+      {
+        "Podkategória": "strukoviny",
+        "Zaradenia": [
+          {
+            "Zaradenie": "hrach",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/hrach_result.png"
+          },
+          {
+            "Zaradenie": "fazu_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          },
+          {
+            "Zaradenie": "b_b",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          },
+          {
+            "Zaradenie": "o_ovica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          },
+          {
+            "Zaradenie": "s_ja",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          },
+          {
+            "Zaradenie": "c_cer",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          },
+          {
+            "Zaradenie": "h_stka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          },
+          {
+            "Zaradenie": "poh_nka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/strukoviny/strukoviny_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/cestoviny,_ryza_a_strukoviny/hlavna_result.png"
+  },
+  {
+    "Kategória": "mlie_ne_v_robky_a_vajcia",
+    "Podkategórie": [
+      {
+        "Podkategória": "vajcia",
+        "Zaradenia": [
+          {
+            "Zaradenie": "slepa_ie_vajcia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/vajcia/vajcia_result.png"
+          },
+          {
+            "Zaradenie": "husacie_vajcia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/vajcia/vajcia_result.png"
+          },
+          {
+            "Zaradenie": "prepeli_ie_vajcia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/vajcia/vajcia_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/vajcia/vajcia_result.png"
+      },
+      {
+        "Podkategória": "mlieko",
+        "Zaradenia": [
+          {
+            "Zaradenie": "n_zkotu_n_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "polotu_n_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "plnotu_n_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "kozie_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "rastlinn_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "acidofiln_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "kef_rov_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "bezlakt_zov_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          },
+          {
+            "Zaradenie": "kondenzovan_mlieko",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/mlieko/mlieko_result.png"
+      },
+      {
+        "Podkategória": "smotana",
+        "Zaradenia": [
+          {
+            "Zaradenie": "sladk_10_smotana",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/smotana/smotana_result.png"
+          },
+          {
+            "Zaradenie": "smotana_na_ahanie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/smotana/smotana_result.png"
+          },
+          {
+            "Zaradenie": "kysl_smotana",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/smotana/smotana_result.png"
+          },
+          {
+            "Zaradenie": "slahacka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/smotana/slahacka_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/smotana/smotana_result.png"
+      },
+      {
+        "Podkategória": "jogurty_pudingy_a_jogurtov_n_poje",
+        "Zaradenia": [
+          {
+            "Zaradenie": "biely_jogurt",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ochuten_jogurt",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "smotanov_kr_m",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "puding",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/jogurty,_pudingy_a_jogurtove_napoje/puding_result.png"
+          },
+          {
+            "Zaradenie": "jogurtov_n_poj",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mlie_nary_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+      },
+      {
+        "Podkategória": "m_kk_a_taven_syry",
+        "Zaradenia": [
+          {
+            "Zaradenie": "mozarella",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/makke_a_tavene_syry/mozarella_result.png"
+          },
+          {
+            "Zaradenie": "cottage_cheese",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "bryndza",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/makke_a_tavene_syry/bryndza_result.png"
+          },
+          {
+            "Zaradenie": "tvaroh",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/makke_a_tavene_syry/tvaroh_result.png"
+          },
+          {
+            "Zaradenie": "plesniv_syr",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "taven_n_tierkov_syr",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pl_tkov_syr",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "feta",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/makke_a_tavene_syry/feta_result.png"
+          },
+          {
+            "Zaradenie": "koz_syr",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "taven_syr_pl_tkov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+      },
+      {
+        "Podkategória": "tvrd_a_polotvrd_syry",
+        "Zaradenia": [
+          {
+            "Zaradenie": "eidam",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/tvrde_a_polotvrde_syry/eidam_result.png"
+          },
+          {
+            "Zaradenie": "gouda",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/tvrde_a_polotvrde_syry/gouda_result.png"
+          },
+          {
+            "Zaradenie": "mozarella",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/tvrde_a_polotvrde_syry/mozarella_result.png"
+          },
+          {
+            "Zaradenie": "o_tiepok",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "syrov_nite",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "parmez_n",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "grana_padano",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ostatn_zrej_ce_syry",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "parenica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/tvrde_a_polotvrde_syry/parenica_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+      },
+      {
+        "Podkategória": "majon_zy_om_ky_dresingy",
+        "Zaradenia": [
+          {
+            "Zaradenie": "majon_za",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "tatarsk_om_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "al_tov_dresing",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/mliecne_vyrobky_a_vajcia/hlavna_result.png"
+  },
+  {
+    "Kategória": "nealko_n_poje_k_vy_a_aje",
+    "Podkategórie": [
+      {
+        "Podkategória": "limon_dy",
+        "Zaradenia": [
+          {
+            "Zaradenie": "cola",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/limonady/cola_result.png"
+          },
+          {
+            "Zaradenie": "ovocn_limon_da",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/limonady/limonady_result.png"
+          },
+          {
+            "Zaradenie": "tonic",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/limonady/tonic_result.png"
+          },
+          {
+            "Zaradenie": "energetick_n_poje",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/limonady/limonady_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/limonady/limonady_result.png"
+      },
+      {
+        "Podkategória": "miner_lne_vody",
+        "Zaradenia": [
+          {
+            "Zaradenie": "ochuten_miner_lna_voda",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "neochuten_miner_lna_voda",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/hlavna_result.png"
+      },
+      {
+        "Podkategória": "sirupy",
+        "Zaradenia": [
+          {
+            "Zaradenie": "javorov_sirup",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/sirupy/sirupy_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/sirupy/sirupy_result.png"
+      },
+      {
+        "Podkategória": "d_sy_a_adov_aje",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/dzusy_a_ladove_caje/dzusy_a_ladove_caje_result.png"
+      },
+      {
+        "Podkategória": "instantn_kakaov_n_poj",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/hlavna_result.png"
+      },
+      {
+        "Podkategória": "k_vy",
+        "Zaradenia": [
+          {
+            "Zaradenie": "zrnkov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/kavy/kavy_result.png"
+          },
+          {
+            "Zaradenie": "instantn",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/kavy/instantna_result.png"
+          },
+          {
+            "Zaradenie": "mlet",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/kavy/mleta_result.png"
+          },
+          {
+            "Zaradenie": "cappuccino",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/kavy/cappuccino_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/kavy/kavy_result.png"
+      },
+      {
+        "Podkategória": "aje",
+        "Zaradenia": [
+          {
+            "Zaradenie": "ovocn_aj",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/caje/ovocny_result.png"
+          },
+          {
+            "Zaradenie": "ierny_aj",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/caje/caje_result.png"
+          },
+          {
+            "Zaradenie": "bylinkov_aj",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/caje/caje_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/caje/caje_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/hlavna_result.png"
+  },
+  {
+    "Kategória": "alkohol_v_no_a_pivo",
+    "Podkategórie": [
+      {
+        "Podkategória": "alkohol",
+        "Zaradenia": [
+          {
+            "Zaradenie": "biely_alkohol",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/biely_result.png"
+          },
+          {
+            "Zaradenie": "farebn_alkohol",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/farebny_result.png"
+          },
+          {
+            "Zaradenie": "ovocn_alkohol",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/ovocny_result.png"
+          },
+          {
+            "Zaradenie": "lik_r",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/liker_result.png"
+          },
+          {
+            "Zaradenie": "bylinn_lik_r",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/bylinny_result.png"
+          },
+          {
+            "Zaradenie": "ko_ak_a_whiskey",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/konak_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/alkohol/alkohol_result.png"
+      },
+      {
+        "Podkategória": "v_no",
+        "Zaradenia": [
+          {
+            "Zaradenie": "biele_v_no",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/vino/biele_result.png"
+          },
+          {
+            "Zaradenie": "erven_v_no",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/vino/cervene_result.png"
+          },
+          {
+            "Zaradenie": "ru_ov_v_no",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/vino/ruzove_result.png"
+          },
+          {
+            "Zaradenie": "umiv_v_no",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/vino/sumive_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/vino/vino_result.png"
+      },
+      {
+        "Podkategória": "pivo",
+        "Zaradenia": [
+          {
+            "Zaradenie": "alkoholick_pivo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/pivo/alkoholicke_result.png"
+          },
+          {
+            "Zaradenie": "nealkoholick_pivo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/pivo/nealkoholicke_result.png"
+          },
+          {
+            "Zaradenie": "radler",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/pivo/radler_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/pivo/pivo_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/alkohol,_vino_a_pivo/hlavna_result.png"
+  },
+  {
+    "Kategória": "oleje_tuky_a_maslo",
+    "Podkategórie": [
+      {
+        "Podkategória": "oleje",
+        "Zaradenia": [
+          {
+            "Zaradenie": "repkov_olej",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/oleje/oleje_result.png"
+          },
+          {
+            "Zaradenie": "slne_nicov_olej",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/oleje/oleje_result.png"
+          },
+          {
+            "Zaradenie": "olivov_olej",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/oleje/oleje_result.png"
+          },
+          {
+            "Zaradenie": "al_tov_olej",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/oleje/oleje_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/oleje/oleje_result.png"
+      },
+      {
+        "Podkategória": "tuky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "brav_ov_mas",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/tuky/tuky_result.png"
+          },
+          {
+            "Zaradenie": "rastlinn_tuk_na_pe_enie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/tuky/tuky_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/tuky/tuky_result.png"
+      },
+      {
+        "Podkategória": "maslo",
+        "Zaradenia": [
+          {
+            "Zaradenie": "maslo_82",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/maslo/maslo_result.png"
+          },
+          {
+            "Zaradenie": "rastlinn_maslo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/maslo/maslo_result.png"
+          },
+          {
+            "Zaradenie": "koziemaslo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/maslo/maslo_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/maslo/maslo_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/oleje,_tuky_a_maslo/hlavna_result.png"
+  },
+  {
+    "Kategória": "ovocie",
+    "Podkategórie": [
+      {
+        "Podkategória": "erstv_ovocie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "anan_s",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "avok_do",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ban_ny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "broskyne",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/broskyne_result.png"
+          },
+          {
+            "Zaradenie": "citr_ny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "u_oriedky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "hrozno",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/hrozno_result.png"
+          },
+          {
+            "Zaradenie": "hru_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "jablk",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "jahody",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/jahody_result.png"
+          },
+          {
+            "Zaradenie": "mandar_nky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mango",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/mango_result.png"
+          },
+          {
+            "Zaradenie": "marhule",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/marhule_result.png"
+          },
+          {
+            "Zaradenie": "mel_n",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "nekt_rinky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pomaran_e",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "slivky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/slivky_result.png"
+          },
+          {
+            "Zaradenie": "ere_ne",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ernice",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "grep",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "kivi",
+            "Produkta": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/kivi_result.png"
+          },
+          {
+            "Zaradenie": "kokosov_orech",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "limetka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/limetka_result.png"
+          },
+          {
+            "Zaradenie": "maliny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/cerstve_ovocie/maliny_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+      },
+      {
+        "Podkategória": "mrazen_ovocie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "mrazen_jahody",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_maliny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_anan_s",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_mango",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_u_oriedky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_zmes_ovocia",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+      },
+      {
+        "Podkategória": "d_emy_marmel_dy_a_sladk_n_tierky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "ovocn_d_em",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ovocn_marmel_da",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "okol_dov_n_tierka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ara_idov_maslo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "orie_kov_n_tierka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+      },
+      {
+        "Podkategória": "sterilizovan_ovocie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "jahodov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "brosky_ov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ere_ov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mandarinkov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "anan_sov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "brusnicov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "slivkov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ovocn_pyr",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "marhu_ov_komp_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/ovocie/hlavna_result.png"
+  },
+  {
+    "Kategória": "zelenina",
+    "Podkategórie": [
+      {
+        "Podkategória": "erstv_zelenina",
+        "Zaradenia": [
+          {
+            "Zaradenie": "cesnak",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/cesnak_result.png"
+          },
+          {
+            "Zaradenie": "chilli",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/chilli_result.png"
+          },
+          {
+            "Zaradenie": "bataty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/bataty_result.png"
+          },
+          {
+            "Zaradenie": "brokolica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/brokolica_result.png"
+          },
+          {
+            "Zaradenie": "cibu_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/cibula_result.png"
+          },
+          {
+            "Zaradenie": "cuketa",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/cuketa_result.png"
+          },
+          {
+            "Zaradenie": "cvikla",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/cvikla_result.png"
+          },
+          {
+            "Zaradenie": "kaler_b",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/kalerab_result.png"
+          },
+          {
+            "Zaradenie": "kapusta",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/kapusta_result.png"
+          },
+          {
+            "Zaradenie": "karfiol",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/karfiol_result.png"
+          },
+          {
+            "Zaradenie": "kel",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/kel_result.png"
+          },
+          {
+            "Zaradenie": "kukurica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/kukurica_result.png"
+          },
+          {
+            "Zaradenie": "mrkva",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/mrkva_result.png"
+          },
+          {
+            "Zaradenie": "paprika",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/paprika_result.png"
+          },
+          {
+            "Zaradenie": "paradajky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/paradajky_result.png"
+          },
+          {
+            "Zaradenie": "petr_len",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/petrzlen_result.png"
+          },
+          {
+            "Zaradenie": "p_r",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/por_result.png"
+          },
+          {
+            "Zaradenie": "re_kovka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/redkovka_result.png"
+          },
+          {
+            "Zaradenie": "ampi_ny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/sampiony_result.png"
+          },
+          {
+            "Zaradenie": "al_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/salat_result.png"
+          },
+          {
+            "Zaradenie": "al_tov_mix",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/salatovy_result.png"
+          },
+          {
+            "Zaradenie": "parg_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/spargla_result.png"
+          },
+          {
+            "Zaradenie": "pen_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/spenat_result.png"
+          },
+          {
+            "Zaradenie": "uhorka_al_tov",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/salatova_uhorka_result.png"
+          },
+          {
+            "Zaradenie": "zeler",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/zeler_result.png"
+          },
+          {
+            "Zaradenie": "zemiaky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/zemiaky_result.png"
+          },
+          {
+            "Zaradenie": "jarn_cibulka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/jarna_cibulka_result.png"
+          },
+          {
+            "Zaradenie": "al_tcoleslaw",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/coleslaw_result.png"
+          },
+          {
+            "Zaradenie": "z_zvor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/zazvor_result.png"
+          },
+          {
+            "Zaradenie": "fazu_kazelen",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/fazulka_zelena_result.png"
+          },
+          {
+            "Zaradenie": "tekvica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/tekvica_result.png"
+          },
+          {
+            "Zaradenie": "uhorky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/uhorky_nakladacky_result.png"
+          },
+          {
+            "Zaradenie": "zelen_hr_ok",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/zeleny_hrasok_result.png"
+          },
+          {
+            "Zaradenie": "fazu_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/cerstva_zelenina/fazulka_zelena_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/zelenina/hlavna_result.png"
+      },
+      {
+        "Podkategória": "bylinky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "bazalka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/bazalka_result.png"
+          },
+          {
+            "Zaradenie": "petr_lenov_v_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/petrzlenova_result.png"
+          },
+          {
+            "Zaradenie": "k_por",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/kopor_result.png"
+          },
+          {
+            "Zaradenie": "zelerov_v_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/zelerova_result.png"
+          },
+          {
+            "Zaradenie": "koriander",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/koriander_result.png"
+          },
+          {
+            "Zaradenie": "m_ta",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/mata_result.png"
+          },
+          {
+            "Zaradenie": "pa_tka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/bylinky/pazitka_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/zelenina/bylinky/bylinky_result.png"
+      },
+      {
+        "Podkategória": "mrazen_zelenina",
+        "Zaradenia": [
+          {
+            "Zaradenie": "mrazen_mrkva",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/mrkva_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_kukurica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/kukurica_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_hr_ok",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/hrasok_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_pen_t",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/spenat_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_kel",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/kel_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_brokolica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/brokolica_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_karfiol",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/karfiol_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_zelen_fazu_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/fazulka_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_zeleninov_zmes",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/mrazena_zelenina/zmes_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/zelenina/hlavna_result.png"
+      },
+      {
+        "Podkategória": "sterilizovan_zelenina",
+        "Zaradenia": [
+          {
+            "Zaradenie": "sterilizovan_uhorky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/uhorky_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_hr_ok",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/hrasok_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_kukurica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/kukurica_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_fazu_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/fazula_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_kapusta",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/kapusta_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_cvikla",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/cvikla_result.png"
+          },
+          {
+            "Zaradenie": "alam_da",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/calamada_result.png"
+          },
+          {
+            "Zaradenie": "paradajkov_pretlak",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/paradajkovy_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_ampi_ny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/sampiony_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_olivy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/olivy_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_parg_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/spargla_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_paprika",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/paprika_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_paradajky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/paradajky_result.png"
+          },
+          {
+            "Zaradenie": "sterilizovan_zmes_zeleniny",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zelenina/sterilizovana_zelenina/zmes_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/zelenina/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/zelenina/hlavna_result.png"
+  },
+  {
+    "Kategória": "sladkosti_a_pochutiny",
+    "Podkategórie": [
+      {
+        "Podkategória": "okol_dov_sladkosti",
+        "Zaradenia": [
+          {
+            "Zaradenie": "okol_da",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "okol_da_na_varenie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "okol_dov_ty_inka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "bonboni_ra",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "keksy",
+        "Zaradenia": [
+          {
+            "Zaradenie": "plnen_keks",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/keksy/keksy_result.png"
+          },
+          {
+            "Zaradenie": "su_ienky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/keksy/keksy_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/keksy/keksy_result.png"
+      },
+      {
+        "Podkategória": "cukr_ky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "dra_cukr_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "el_cukr_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "l_zatk",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "pi_k_ty_a_pern_ky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "detsk_pi_k_ty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "plnen_pi_k_ty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pern_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "slan_pochutiny",
+        "Zaradenia": [
+          {
+            "Zaradenie": "chipsy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "krekry",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ty_inky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "orie_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "chrumky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "dipy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "popcorn",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/sladkosti_a_pochutiny/hlavna_result.png"
+  },
+  {
+    "Kategória": "mrazen_a_chladen_v_robky",
+    "Podkategórie": [
+      {
+        "Podkategória": "zmrzliny",
+        "Zaradenia": [
+          {
+            "Zaradenie": "nanuky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/zmrzliny/nanuky_result.png"
+          },
+          {
+            "Zaradenie": "zmrzlina",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/zmrzliny/zmrzlina_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/zmrzliny/zmrzliny_result.png"
+      },
+      {
+        "Podkategória": "mrazen_polotovary",
+        "Zaradenia": [
+          {
+            "Zaradenie": "mrazen_pizza",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "l_stkov_cesto_mrazen",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ance_mrazen",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pirohy_mrazen",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_plnen_knedl_ky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "sladk_mrazen_pe_ivo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "hranolky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "krokety",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "rybie_prsty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "oba_ovan_syr",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "kuracie_nugetky",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_ryby",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "lok_e",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "mrazen_m_so",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+      },
+      {
+        "Podkategória": "chladen_v_robky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "kned_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "paren_buchty",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "l_stkov_cesto",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "cesto_na_pizzu",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+      },
+      {
+        "Podkategória": "hotov_jedl",
+        "Zaradenia": [
+          {
+            "Zaradenie": "m_sit_hotov_jedlo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "bezm_sit_hotov_jedlo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "plnen_bagety",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "hotov_hamburgery",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/mrazene_a_chladene_vyrobky/hlavna_result.png"
+  },
+  {
+    "Kategória": "m_ky_pe_enie_a_varenie",
+    "Podkategórie": [
+      {
+        "Podkategória": "m_ky",
+        "Zaradenia": [
+          {
+            "Zaradenie": "hladk_m_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/muky/muky_result.png"
+          },
+          {
+            "Zaradenie": "polohrub_m_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/muky/muky_result.png"
+          },
+          {
+            "Zaradenie": "hrub_m_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/muky/muky_result.png"
+          },
+          {
+            "Zaradenie": "krobov_m_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/muky/muky_result.png"
+          },
+          {
+            "Zaradenie": "paldov_m_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/muky/muky_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/muky/muky_result.png"
+      },
+      {
+        "Podkategória": "zmesi",
+        "Zaradenia": [
+          {
+            "Zaradenie": "m_na_zmes_na_chlieb",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/zmesi/zmesi_result.png"
+          },
+          {
+            "Zaradenie": "pi_k_tov_zmesi",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/zmesi/zmesi_result.png"
+          },
+          {
+            "Zaradenie": "zmes_na_kysnut_cesto",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/zmesi/zmesi_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/zmesi/zmesi_result.png"
+      },
+      {
+        "Podkategória": "pe_enie_a_varenie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "dro_die",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pr_ok_do_pe_iva",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pr_ok_do_pern_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "krupicov_ka_a",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "kakao",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/pecenie_a_varenie/kakao_result.png"
+          },
+          {
+            "Zaradenie": "mak",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/pecenie_a_varenie/mak_result.png"
+          },
+          {
+            "Zaradenie": "str_han_kokos",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pudingov_pr_ok",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "cukr_rske_zdobenie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "potravin_rska_ar_ma",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "poleva_v_pr_ku",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "elat_na",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "orechy",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/pecenie_a_varenie/orechy_result.png"
+          },
+          {
+            "Zaradenie": "zemiakov_ka_a_v_pr_ku",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "halu_ky_v_pr_ku",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "zemiakov_knedl_ky_v_pr_ku",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "s_kov_polievka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "s_kov_om_ka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/muky,_pecenie_a_varenie/hlavna_result.png"
+  },
+  {
+    "Kategória": "so_cukor_dochucovadl_koreniny",
+    "Podkategórie": [
+      {
+        "Podkategória": "so",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+      },
+      {
+        "Podkategória": "cukor",
+        "Zaradenia": [
+          {
+            "Zaradenie": "pr_kov_cukor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/cukor/cukor_result.png"
+          },
+          {
+            "Zaradenie": "kryst_lov_cukor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/cukor/cukor_result.png"
+          },
+          {
+            "Zaradenie": "vanilkov_cukor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/cukor/cukor_result.png"
+          },
+          {
+            "Zaradenie": "hned_cukor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/cukor/cukor_result.png"
+          },
+          {
+            "Zaradenie": "koricov_cukor",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/cukor/cukor_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/cukor/cukor_result.png"
+      },
+      {
+        "Podkategória": "koreniny",
+        "Zaradenia": [
+          {
+            "Zaradenie": "ierne_korenie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/cierne_result.png"
+          },
+          {
+            "Zaradenie": "mlet_paprika",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/mleta_result.png"
+          },
+          {
+            "Zaradenie": "oregano",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/oregano_result.png"
+          },
+          {
+            "Zaradenie": "bazalka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/bazalka_result.png"
+          },
+          {
+            "Zaradenie": "koreninov_zmes",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/koreniny_result.png"
+          },
+          {
+            "Zaradenie": "major_nka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/majoranka_result.png"
+          },
+          {
+            "Zaradenie": "kari_korenie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/kari_result.png"
+          },
+          {
+            "Zaradenie": "kurkuma",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/kurkuma_result.png"
+          },
+          {
+            "Zaradenie": "rasca",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/rasca_result.png"
+          },
+          {
+            "Zaradenie": "korica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/skorica_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/koreniny/koreniny_result.png"
+      },
+      {
+        "Podkategória": "dochucovadl",
+        "Zaradenia": [
+          {
+            "Zaradenie": "vegeta",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "buj_n",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "ke_up",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "hor_ica",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "pikantn_dochucovadlo",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "chren",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "med",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          },
+          {
+            "Zaradenie": "tekut_korenie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/sol,_cukor,_dochucovadla_a_koreniny/hlavna_result.png"
+  },
+  {
+    "Kategória": "zdrav_v_iva",
+    "Podkategórie": [
+      {
+        "Podkategória": "tofu",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+      },
+      {
+        "Podkategória": "musli",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+      },
+      {
+        "Podkategória": "ra_ajkov_cere_lie",
+        "Zaradenia": [
+          {
+            "Zaradenie": "cere_lnaty_inka",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+          }
+        ],
+        "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+      },
+      {
+        "Podkategória": "ry_ov_chlieb",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+      },
+      {
+        "Podkategória": "vl_ran",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+      },
+      {
+        "Podkategória": "ovsen_vlo_ky",
+        "Zaradenia": [],
+        "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+      }
+    ],
+    "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+  }
+]
