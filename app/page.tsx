@@ -265,6 +265,20 @@ export default function Home() {
     setPlacementKey(nextPlacement);
   }, [selectedSubcategory, placementKey]);
 
+  useEffect(() => {
+    const hasData = products.length > 0 || loadedFlyer !== null;
+    
+    if (!hasData) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Máš neuložené zmeny v letáku. Naozaj chceš opustiť stránku?';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [products, loadedFlyer]);
+
   const flyerData = useMemo(() => {
     const productMap = new Map<string, FlyerProduct[]>();
     for (const entry of products) {
@@ -756,7 +770,7 @@ export default function Home() {
         <div className="absolute bottom-12 right-12 h-72 w-72 rounded-full bg-[#b8d8ff] blur-[120px]" />
       </div>
 
-      <main className="relative mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-8 pb-16 pt-6">
+      <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-8 pb-16 pt-6">
         <header className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm uppercase tracking-[0.3em] text-[color:var(--muted)]">
@@ -777,92 +791,16 @@ export default function Home() {
           </h1>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(850px,2.6fr)_minmax(350px,1fr)]">
+        <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
           <div className="rounded-3xl bg-[color:var(--panel)] p-6 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <h2 className="font-[var(--font-display)] text-2xl text-[color:var(--ink)]">
-                {t("section_input")}
-              </h2>
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 {t("products_count")} <span>{loadedProductsList.length + products.length}</span>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4">
-              <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                {t("label_shop")}
-                <input
-                  className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
-                  value={shop}
-                  onChange={(event) => setShop(event.target.value)}
-                  placeholder="billa"
-                />
-              </label>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                  {t("label_flyer_date_from")}
-                  <input
-                    type="date"
-                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
-                    value={flyerDateFrom ? flyerDateFrom.split(".").reverse().join("-") : ""}
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        const [year, month, day] = event.target.value.split("-");
-                        const newFromDate = `${day}.${month}.${year}`;
-                        const oldFrom = flyerDateFrom;
-                        
-                        setFlyerDateFrom(newFromDate);
-                        
-                        // Prepočítaj "Do" dátum len ak existuje a bol nastavený "Od" dátum
-                        if (oldFrom && flyerDateTo) {
-                          const daysDifference = getDateDifference(oldFrom, flyerDateTo);
-                          const newToDate = addDaysToDate(newFromDate, daysDifference);
-                          setFlyerDateTo(newToDate);
-                        }
-                      } else {
-                        setFlyerDateFrom("");
-                      }
-                    }}
-                  />
-                </label>
-                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                  {t("label_flyer_date_to")}
-                  <input
-                    type="date"
-                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
-                    value={flyerDateTo ? flyerDateTo.split(".").reverse().join("-") : ""}
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        const [year, month, day] = event.target.value.split("-");
-                        setFlyerDateTo(`${day}.${month}.${year}`);
-                      } else {
-                        setFlyerDateTo("");
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div className="rounded-lg border-2 border-orange-500 bg-orange-50 px-4 py-3">
-                <strong className="text-sm text-gray-700">📄 {t("label_final_filename")}:</strong>
-                <div className="mt-2 font-mono text-lg font-bold text-gray-900 break-all">{resolvedFileName}</div>
-              </div>
-
-              <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                {t("label_storage_folder")}
-                <select
-                  className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
-                  value={bucketPath}
-                  onChange={(event) => setBucketPath(event.target.value)}
-                >
-                  <option value="sk">{t("storage_sk")}</option>
-                  <option value="cz">{t("storage_cz")}</option>
-                  <option value="pl">{t("storage_pl")}</option>
-                </select>
-              </label>
-
-              <div className="grid gap-2 text-sm text-[color:var(--muted)]">
+              <div className="grid gap-2 text-sm text-[color:var(--ink)]">
                 <div>{t("label_load_json")}</div>
                 <div className="flex gap-3">
                   <label htmlFor="json-file-input" className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:brightness-95 cursor-pointer">
@@ -884,11 +822,87 @@ export default function Home() {
                 </div>
               </div>
 
+              <div className="rounded-lg border-2 border-orange-500 bg-orange-50 px-4 py-3">
+                <strong className="text-sm text-gray-700">📄 {t("label_final_filename")}:</strong>
+                <div className="mt-2 font-mono text-lg font-bold text-gray-900 break-all">{resolvedFileName}</div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-[0.25fr_0.75fr]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
+                  {t("label_storage_folder")}
+                  <select
+                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    value={bucketPath}
+                    onChange={(event) => setBucketPath(event.target.value)}
+                  >
+                    <option value="sk">{t("storage_sk")}</option>
+                    <option value="cz">{t("storage_cz")}</option>
+                    <option value="pl">{t("storage_pl")}</option>
+                  </select>
+                </label>
+
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)] md:flex-1">
+                    {t("label_shop")}
+                    <input
+                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-lg md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      value={shop}
+                      onChange={(event) => setShop(event.target.value)}
+                      placeholder="Billa"
+                    />
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    <label className="grid gap-2 text-sm md:text-xl text-[color:var(--ink)]">
+                      {t("label_flyer_date_from")}
+                      <input
+                        type="date"
+                        className="rounded-xl border border-black/10 bg-white px-5 py-4 text-sm md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                        value={flyerDateFrom ? flyerDateFrom.split(".").reverse().join("-") : ""}
+                        onChange={(event) => {
+                          if (event.target.value) {
+                            const [year, month, day] = event.target.value.split("-");
+                            const newFromDate = `${day}.${month}.${year}`;
+                            const oldFrom = flyerDateFrom;
+                            setFlyerDateFrom(newFromDate);
+
+                            if (oldFrom && flyerDateTo) {
+                              const daysDifference = getDateDifference(oldFrom, flyerDateTo);
+                              const newToDate = addDaysToDate(newFromDate, daysDifference);
+                              setFlyerDateTo(newToDate);
+                            }
+                          } else {
+                            setFlyerDateFrom("");
+                          }
+                        }}
+                      />
+                    </label>
+
+                    <label className="grid gap-2 text-sm md:text-xl text-[color:var(--ink)]">
+                      {t("label_flyer_date_to")}
+                      <input
+                        type="date"
+                        className="rounded-xl border border-black/10 bg-white px-5 py-4 text-sm md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                        value={flyerDateTo ? flyerDateTo.split(".").reverse().join("-") : ""}
+                        onChange={(event) => {
+                          if (event.target.value) {
+                            const [year, month, day] = event.target.value.split("-");
+                            setFlyerDateTo(`${day}.${month}.${year}`);
+                          } else {
+                            setFlyerDateTo("");
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                 {t("label_product_name")}
                 <div className="relative">
                   <input
-                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.name}
                     onChange={(event) => {
                       const newName = event.target.value;
@@ -1043,32 +1057,32 @@ export default function Home() {
               )}
 
               <div className="grid gap-6">
-                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                  {t("label_category")}
-                  <select
-                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
-                    value={categoryKey}
-                    onChange={(event) => setCategoryKey(event.target.value)}
-                  >
-                    {hierarchy.map((item) => (
-                      <option key={item["Kategória"]} value={item["Kategória"]}>
-                        {locLabelFor(item["Kategória"])}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
+                    {t("label_category")}
+                    <select
+                      className="w-full max-w-[380px] rounded-xl border border-black/10 bg-white px-4 py-3 text-lg text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      value={categoryKey}
+                      onChange={(event) => setCategoryKey(event.target.value)}
+                    >
+                      {hierarchy.map((item) => (
+                        <option key={item["Kategória"]} value={item["Kategória"]}>
+                          {locLabelFor(item["Kategória"]) }
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-                <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_subcategory")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
+                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={subcategoryKey}
                       onChange={(event) => setSubcategoryKey(event.target.value)}
                     >
                       {selectedCategory?.["Podkategórie"].map((item) => (
                         <option key={item["Podkategória"]} value={item["Podkategória"]}>
-                          {locLabelFor(item["Podkategória"])}
+                          {locLabelFor(item["Podkategória"]) }
                         </option>
                       ))}
                     </select>
@@ -1077,13 +1091,13 @@ export default function Home() {
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_placement")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
+                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={placementKey}
                       onChange={(event) => setPlacementKey(event.target.value)}
                     >
                       {sortedPlacements.map((item) => (
                         <option key={item["Zaradenie"]} value={item["Zaradenie"]}>
-                          {locLabelFor(item["Zaradenie"])}
+                          {locLabelFor(item["Zaradenie"]) }
                         </option>
                       ))}
                     </select>
@@ -1095,7 +1109,7 @@ export default function Home() {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_amount")}
                   <input
-                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.amount || ""}
                     onChange={(event) => {
                       const newAmount = event.target.value;
@@ -1112,7 +1126,7 @@ export default function Home() {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_unit")}
                   <select
-                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.unit}
                     onChange={(event) => {
                       const newUnit = event.target.value;
@@ -1137,7 +1151,7 @@ export default function Home() {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_regular_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceRegular || ""}
                     onChange={(event) => {
                       const newPrice = normalizePrice(event.target.value);
@@ -1153,7 +1167,8 @@ export default function Home() {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_regular_unit_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    tabIndex={-1}
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceRegularUnit}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -1170,7 +1185,7 @@ export default function Home() {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceSale || ""}
                     onChange={(event) => {
                       const newPrice = normalizePrice(event.target.value);
@@ -1186,7 +1201,8 @@ export default function Home() {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_unit_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    tabIndex={-1}
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceSaleUnit}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -1204,45 +1220,15 @@ export default function Home() {
                   {t("label_date_from")}
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
+                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.dateFrom ? form.dateFrom.split(".").reverse().join("-") : ""}
-                    onClick={(e) => {
-                      if (!form.dateFrom) {
-                        const today = getTodayDate();
-                        const endDate = addDaysToDate(today, 7);
-                        setForm((prev) => ({
-                          ...prev,
-                          dateFrom: today,
-                          dateTo: endDate,
-                        }));
-                      }
-                    }}
                     onChange={(event) => {
                       if (event.target.value) {
                         const [year, month, day] = event.target.value.split("-");
                         const newFromDate = `${day}.${month}.${year}`;
-                        const oldFrom = form.dateFrom;
-                        
-                        setForm((prev) => {
-                          const newForm = {
-                            ...prev,
-                            dateFrom: newFromDate,
-                          };
-                          
-                          // Prepočítaj "Do" dátum len ak existuje a bol nastavený "Od" dátum
-                          if (oldFrom && prev.dateTo) {
-                            const daysDifference = getDateDifference(oldFrom, prev.dateTo);
-                            const newToDate = addDaysToDate(newFromDate, daysDifference);
-                            newForm.dateTo = newToDate;
-                          }
-                          
-                          return newForm;
-                        });
+                        setForm((prev) => ({ ...prev, dateFrom: newFromDate }));
                       } else {
-                        setForm((prev) => ({
-                          ...prev,
-                          dateFrom: "",
-                        }));
+                        setForm((prev) => ({ ...prev, dateFrom: "" }));
                       }
                     }}
                   />
@@ -1251,7 +1237,7 @@ export default function Home() {
                   {t("label_date_to")}
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
+                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.dateTo ? form.dateTo.split(".").reverse().join("-") : ""}
                     onChange={(event) => {
                       if (event.target.value) {
@@ -1273,7 +1259,7 @@ export default function Home() {
                   {t("label_extra_info")}
                   <div className="relative">
                     <input
-                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={form.info || ""}
                       onChange={(event) => {
                         const newInfo = event.target.value;
