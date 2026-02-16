@@ -789,10 +789,10 @@ export default function Home() {
             </div>
 
             <div className="mt-6 grid gap-4">
-              <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+              <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                 {t("label_shop")}
                 <input
-                  className="rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                  className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
                   value={shop}
                   onChange={(event) => setShop(event.target.value)}
                   placeholder="billa"
@@ -800,11 +800,11 @@ export default function Home() {
               </label>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_flyer_date_from")}
                   <input
                     type="date"
-                    className="rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
                     value={flyerDateFrom ? flyerDateFrom.split(".").reverse().join("-") : ""}
                     onChange={(event) => {
                       if (event.target.value) {
@@ -826,11 +826,11 @@ export default function Home() {
                     }}
                   />
                 </label>
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_flyer_date_to")}
                   <input
                     type="date"
-                    className="rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
                     value={flyerDateTo ? flyerDateTo.split(".").reverse().join("-") : ""}
                     onChange={(event) => {
                       if (event.target.value) {
@@ -849,10 +849,10 @@ export default function Home() {
                 <div className="mt-2 font-mono text-lg font-bold text-gray-900 break-all">{resolvedFileName}</div>
               </div>
 
-              <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+              <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                 {t("label_storage_folder")}
                 <select
-                  className="rounded-xl border border-black/10 bg-white px-3 py-3 text-[color:var(--ink)] outline-none"
+                  className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                   value={bucketPath}
                   onChange={(event) => setBucketPath(event.target.value)}
                 >
@@ -884,11 +884,11 @@ export default function Home() {
                 </div>
               </div>
 
-              <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+              <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                 {t("label_product_name")}
                 <div className="relative">
                   <input
-                    className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 pr-10 text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
                     value={form.name}
                     onChange={(event) => {
                       const newName = event.target.value;
@@ -1043,10 +1043,10 @@ export default function Home() {
               )}
 
               <div className="grid gap-6">
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_category")}
                   <select
-                    className="rounded-xl border border-black/10 bg-white px-3 py-3 text-[color:var(--ink)] outline-none cursor-pointer"
+                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
                     value={categoryKey}
                     onChange={(event) => setCategoryKey(event.target.value)}
                   >
@@ -1059,10 +1059,10 @@ export default function Home() {
                 </label>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                  <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_subcategory")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-3 py-3 text-[color:var(--ink)] outline-none cursor-pointer"
+                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
                       value={subcategoryKey}
                       onChange={(event) => setSubcategoryKey(event.target.value)}
                     >
@@ -1074,10 +1074,10 @@ export default function Home() {
                     </select>
                   </label>
 
-                  <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                  <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_placement")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-3 py-3 text-[color:var(--ink)] outline-none cursor-pointer"
+                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
                       value={placementKey}
                       onChange={(event) => setPlacementKey(event.target.value)}
                     >
@@ -1092,10 +1092,10 @@ export default function Home() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_amount")}
                   <input
-                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.amount || ""}
                     onChange={(event) => {
                       const newAmount = event.target.value;
@@ -1109,12 +1109,11 @@ export default function Home() {
                     placeholder="1"
                   />
                 </label>
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_unit")}
                   <select
-                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-3 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.unit}
-                    tabIndex={-1}
                     onChange={(event) => {
                       const newUnit = event.target.value;
                       setForm((prev) => ({
@@ -1135,10 +1134,10 @@ export default function Home() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_regular_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.priceRegular || ""}
                     onChange={(event) => {
                       const newPrice = normalizePrice(event.target.value);
@@ -1151,12 +1150,11 @@ export default function Home() {
                     placeholder="1"
                   />
                 </label>
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_regular_unit_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.priceRegularUnit}
-                    tabIndex={-1}
                     onChange={(event) =>
                       setForm((prev) => ({
                         ...prev, 
@@ -1169,10 +1167,10 @@ export default function Home() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.priceSale || ""}
                     onChange={(event) => {
                       const newPrice = normalizePrice(event.target.value);
@@ -1185,12 +1183,11 @@ export default function Home() {
                     placeholder="1"
                   />
                 </label>
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_unit_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.priceSaleUnit}
-                    tabIndex={-1}
                     onChange={(event) =>
                       setForm((prev) => ({
                         ...prev,
@@ -1203,11 +1200,11 @@ export default function Home() {
               </div>
 
               <div className="grid gap-3 grid-cols-[1fr_1fr_1.5fr]">
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_date_from")}
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none cursor-pointer"
+                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer"
                     value={form.dateFrom ? form.dateFrom.split(".").reverse().join("-") : ""}
                     onClick={(e) => {
                       if (!form.dateFrom) {
@@ -1250,11 +1247,11 @@ export default function Home() {
                     }}
                   />
                 </label>
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_date_to")}
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-[color:var(--ink)] outline-none"
+                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none"
                     value={form.dateTo ? form.dateTo.split(".").reverse().join("-") : ""}
                     onChange={(event) => {
                       if (event.target.value) {
@@ -1272,11 +1269,11 @@ export default function Home() {
                     }}
                   />
                 </label>
-                <label className="grid gap-2 text-sm text-[color:var(--muted)]">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_extra_info")}
                   <div className="relative">
                     <input
-                      className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 pr-10 text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30"
                       value={form.info || ""}
                       onChange={(event) => {
                         const newInfo = event.target.value;
