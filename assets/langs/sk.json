@@ -63,9 +63,7 @@
   "label_regular_price": "Bežná cena za bal.",
   "label_regular_unit_price": "Bežná jednotková cena",
   "label_sale_price": "Akciová cena",
-  "label_regular_price": "Bežná cena",
   "label_sale_unit_price": "Akciová jednotková cena",
-  "label_regular_unit_price": "Bežná jednotková cena",
   "label_date_from": "Dátum akcie od",
   "label_date_to": "Dátum akcie do",
   "btn_add_product": "Uložiť zmeny",
@@ -674,6 +672,5 @@
   "ziadne_duplicity_nenajdene": "Žiadne duplicity neboli nájdené",
   "vytvorit_novy_zoznam": "Vytvoriť zoznam",
   "vytvoreny_novy_zoznam": "Vytvorený nový prázdny zoznam",
-  "porovnanie_cien": "Porovnanie cien",
   "nejlepsia_cena": "Najlepšia cena"
 }

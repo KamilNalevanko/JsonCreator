@@ -70,7 +70,7 @@ const labelMap = skLabels as Record<string, string>;
 
 const unitOptions = ["g", "kg", "ml", "l", "ks", "bal"];
 
-const labelFor = (key: string) => labelMap[key] ?? key.replace(/_/g, " ");
+// helper removed - use `locLabelFor` instead
 
 const calculateUnitPrice = (price: string, amount: string, unit: string): string => {
   if (!price?.trim() || !amount?.trim()) return '';
@@ -158,7 +158,7 @@ export default function Home() {
   });
   const [products, setProducts] = useState<ProductEntry[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [loadedFlyer, setLoadedFlyer] = useState<typeof flyerData | null>(null);
+  const [loadedFlyer, setLoadedFlyer] = useState<HierarchyCategory[] | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -281,10 +281,30 @@ export default function Home() {
 
   const flyerData = useMemo(() => {
     const productMap = new Map<string, FlyerProduct[]>();
+
+    // include products added during this session
     for (const entry of products) {
       const key = `${entry.product["Kategória"]}||${entry.product["Podkategória"]}||${entry.product["Zaradenie"]}`;
       const existing = productMap.get(key) ?? [];
       productMap.set(key, [...existing, entry.product]);
+    }
+
+    // also include products from the loaded flyer (so edits to loaded items persist)
+    if (loadedFlyer) {
+      loadedFlyer.forEach((category: HierarchyCategory) => {
+        const categoryKey = category["Kategória"];
+        (category["Podkategórie"] ?? []).forEach((subcategory: HierarchySubcategory) => {
+          const subcategoryKey = subcategory["Podkategória"];
+          (subcategory["Zaradenia"] ?? []).forEach((placement: HierarchyPlacement) => {
+            const placementKey = placement["Zaradenie"];
+            (placement["Produkty"] ?? []).forEach((product: FlyerProduct) => {
+              const key = `${categoryKey}||${subcategoryKey}||${placementKey}`;
+              const existing = productMap.get(key) ?? [];
+              productMap.set(key, [...existing, product]);
+            });
+          });
+        });
+      });
     }
 
     return hierarchy.map((category) => ({
@@ -300,7 +320,7 @@ export default function Home() {
         }),
       })),
     }));
-  }, [products]);
+  }, [products, loadedFlyer, hierarchy]);
 
   // Extrahovať všetky produkty z loadedFlyer s ich metadátami
   const loadedProductsList = useMemo<LoadedProductEntry[]>(() => {
@@ -308,13 +328,13 @@ export default function Home() {
 
     const allProducts: LoadedProductEntry[] = [];
 
-    loadedFlyer.forEach((category, categoryIndex) => {
+    loadedFlyer.forEach((category: HierarchyCategory, categoryIndex: number) => {
       const categoryKey = category["Kategória"];
-      (category["Podkategórie"] ?? []).forEach((subcategory, subcategoryIndex) => {
+      (category["Podkategórie"] ?? []).forEach((subcategory: HierarchySubcategory, subcategoryIndex: number) => {
         const subcategoryKey = subcategory["Podkategória"];
-        (subcategory["Zaradenia"] ?? []).forEach((placement, placementIndex) => {
+        (subcategory["Zaradenia"] ?? []).forEach((placement: HierarchyPlacement, placementIndex: number) => {
           const placementKey = placement["Zaradenie"];
-          (placement["Produkty"] ?? []).forEach((product, productIndex) => {
+          (placement["Produkty"] ?? []).forEach((product: FlyerProduct, productIndex: number) => {
             allProducts.push({
               id: `loaded-${categoryIndex}-${subcategoryIndex}-${placementIndex}-${productIndex}`,
               name: product["Názov"],
@@ -342,10 +362,10 @@ export default function Home() {
     if (!loadedFlyer) return [];
     
     const infos = new Set<string>();
-    for (const category of loadedFlyer) {
-      for (const subcategory of category["Podkategórie"] ?? []) {
-        for (const placement of subcategory["Zaradenia"] ?? []) {
-          for (const product of placement["Produkty"] ?? []) {
+    for (const category of loadedFlyer as HierarchyCategory[]) {
+      for (const subcategory of category["Podkategórie"] ?? [] as HierarchySubcategory[]) {
+        for (const placement of subcategory["Zaradenia"] ?? [] as HierarchyPlacement[]) {
+          for (const product of placement["Produkty"] ?? [] as FlyerProduct[]) {
             const info = product["Doplnková Informácia"]?.trim();
             if (info) {
               infos.add(info);
@@ -370,11 +390,11 @@ export default function Home() {
             for (const zaradenie of cat.Zaradenia) {
               // Nájdi zodpovedajúce produkty z flyerData
               const newProds = flyerData
-                .find((fc) => fc["Kategória"] === mergedData["Kategória"])
+                .find((fc: HierarchyCategory) => fc["Kategória"] === mergedData["Kategória"])
                 ?.[
                   "Podkategórie"
-                ]?.find((sub) => sub["Podkategória"] === cat["Podkategória"])
-                ?.["Zaradenia"].find((z) => z["Zaradenie"] === zaradenie["Zaradenie"])
+                ]?.find((sub: HierarchySubcategory) => sub["Podkategória"] === cat["Podkategória"])
+                ?. ["Zaradenia"].find((z: HierarchyPlacement) => z["Zaradenie"] === zaradenie["Zaradenie"])
                 ?.[
                   "Produkty"
                 ] ?? [];
@@ -529,12 +549,59 @@ export default function Home() {
 
     if (editingLoadedRef && loadedFlyer) {
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
-      setLoadedFlyer((prev) => {
+      setLoadedFlyer((prev: HierarchyCategory[] | null) => {
         if (!prev) return prev;
         const next = JSON.parse(JSON.stringify(prev));
-        const placement = next[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[placementIndex];
-        if (placement?.["Produkty"]?.[productIndex]) {
-          placement["Produkty"][productIndex] = product;
+
+        // original placement reference
+        const originalPlacement = next[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[placementIndex];
+
+        // If the hierarchy didn't change, simply replace the product in-place
+        if (
+          originalPlacement &&
+          originalPlacement["Produkty"] &&
+          originalPlacement["Produkty"][productIndex]
+        ) {
+          // check if target location equals original
+          const targetCategoryKey = product["Kategória"];
+          const targetSubcategoryKey = product["Podkategória"];
+          const targetPlacementKey = product["Zaradenie"];
+
+          const sameCategory = next[categoryIndex] && next[categoryIndex]["Kategória"] === targetCategoryKey;
+          const sameSubcategory = sameCategory && next[categoryIndex]["Podkategórie"]?.[subcategoryIndex]?.["Podkategória"] === targetSubcategoryKey;
+          const samePlacement = sameSubcategory && next[categoryIndex]["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[placementIndex]?.["Zaradenie"] === targetPlacementKey;
+
+          if (samePlacement) {
+            originalPlacement["Produkty"][productIndex] = product;
+            return next;
+          }
+
+          // remove from original location
+          originalPlacement["Produkty"].splice(productIndex, 1);
+
+          // find target indices
+          const newCategoryIndex = next.findIndex((c: HierarchyCategory) => c["Kategória"] === targetCategoryKey);
+          if (newCategoryIndex === -1) {
+            // can't find target category: put it back into original and bail
+            originalPlacement["Produkty"].splice(productIndex, 0, product);
+            return next;
+          }
+          const newSubIndex = (next[newCategoryIndex]["Podkategórie"] ?? []).findIndex((s: HierarchySubcategory) => s["Podkategória"] === targetSubcategoryKey);
+          if (newSubIndex === -1) {
+            // can't find target subcategory: restore and bail
+            originalPlacement["Produkty"].splice(productIndex, 0, product);
+            return next;
+          }
+          const newPlacementIndex = (next[newCategoryIndex]["Podkategórie"]?.[newSubIndex]["Zaradenia"] ?? []).findIndex((p: HierarchyPlacement) => p["Zaradenie"] === targetPlacementKey);
+          if (newPlacementIndex === -1) {
+            // can't find target placement: restore and bail
+            originalPlacement["Produkty"].splice(productIndex, 0, product);
+            return next;
+          }
+
+          const targetPlacement = next[newCategoryIndex]["Podkategórie"][newSubIndex]["Zaradenia"][newPlacementIndex];
+          if (!targetPlacement["Produkty"]) targetPlacement["Produkty"] = [];
+          targetPlacement["Produkty"].push(product);
         }
         return next;
       });
@@ -562,7 +629,7 @@ export default function Home() {
 
   const removeLoadedProduct = (ref: LoadedProductRef) => {
     const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = ref;
-    setLoadedFlyer((prev) => {
+    setLoadedFlyer((prev: HierarchyCategory[] | null) => {
       if (!prev) return prev;
       const next = JSON.parse(JSON.stringify(prev));
       const placement = next[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[placementIndex];
@@ -708,16 +775,6 @@ export default function Home() {
     link.click();
     URL.revokeObjectURL(url);
   };
-
-  const copyJson = async () => {
-    try {
-      await navigator.clipboard.writeText(jsonPreview);
-      setStatus(t("status_copied"));
-    } catch {
-      setError(t("error_copy"));
-    }
-  };
-
   const handleUploadClick = () => {
     setShowUploadConfirm(true);
   };
