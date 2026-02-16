@@ -488,7 +488,7 @@ export default function Home() {
   const addProduct = () => {
     setError("");
     setStatus("");
-    if (!categoryKey || !subcategoryKey || !placementKey) {
+    if (!categoryKey || !subcategoryKey) {
       setError(t("error_select_hierarchy"));
       return;
     }
