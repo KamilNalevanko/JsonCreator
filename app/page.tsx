@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import hierarchyData from "../assets/hierarchia.json";
 import skLabels from "../assets/langs/sk.json";
@@ -90,7 +90,7 @@ const calculateUnitPrice = (price: string, amount: string, unit: string): string
 
 const normalizePrice = (value: string) => (value || "").replace(/\./g, ",").trim();
 const normalizeKey = (value: string) =>
-  (value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 const parseDateFromSk = (dateStr: string): Date | null => {
   if (!dateStr) return null;
@@ -175,9 +175,14 @@ export default function Home() {
   } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<typeof loadedProductsList>([]);
-  
   const [showInfoSuggestions, setShowInfoSuggestions] = useState(false);
   const [filteredInfoSuggestions, setFilteredInfoSuggestions] = useState<string[]>([]);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const suggestionsBoxRef = useRef<HTMLDivElement | null>(null);
+  const infoInputRef = useRef<HTMLInputElement | null>(null);
+  const infoSuggestionsBoxRef = useRef<HTMLDivElement | null>(null);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
+  const suggestionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
 
@@ -218,7 +223,43 @@ export default function Home() {
     [categoryKey]
   );
 
-  
+  // Close suggestion dropdowns when clicking outside inputs/dropdowns
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+
+      if (showSuggestions) {
+        const insideName = nameInputRef.current && nameInputRef.current.contains(target as Node);
+        const insideSuggestions = suggestionsBoxRef.current && suggestionsBoxRef.current.contains(target as Node);
+        if (!insideName && !insideSuggestions) {
+          setShowSuggestions(false);
+          setFilteredSuggestions([]);
+        }
+      }
+
+      if (showInfoSuggestions) {
+        const insideInfo = infoInputRef.current && infoInputRef.current.contains(target as Node);
+        const insideInfoSuggestions = infoSuggestionsBoxRef.current && infoSuggestionsBoxRef.current.contains(target as Node);
+        if (!insideInfo && !insideInfoSuggestions) {
+          setShowInfoSuggestions(false);
+          setFilteredInfoSuggestions([]);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showSuggestions, showInfoSuggestions]);
+
+  // Keep keyboard highlight visible inside the suggestions dropdown
+  useEffect(() => {
+    if (!showSuggestions) return;
+    if (activeSuggestionIndex < 0) return;
+    const el = suggestionItemRefs.current[activeSuggestionIndex];
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }, [activeSuggestionIndex, showSuggestions, filteredSuggestions.length]);
+
+
   const selectedSubcategory = useMemo(
     () =>
       selectedCategory?.["Podkategórie"].find(
@@ -380,39 +421,42 @@ export default function Home() {
   }, [loadedFlyer]);
 
   const jsonPreview = useMemo(() => {
-    // Ak máme načítané dáta, skopírujem ich a nahradím produkty za
-    // tie z `flyerData` (ktoré už obsahuje aj nové produkty pridané v UI).
+    // Ak máme načítané dáta, kombinujem ich s novými produktami
     if (loadedFlyer) {
       const mergedData = JSON.parse(JSON.stringify(loadedFlyer));
-
-      // mergedData je pole kategórií; pre každý placement nahradíme Produkty
-      for (const cat of mergedData as HierarchyCategory[]) {
-        const flyerCat = (flyerData as HierarchyCategory[]).find(
-          (fc) => fc["Kategória"] === cat["Kategória"]
-        );
-        if (!flyerCat) continue;
-
-        for (const sub of cat["Podkategórie"] ?? []) {
-          const flyerSub = (flyerCat["Podkategórie"] ?? []).find(
-            (fs) => fs["Podkategória"] === sub["Podkategória"]
-          );
-          if (!flyerSub) continue;
-
-          for (const placement of sub["Zaradenia"] ?? []) {
-            const flyerPlacement = (flyerSub["Zaradenia"] ?? []).find(
-              (fp) => fp["Zaradenie"] === placement["Zaradenie"]
-            );
-            if (!flyerPlacement) continue;
-
-            // Replace products for this placement with merged set from flyerData
-            placement["Produkty"] = JSON.parse(JSON.stringify(flyerPlacement["Produkty"] ?? []));
+      
+      // Ak je to hierarchická štruktúra, updatem produkty
+      if (mergedData.Podkategórie && Array.isArray(mergedData.Podkategórie)) {
+        for (const cat of mergedData.Podkategórie) {
+          if (cat.Zaradenia && Array.isArray(cat.Zaradenia)) {
+            for (const zaradenie of cat.Zaradenia) {
+              // Nájdi zodpovedajúce produkty z flyerData
+              const newProds = flyerData
+                .find((fc: HierarchyCategory) => fc["Kategória"] === mergedData["Kategória"])
+                ?.[
+                  "Podkategórie"
+                ]?.find((sub: HierarchySubcategory) => sub["Podkategória"] === cat["Podkategória"])
+                ?. ["Zaradenia"].find((z: HierarchyPlacement) => z["Zaradenie"] === zaradenie["Zaradenie"])
+                ?.[
+                  "Produkty"
+                ] ?? [];
+              
+              // Kombinujem staré + nové
+              if (!zaradenie["Produkty"]) {
+                zaradenie["Produkty"] = [];
+              }
+              zaradenie["Produkty"] = [
+                ...zaradenie["Produkty"],
+                ...newProds,
+              ];
+            }
           }
         }
       }
-
+      
       return JSON.stringify(mergedData, null, 2);
     }
-
+    
     return JSON.stringify(flyerData, null, 2);
   }, [flyerData, loadedFlyer]);
 
@@ -445,7 +489,7 @@ export default function Home() {
     } else {
       // Skontroluj či je tento produkt už v zozname
       const existingProduct = products.find(
-        (p) => normalizeKey(p.product["Názov"] || "") === normalizeKey(selectedProductData.name || "") &&
+        (p) => p.product["Názov"].toLowerCase() === selectedProductData.name.toLowerCase() &&
         p.product["Kategória"] === selectedProductData.categoryKey &&
         p.product["Podkategória"] === selectedProductData.subcategoryKey &&
         p.product["Zaradenie"] === selectedProductData.placementKey
@@ -480,6 +524,21 @@ export default function Home() {
     setPreviewProduct(null);
   };
 
+  const selectLoadedSuggestion = (p: LoadedProductEntry) => {
+    handleSelectProduct({
+      name: p.name,
+      product: p.product,
+      categoryKey: p.categoryKey,
+      subcategoryKey: p.subcategoryKey,
+      placementKey: p.placementKey,
+      ref: p.ref,
+    });
+    setShowSuggestions(false);
+    setFilteredSuggestions([]);
+    setActiveSuggestionIndex(-1);
+  };
+
+
   const handleConfirmProduct = () => {
     if (previewProduct) {
       handleSelectProduct(previewProduct);
@@ -509,13 +568,15 @@ export default function Home() {
 
   const filteredDisplayProducts = useMemo(() => {
     const query = normalizeKey(productListQuery.trim());
-    if (!query) return displayProducts;
+    if (!query) {
+      return displayProducts;
+    }
     return displayProducts.filter((item) =>
-      normalizeKey(item.product["Názov"] || "").includes(query)
+      normalizeKey(item.product["Názov"]).includes(query)
     );
   }, [displayProducts, productListQuery]);
 
-  const addProduct = () => {
+const addProduct = () => {
     setError("");
     setStatus("");
     if (!categoryKey || !subcategoryKey) {
@@ -543,23 +604,7 @@ export default function Home() {
       "Dátum akcie do": form.dateTo?.trim() || "",
     };
 
-    // If a loaded item is currently selected for editing, ensure it actually
-    // matches the current form. If the user typed a different name/location
-    // we should create a new product instead of overwriting the loaded one.
-    let treatAsNew = false;
     if (editingLoadedRef && loadedFlyer) {
-      const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
-      const existing = loadedFlyer?.[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[placementIndex]?.["Produkty"]?.[productIndex];
-      const sameName = !!existing && normalizeKey(existing["Názov"] || "") === normalizeKey(product["Názov"] || "");
-      const sameLocation = !!existing && existing["Kategória"] === product["Kategória"] && existing["Podkategória"] === product["Podkategória"] && existing["Zaradenie"] === product["Zaradenie"];
-      if (!existing || !sameName || !sameLocation) {
-        treatAsNew = true;
-        // clear the editing ref for UI consistency (state update is async)
-        setEditingLoadedRef(null);
-      }
-    }
-
-    if (editingLoadedRef && loadedFlyer && !treatAsNew) {
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
       setLoadedFlyer((prev: HierarchyCategory[] | null) => {
         if (!prev) return prev;
@@ -971,6 +1016,7 @@ export default function Home() {
                 {t("label_product_name")}
                 <div className="relative">
                   <input
+                    ref={nameInputRef}
                     className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.name}
                     onChange={(event) => {
@@ -978,55 +1024,79 @@ export default function Home() {
                       setForm((prev) => ({ ...prev, name: newName }));
                       
                       // Filtrujem podľa obsahovania textu v názve (case-insensitive)
-                      if (newName.trim()) {
-                        // combine loaded products + newly added products
-                        const addedProductsPool = products.map((p) => ({
-                          id: p.id,
-                          name: p.product["Názov"],
-                          product: p.product,
-                          categoryKey: p.product["Kategória"],
-                          subcategoryKey: p.product["Podkategória"],
-                          placementKey: p.product["Zaradenie"],
-                        }));
-                        const pool = [...loadedProductsList, ...addedProductsPool];
-                        const filtered = pool.filter((p) =>
-                          normalizeKey(p.name || "").includes(normalizeKey(newName))
+                      if (newName.trim() && loadedFlyer) {
+                        const filtered = loadedProductsList.filter((p) =>
+                          normalizeKey(p.name).includes(normalizeKey(newName))
                         );
-                        setFilteredSuggestions(filtered as typeof loadedProductsList);
+                        setFilteredSuggestions(filtered);
                         setShowSuggestions(filtered.length > 0);
+                        setActiveSuggestionIndex(filtered.length > 0 ? 0 : -1);
                         setPreviewProduct(null);
                       } else {
                         setShowSuggestions(false);
                         setFilteredSuggestions([]);
+                        setActiveSuggestionIndex(-1);
                         setPreviewProduct(null);
                       }
                     }}
                     onFocus={() => {
                       if (form.name.trim() && filteredSuggestions.length > 0) {
                         setShowSuggestions(true);
+                        setActiveSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      const hasList = showSuggestions && filteredSuggestions.length > 0;
+
+                      if (!hasList && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                        if (filteredSuggestions.length > 0) {
+                          e.preventDefault();
+                          setShowSuggestions(true);
+                          setActiveSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
+                        }
+                        return;
+                      }
+
+                      if (!hasList) return;
+
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setActiveSuggestionIndex((prev) =>
+                          Math.min(prev + 1, filteredSuggestions.length - 1)
+                        );
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setActiveSuggestionIndex((prev) => Math.max(prev - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        const p = filteredSuggestions[activeSuggestionIndex];
+                        if (p) {
+                          selectLoadedSuggestion(p);
+                        }
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        setShowSuggestions(false);
+                        setFilteredSuggestions([]);
+                        setActiveSuggestionIndex(-1);
                       }
                     }}
                     placeholder={t("placeholder_product_name")}
                   />
                   
                   {/* Chevron button pre zobrazenie všetkých možnností */}
-                  {(loadedFlyer && loadedProductsList.length > 0) || products.length > 0 && (
+                    {loadedFlyer && loadedProductsList.length > 0 && (
                     <button
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         if (showSuggestions) {
                           setShowSuggestions(false);
+                          setFilteredSuggestions([]);
+                          setActiveSuggestionIndex(-1);
                         } else {
-                          const addedProductsPool = products.map((p) => ({
-                            id: p.id,
-                            name: p.product["Názov"],
-                            product: p.product,
-                            categoryKey: p.product["Kategória"],
-                            subcategoryKey: p.product["Podkategória"],
-                            placementKey: p.product["Zaradenie"],
-                          }));
-                            setFilteredSuggestions([...loadedProductsList, ...addedProductsPool] as typeof loadedProductsList);
+                          setFilteredSuggestions(loadedProductsList);
                           setShowSuggestions(true);
+                          setActiveSuggestionIndex(0);
                         }
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
@@ -1038,27 +1108,30 @@ export default function Home() {
                   )}
                   
                   {/* Custom dropdown menu */}
-                  {showSuggestions && filteredSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
+                    {showSuggestions && filteredSuggestions.length > 0 && (
+                    <div ref={suggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
                       {filteredSuggestions.map((p, idx) => (
                         <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setForm((prev) => ({ ...prev, name: p.name }));
-                            setShowSuggestions(false);
-                            setFilteredSuggestions([]);
-                            setPreviewProduct(p);
+                          key={p.id ?? idx}
+                          ref={(el) => {
+                            suggestionItemRefs.current[idx] = el;
                           }}
-                          className="w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] hover:bg-orange-50 transition border-b border-black/5 last:border-b-0"
+                          type="button"
+                          onMouseDown={(e) => {
+                            // Use mouse down so the click isn't lost due to input blur
+                            e.preventDefault();
+                            selectLoadedSuggestion(p);
+                          }}
+                          onMouseEnter={() => setActiveSuggestionIndex(idx)}
+                          className={`w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 ${
+                            idx === activeSuggestionIndex ? "bg-orange-50" : "hover:bg-orange-50"
+                          }`}
                         >
                           {p.name}
                         </button>
                       ))}
                     </div>
                   )}
-
-                  
                 </div>
               </label>
 
@@ -1133,7 +1206,7 @@ export default function Home() {
                       onClick={handleConfirmProduct}
                       className="flex-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
                     >
-                      Načítať
+                      {t("btn_add")}
                     </button>
                     <button
                       onClick={handleCancelPreview}
@@ -1356,8 +1429,8 @@ export default function Home() {
                         
                         if (newInfo.trim() && loadedFlyer) {
                           const filtered = loadedExtraInfosList.filter((info) =>
-                                normalizeKey(info || "").includes(normalizeKey(newInfo))
-                              );
+                            normalizeKey(info).includes(normalizeKey(newInfo))
+                          );
                           setFilteredInfoSuggestions(filtered);
                           setShowInfoSuggestions(filtered.length > 0);
                         } else {
@@ -1376,6 +1449,7 @@ export default function Home() {
                     {loadedFlyer && loadedExtraInfosList.length > 0 && (
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           if (showInfoSuggestions) {
                             setShowInfoSuggestions(false);
@@ -1393,7 +1467,7 @@ export default function Home() {
                     )}
                     
                     {showInfoSuggestions && filteredInfoSuggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
+                      <div ref={infoSuggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
                         {filteredInfoSuggestions.map((info, idx) => (
                           <button
                             key={idx}
