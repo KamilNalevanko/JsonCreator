@@ -674,6 +674,7 @@ const addProduct = () => {
       setProducts((prev) => [...prev, { id: makeId(), product }]);
     }
     resetFormFields();
+       focusNameInput();
   };
 
   const removeProduct = (id: string) => {
@@ -681,8 +682,17 @@ const addProduct = () => {
     if (editingId === id) {
       setEditingId(null);
       resetFormFields();
+      focusNameInput();
     }
   };
+
+
+  const focusNameInput = () => {
+  requestAnimationFrame(() => {
+    nameInputRef.current?.focus();
+    nameInputRef.current?.select(); // voliteľné - označí text
+  });
+};
 
   const removeLoadedProduct = (ref: LoadedProductRef) => {
     const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = ref;
