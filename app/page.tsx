@@ -90,7 +90,7 @@ const calculateUnitPrice = (price: string, amount: string, unit: string): string
 
 const normalizePrice = (value: string) => (value || "").replace(/\./g, ",").trim();
 const normalizeKey = (value: string) =>
-  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  (value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
 const parseDateFromSk = (dateStr: string): Date | null => {
   if (!dateStr) return null;
@@ -175,6 +175,7 @@ export default function Home() {
   } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<typeof loadedProductsList>([]);
+  
   const [showInfoSuggestions, setShowInfoSuggestions] = useState(false);
   const [filteredInfoSuggestions, setFilteredInfoSuggestions] = useState<string[]>([]);
   const [productListQuery, setProductListQuery] = useState("");
@@ -379,42 +380,39 @@ export default function Home() {
   }, [loadedFlyer]);
 
   const jsonPreview = useMemo(() => {
-    // Ak máme načítané dáta, kombinujem ich s novými produktami
+    // Ak máme načítané dáta, skopírujem ich a nahradím produkty za
+    // tie z `flyerData` (ktoré už obsahuje aj nové produkty pridané v UI).
     if (loadedFlyer) {
       const mergedData = JSON.parse(JSON.stringify(loadedFlyer));
-      
-      // Ak je to hierarchická štruktúra, updatem produkty
-      if (mergedData.Podkategórie && Array.isArray(mergedData.Podkategórie)) {
-        for (const cat of mergedData.Podkategórie) {
-          if (cat.Zaradenia && Array.isArray(cat.Zaradenia)) {
-            for (const zaradenie of cat.Zaradenia) {
-              // Nájdi zodpovedajúce produkty z flyerData
-              const newProds = flyerData
-                .find((fc: HierarchyCategory) => fc["Kategória"] === mergedData["Kategória"])
-                ?.[
-                  "Podkategórie"
-                ]?.find((sub: HierarchySubcategory) => sub["Podkategória"] === cat["Podkategória"])
-                ?. ["Zaradenia"].find((z: HierarchyPlacement) => z["Zaradenie"] === zaradenie["Zaradenie"])
-                ?.[
-                  "Produkty"
-                ] ?? [];
-              
-              // Kombinujem staré + nové
-              if (!zaradenie["Produkty"]) {
-                zaradenie["Produkty"] = [];
-              }
-              zaradenie["Produkty"] = [
-                ...zaradenie["Produkty"],
-                ...newProds,
-              ];
-            }
+
+      // mergedData je pole kategórií; pre každý placement nahradíme Produkty
+      for (const cat of mergedData as HierarchyCategory[]) {
+        const flyerCat = (flyerData as HierarchyCategory[]).find(
+          (fc) => fc["Kategória"] === cat["Kategória"]
+        );
+        if (!flyerCat) continue;
+
+        for (const sub of cat["Podkategórie"] ?? []) {
+          const flyerSub = (flyerCat["Podkategórie"] ?? []).find(
+            (fs) => fs["Podkategória"] === sub["Podkategória"]
+          );
+          if (!flyerSub) continue;
+
+          for (const placement of sub["Zaradenia"] ?? []) {
+            const flyerPlacement = (flyerSub["Zaradenia"] ?? []).find(
+              (fp) => fp["Zaradenie"] === placement["Zaradenie"]
+            );
+            if (!flyerPlacement) continue;
+
+            // Replace products for this placement with merged set from flyerData
+            placement["Produkty"] = JSON.parse(JSON.stringify(flyerPlacement["Produkty"] ?? []));
           }
         }
       }
-      
+
       return JSON.stringify(mergedData, null, 2);
     }
-    
+
     return JSON.stringify(flyerData, null, 2);
   }, [flyerData, loadedFlyer]);
 
@@ -447,7 +445,7 @@ export default function Home() {
     } else {
       // Skontroluj či je tento produkt už v zozname
       const existingProduct = products.find(
-        (p) => p.product["Názov"].toLowerCase() === selectedProductData.name.toLowerCase() &&
+        (p) => normalizeKey(p.product["Názov"] || "") === normalizeKey(selectedProductData.name || "") &&
         p.product["Kategória"] === selectedProductData.categoryKey &&
         p.product["Podkategória"] === selectedProductData.subcategoryKey &&
         p.product["Zaradenie"] === selectedProductData.placementKey
@@ -510,12 +508,10 @@ export default function Home() {
   }, [loadedProductsList, products]);
 
   const filteredDisplayProducts = useMemo(() => {
-    const query = productListQuery.trim().toLowerCase();
-    if (!query) {
-      return displayProducts;
-    }
+    const query = normalizeKey(productListQuery.trim());
+    if (!query) return displayProducts;
     return displayProducts.filter((item) =>
-      item.product["Názov"].toLowerCase().includes(query)
+      normalizeKey(item.product["Názov"] || "").includes(query)
     );
   }, [displayProducts, productListQuery]);
 
@@ -547,7 +543,23 @@ export default function Home() {
       "Dátum akcie do": form.dateTo?.trim() || "",
     };
 
+    // If a loaded item is currently selected for editing, ensure it actually
+    // matches the current form. If the user typed a different name/location
+    // we should create a new product instead of overwriting the loaded one.
+    let treatAsNew = false;
     if (editingLoadedRef && loadedFlyer) {
+      const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
+      const existing = loadedFlyer?.[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[placementIndex]?.["Produkty"]?.[productIndex];
+      const sameName = !!existing && normalizeKey(existing["Názov"] || "") === normalizeKey(product["Názov"] || "");
+      const sameLocation = !!existing && existing["Kategória"] === product["Kategória"] && existing["Podkategória"] === product["Podkategória"] && existing["Zaradenie"] === product["Zaradenie"];
+      if (!existing || !sameName || !sameLocation) {
+        treatAsNew = true;
+        // clear the editing ref for UI consistency (state update is async)
+        setEditingLoadedRef(null);
+      }
+    }
+
+    if (editingLoadedRef && loadedFlyer && !treatAsNew) {
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
       setLoadedFlyer((prev: HierarchyCategory[] | null) => {
         if (!prev) return prev;
@@ -966,11 +978,21 @@ export default function Home() {
                       setForm((prev) => ({ ...prev, name: newName }));
                       
                       // Filtrujem podľa obsahovania textu v názve (case-insensitive)
-                      if (newName.trim() && loadedFlyer) {
-                        const filtered = loadedProductsList.filter((p) =>
-                          p.name.toLowerCase().includes(newName.toLowerCase())
+                      if (newName.trim()) {
+                        // combine loaded products + newly added products
+                        const addedProductsPool = products.map((p) => ({
+                          id: p.id,
+                          name: p.product["Názov"],
+                          product: p.product,
+                          categoryKey: p.product["Kategória"],
+                          subcategoryKey: p.product["Podkategória"],
+                          placementKey: p.product["Zaradenie"],
+                        }));
+                        const pool = [...loadedProductsList, ...addedProductsPool];
+                        const filtered = pool.filter((p) =>
+                          normalizeKey(p.name || "").includes(normalizeKey(newName))
                         );
-                        setFilteredSuggestions(filtered);
+                        setFilteredSuggestions(filtered as typeof loadedProductsList);
                         setShowSuggestions(filtered.length > 0);
                         setPreviewProduct(null);
                       } else {
@@ -988,14 +1010,22 @@ export default function Home() {
                   />
                   
                   {/* Chevron button pre zobrazenie všetkých možnností */}
-                  {loadedFlyer && loadedProductsList.length > 0 && (
+                  {(loadedFlyer && loadedProductsList.length > 0) || products.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
                         if (showSuggestions) {
                           setShowSuggestions(false);
                         } else {
-                          setFilteredSuggestions(loadedProductsList);
+                          const addedProductsPool = products.map((p) => ({
+                            id: p.id,
+                            name: p.product["Názov"],
+                            product: p.product,
+                            categoryKey: p.product["Kategória"],
+                            subcategoryKey: p.product["Podkategória"],
+                            placementKey: p.product["Zaradenie"],
+                          }));
+                            setFilteredSuggestions([...loadedProductsList, ...addedProductsPool] as typeof loadedProductsList);
                           setShowSuggestions(true);
                         }
                       }}
@@ -1027,6 +1057,8 @@ export default function Home() {
                       ))}
                     </div>
                   )}
+
+                  
                 </div>
               </label>
 
@@ -1101,7 +1133,7 @@ export default function Home() {
                       onClick={handleConfirmProduct}
                       className="flex-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
                     >
-                      {t("btn_add")}
+                      Načítať
                     </button>
                     <button
                       onClick={handleCancelPreview}
@@ -1324,8 +1356,8 @@ export default function Home() {
                         
                         if (newInfo.trim() && loadedFlyer) {
                           const filtered = loadedExtraInfosList.filter((info) =>
-                            info.toLowerCase().includes(newInfo.toLowerCase())
-                          );
+                                normalizeKey(info || "").includes(normalizeKey(newInfo))
+                              );
                           setFilteredInfoSuggestions(filtered);
                           setShowInfoSuggestions(filtered.length > 0);
                         } else {
