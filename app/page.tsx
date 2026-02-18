@@ -764,6 +764,8 @@ const addProduct = () => {
     const safeName = resolvedFileName.endsWith(".json")
       ? resolvedFileName
       : `${resolvedFileName}.json`;
+    const nameStem = safeName.replace(/\.json$/i, "");
+    const nameExt = ".json";
     const blob = new Blob([jsonPreview], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -787,31 +789,54 @@ const addProduct = () => {
     const safeName = resolvedFileName.endsWith(".json")
       ? resolvedFileName
       : `${resolvedFileName}.json`;
+    const nameStem = safeName.replace(/\.json$/i, "");
+    const nameExt = ".json";
     const safeShop = shop
       .toLowerCase()
       .replace(/[^a-z0-9._-]+/g, "_")
       .replace(/^_+|_+$/g, "");
     const basePath = `databazy/${bucketPath}`;
-    const targetPath = `${basePath}/${safeShop || "nezaradene"}/${safeName}`;
 
     try {
       setIsUploading(true);
-      const { error: uploadError } = await supabase.storage
-        .from("cap-data")
-        .upload(targetPath, jsonPreview, {
-          contentType: "application/json",
-          upsert: true,
-        });
+      const maxAttempts = 50;
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        const fileName = attempt === 0 ? safeName : `${nameStem}_${attempt}${nameExt}`;
+        const attemptPath = `${basePath}/${safeShop || "nezaradene"}/${fileName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("cap-data")
+          .upload(attemptPath, jsonPreview, {
+            contentType: "application/json",
+            upsert: false,
+          });
 
-      if (uploadError) {
+        if (!uploadError) {
+          setStatus(t("status_uploaded"));
+          return;
+        }
+
+        if (uploadError.message?.toLowerCase().includes("already exists")) {
+          attempt += 1;
+          continue;
+        }
+
         setError(
           t("error_upload_failed_detail", { message: uploadError.message })
         );
         return;
       }
-      setStatus(t("status_uploaded"));
+
+      setError(
+        t("error_upload_failed_detail", {
+          message: "Nepodarilo sa najst volny nazov suboru.",
+        })
+      );
+      return;
     } catch (err) {
-      setError(t("error_upload_failed"));
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(t("error_upload_failed_detail", { message }));
+      console.error("Upload failed:", err);
     } finally {
       setIsUploading(false);
     }

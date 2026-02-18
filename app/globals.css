@@ -48,6 +48,12 @@ body {
   letter-spacing: 0.01em;
 }
 
+/* Override orange focus ring to use green accent */
+.focus-visible\:ring-orange-300:focus-visible,
+.ring-orange-300 {
+  --tw-ring-color: var(--accent) !important;
+}
+
 [data-theme="dark"] body {
   background: radial-gradient(circle at top, #16201a 0%, #0d1411 52%, #0b100e 100%);
 }
