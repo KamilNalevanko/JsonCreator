@@ -499,6 +499,7 @@ export default function Home() {
   };
 
 
+  
   const handleConfirmProduct = () => {
     if (previewProduct) {
       handleSelectProduct(previewProduct);
