@@ -752,9 +752,6 @@ const addProduct = () => {
       .replace(/[^a-z0-9._-]+/g, "_")
       .replace(/^_+|_+$/g, "");
 
-    if (safeShop === "lidl") {
-      return "testnahravania.json";
-    }
     return `${safeShop || "letak"}.json`;
   };
 
@@ -803,7 +800,7 @@ const addProduct = () => {
         .from("cap-data")
         .upload(targetPath, jsonPreview, {
           contentType: "application/json",
-          upsert: false,
+          upsert: true,
         });
 
       if (uploadError) {
