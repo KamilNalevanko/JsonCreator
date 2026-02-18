@@ -1,12 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f6f1e9;
+  --paper: #f7f6f2;
   --ink: #0f1b2b;
-  --muted: #516073;
-  --accent: #ff8c3a;
+  --muted: #6b7280;
+  --accent: #53b175;
+  --accent-2: #6fae79;
+  --accent-strong: #00b36f;
+  --category-green: #4caf50;
+  --category-green-light: #81c784;
+  --category-green-dark: #388e3c;
   --panel: #ffffff;
-  --shadow: 0 30px 80px rgba(15, 27, 43, 0.2);
+  --shadow: 0 30px 80px rgba(15, 27, 43, 0.18);
+}
+
+[data-theme="dark"] {
+  --paper: #0d1411;
+  --ink: #e7f2ea;
+  --muted: #a1b2a8;
+  --accent: #53b175;
+  --accent-2: #6fae79;
+  --accent-strong: #00b36f;
+  --category-green: #4caf50;
+  --category-green-light: #2a3c32;
+  --category-green-dark: #a6d3b3;
+  --panel: #141c18;
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
 }
 
 @theme inline {
@@ -23,10 +42,34 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #fff5e8 0%, #f6f1e9 45%, #e8edf6 100%);
+  background: radial-gradient(circle at top, #ffffff 0%, #f7f6f2 45%, #eef3ef 100%);
   color: var(--ink);
   font-family: var(--font-body), "Segoe UI", sans-serif;
   letter-spacing: 0.01em;
+}
+
+[data-theme="dark"] body {
+  background: radial-gradient(circle at top, #16201a 0%, #0d1411 52%, #0b100e 100%);
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--panel) !important;
+}
+
+[data-theme="dark"] .border-black\/10 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .border-black\/5 {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"] .border-black\/30 {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+[data-theme="dark"] .bg-\[\#faf7f2\] {
+  background-color: #101814 !important;
 }
 
 @keyframes fade-in {

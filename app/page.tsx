@@ -130,6 +130,7 @@ const makeId = () =>
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export default function Home() {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [language, setLanguage] = useState("sk");
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
@@ -186,6 +187,18 @@ export default function Home() {
     { value: "lidl", label: "Lidl" },
     { value: "billa", label: "Billa" },
   ];
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark" || saved === "light") {
+      setTheme(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   const currentLabels = useMemo(
     () => languageMap[language as keyof typeof languageMap] || languageMap.sk,
@@ -739,6 +752,9 @@ const addProduct = () => {
       .replace(/[^a-z0-9._-]+/g, "_")
       .replace(/^_+|_+$/g, "");
 
+    if (safeShop === "lidl") {
+      return "testnahravania.json";
+    }
     return `${safeShop || "letak"}.json`;
   };
 
@@ -817,15 +833,24 @@ const addProduct = () => {
             <span className="text-sm uppercase tracking-[0.3em] text-[color:var(--muted)]">
               {t("app_badge")}
             </span>
-            <select
-              className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] outline-none"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-            >
-              <option value="sk">🇸🇰 {t("lang_sk")}</option>
-              <option value="cz">🇨🇿 {t("lang_cz")}</option>
-              <option value="pl">🇵🇱 {t("lang_pl")}</option>
-            </select>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
+              >
+                {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
+              </button>
+              <select
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] outline-none"
+                value={language}
+                onChange={(event) => setLanguage(event.target.value)}
+              >
+                <option value="sk">🇸🇰 {t("lang_sk")}</option>
+                <option value="cz">🇨🇿 {t("lang_cz")}</option>
+                <option value="pl">🇵🇱 {t("lang_pl")}</option>
+              </select>
+            </div>
           </div>
           <h1 className="font-[var(--font-display)] text-4xl font-semibold text-[color:var(--ink)] md:text-5xl">
             {t("app_title")}
@@ -836,7 +861,7 @@ const addProduct = () => {
           <div className="rounded-3xl bg-[color:var(--panel)] p-6 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Produkty letáku <span>{products.length}</span>
+                Počet produktov pre reťazec <span>{loadedProductsList.length}</span>
               </div>
             </div>
 
