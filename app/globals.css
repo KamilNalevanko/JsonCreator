@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f7f6f2;
+  --paper: #f2faf8;
   --ink: #0f1b2b;
   --muted: #6b7280;
   --accent: #53b175;
@@ -42,7 +42,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #ffffff 0%, #f7f6f2 45%, #eef3ef 100%);
+  background: radial-gradient(circle at top, #ffffff 0%, #f5f5f5 50%, #e8e8e8 100%);
   color: var(--ink);
   font-family: var(--font-body), "Segoe UI", sans-serif;
   letter-spacing: 0.01em;
@@ -55,7 +55,7 @@ body {
 }
 
 [data-theme="dark"] body {
-  background: radial-gradient(circle at top, #16201a 0%, #0d1411 52%, #0b100e 100%);
+  background: radial-gradient(circle at top, #2a2a2a 0%, #1a1a1a 52%, #0f0f0f 100%);
 }
 
 [data-theme="dark"] .bg-white {
@@ -74,7 +74,7 @@ body {
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
-[data-theme="dark"] .bg-\[\#faf7f2\] {
+[data-theme="dark"] .bg-\[\#f0f8f4\] {
   background-color: #101814 !important;
 }
 

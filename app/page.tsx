@@ -844,11 +844,8 @@ const addProduct = () => {
   };
 
   return (
-    <div className="relative min-h-screen">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-16 h-64 w-64 rounded-full bg-[#ffd8b8] blur-3xl" />
-        <div className="absolute bottom-12 right-12 h-72 w-72 rounded-full bg-[#b8d8ff] blur-[120px]" />
-      </div>
+    <div className="relative min-h-screen bg-gray-200">
+      
 
       <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-8 pb-16 pt-6">
         <header className="flex flex-col gap-2">
@@ -1036,7 +1033,7 @@ const addProduct = () => {
                           }}
                           onMouseEnter={() => setActiveSuggestionIndex(idx)}
                           className={`w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 ${
-                            idx === activeSuggestionIndex ? "bg-orange-50" : "hover:bg-orange-50"
+                            idx === activeSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
                           }`}
                         >
                           {p.name}
@@ -1049,7 +1046,7 @@ const addProduct = () => {
 
               {/* Preview BOX pre vybraný produkt */}
               {previewProduct && (
-                <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-4">
+                <div className="rounded-xl border-2 border-[color:var(--accent)]/30 bg-[color:var(--accent)]/10 p-4">
                   <div className="mb-3 max-h-[250px] space-y-2 overflow-y-auto text-sm">
                     <div className="font-semibold text-[color:var(--ink)]">
                       {previewProduct.name}
@@ -1075,7 +1072,7 @@ const addProduct = () => {
                       </div>
                     </div>
 
-                    <div className="border-t border-orange-200 pt-2">
+                    <div className="border-t border-[color:var(--accent)]/20 pt-2">
                       <div className="space-y-1 text-xs">
                         {previewProduct.product["Bežná cena za bal."] && (
                           <div>
@@ -1116,13 +1113,13 @@ const addProduct = () => {
                   <div className="flex gap-2 pt-2">
                     <button
                       onClick={handleConfirmProduct}
-                      className="flex-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-orange-600"
+                      className="flex-1 rounded-lg bg-[color:var(--accent)] px-3 py-2 text-sm font-medium text-white transition hover:brightness-90"
                     >
                       {t("btn_add")}
                     </button>
                     <button
                       onClick={handleCancelPreview}
-                      className="flex-1 rounded-lg border border-orange-300 px-3 py-2 text-sm font-medium text-orange-600 transition hover:bg-orange-100"
+                      className="flex-1 rounded-lg border border-[color:var(--accent)]/30 px-3 py-2 text-sm font-medium text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10"
                     >
                       {t("btn_cancel")}
                     </button>
@@ -1386,7 +1383,7 @@ const addProduct = () => {
                               setShowInfoSuggestions(false);
                               setFilteredInfoSuggestions([]);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] hover:bg-orange-50 transition border-b border-black/5 last:border-b-0"
+                            className="w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] hover:bg-[color:var(--accent)]/10 transition border-b border-black/5 last:border-b-0"
                           >
                             {info}
                           </button>
@@ -1410,7 +1407,7 @@ const addProduct = () => {
 
               <div className="flex items-center gap-3 flex-nowrap">
                 <button
-                  className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:brightness-95"
+                  className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95"
                   onClick={addProduct}
                   type="button"
                 >
@@ -1467,11 +1464,11 @@ const addProduct = () => {
               </div>
               <div className="mt-3 grid max-h-[520px] gap-3 overflow-y-auto pr-1">
                 {displayProducts.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-black/10 bg-[#faf7f2] px-4 py-6 text-sm text-[color:var(--muted)]">
+                  <div className="rounded-2xl border border-dashed border-black/10 bg-[#f0f8f4] px-4 py-6 text-sm text-[color:var(--muted)]">
                     {t("empty_products")}
                   </div>
                 ) : filteredDisplayProducts.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-black/10 bg-[#faf7f2] px-4 py-6 text-sm text-[color:var(--muted)]">
+                  <div className="rounded-2xl border border-dashed border-black/10 bg-[#f0f8f4] px-4 py-6 text-sm text-[color:var(--muted)]">
                     Žiadne výsledky.
                   </div>
                 ) : (
@@ -1538,7 +1535,7 @@ const addProduct = () => {
               </button>
               <button
                 onClick={uploadToSupabase}
-                className="flex-1 rounded-full bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+                className="flex-1 rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:brightness-90 transition-colors"
               >
                 {t("btn_confirm_upload")}
               </button>
