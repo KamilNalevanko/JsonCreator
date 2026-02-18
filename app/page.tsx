@@ -499,7 +499,7 @@ export default function Home() {
   };
 
 
-  
+
   const handleConfirmProduct = () => {
     if (previewProduct) {
       handleSelectProduct(previewProduct);
@@ -1429,7 +1429,7 @@ const addProduct = () => {
                   className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
                   onClick={() => {
                     setProducts([]);
-                    setLoadedFlyer(null);
+                    setEditingId(null);
                   }}
                   type="button"
                 >
