@@ -132,8 +132,6 @@ const makeId = () =>
 export default function Home() {
   const [language, setLanguage] = useState("sk");
   const [shop, setShop] = useState("billa");
-  const [flyerDateFrom, setFlyerDateFrom] = useState("");
-  const [flyerDateTo, setFlyerDateTo] = useState("");
   const [categoryKey, setCategoryKey] = useState(
     hierarchy[0]?.["Kategória"] ?? ""
   );
@@ -163,7 +161,6 @@ export default function Home() {
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [bucketPath, setBucketPath] = useState("sk");
-  const [loadedFileName, setLoadedFileName] = useState("");
   const [editingLoadedRef, setEditingLoadedRef] = useState<LoadedProductRef | null>(null);
   const [previewProduct, setPreviewProduct] = useState<{
     name: string;
@@ -185,6 +182,10 @@ export default function Home() {
   const suggestionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const shopOptions = [
+    { value: "lidl", label: "Lidl" },
+    { value: "billa", label: "Billa" },
+  ];
 
   const currentLabels = useMemo(
     () => languageMap[language as keyof typeof languageMap] || languageMap.sk,
@@ -331,24 +332,6 @@ export default function Home() {
       productMap.set(key, [...existing, entry.product]);
     }
 
-    // also include products from the loaded flyer (so edits to loaded items persist)
-    if (loadedFlyer) {
-      loadedFlyer.forEach((category: HierarchyCategory) => {
-        const categoryKey = category["Kategória"];
-        (category["Podkategórie"] ?? []).forEach((subcategory: HierarchySubcategory) => {
-          const subcategoryKey = subcategory["Podkategória"];
-          (subcategory["Zaradenia"] ?? []).forEach((placement: HierarchyPlacement) => {
-            const placementKey = placement["Zaradenie"];
-            (placement["Produkty"] ?? []).forEach((product: FlyerProduct) => {
-              const key = `${categoryKey}||${subcategoryKey}||${placementKey}`;
-              const existing = productMap.get(key) ?? [];
-              productMap.set(key, [...existing, product]);
-            });
-          });
-        });
-      });
-    }
-
     return hierarchy.map((category) => ({
       "Kategória": category["Kategória"],
       "Podkategórie": category["Podkategórie"].map((subcategory) => ({
@@ -362,7 +345,7 @@ export default function Home() {
         }),
       })),
     }));
-  }, [products, loadedFlyer, hierarchy]);
+  }, [products, hierarchy]);
 
   // Extrahovať všetky produkty z loadedFlyer s ich metadátami
   const loadedProductsList = useMemo<LoadedProductEntry[]>(() => {
@@ -421,44 +404,8 @@ export default function Home() {
   }, [loadedFlyer]);
 
   const jsonPreview = useMemo(() => {
-    // Ak máme načítané dáta, kombinujem ich s novými produktami
-    if (loadedFlyer) {
-      const mergedData = JSON.parse(JSON.stringify(loadedFlyer));
-      
-      // Ak je to hierarchická štruktúra, updatem produkty
-      if (mergedData.Podkategórie && Array.isArray(mergedData.Podkategórie)) {
-        for (const cat of mergedData.Podkategórie) {
-          if (cat.Zaradenia && Array.isArray(cat.Zaradenia)) {
-            for (const zaradenie of cat.Zaradenia) {
-              // Nájdi zodpovedajúce produkty z flyerData
-              const newProds = flyerData
-                .find((fc: HierarchyCategory) => fc["Kategória"] === mergedData["Kategória"])
-                ?.[
-                  "Podkategórie"
-                ]?.find((sub: HierarchySubcategory) => sub["Podkategória"] === cat["Podkategória"])
-                ?. ["Zaradenia"].find((z: HierarchyPlacement) => z["Zaradenie"] === zaradenie["Zaradenie"])
-                ?.[
-                  "Produkty"
-                ] ?? [];
-              
-              // Kombinujem staré + nové
-              if (!zaradenie["Produkty"]) {
-                zaradenie["Produkty"] = [];
-              }
-              zaradenie["Produkty"] = [
-                ...zaradenie["Produkty"],
-                ...newProds,
-              ];
-            }
-          }
-        }
-      }
-      
-      return JSON.stringify(mergedData, null, 2);
-    }
-    
     return JSON.stringify(flyerData, null, 2);
-  }, [flyerData, loadedFlyer]);
+  }, [flyerData]);
 
 
   const resetFormFields = () => {
@@ -551,20 +498,13 @@ export default function Home() {
   };
 
   const displayProducts = useMemo(() => {
-    const loaded = loadedProductsList.map((entry) => ({
-      type: "loaded" as const,
-      id: entry.id,
-      product: entry.product,
-      entry,
-    }));
-    const added = products.map((entry) => ({
+    return products.map((entry) => ({
       type: "new" as const,
       id: entry.id,
       product: entry.product,
       entry,
     }));
-    return [...loaded, ...added];
-  }, [loadedProductsList, products]);
+  }, [products]);
 
   const filteredDisplayProducts = useMemo(() => {
     const query = normalizeKey(productListQuery.trim());
@@ -662,6 +602,22 @@ const addProduct = () => {
         }
         return next;
       });
+      // Keep edited items in the export list (products) so export is "clean" and minimal
+      setProducts((prev) => {
+        const targetName = normalizeKey(product["Názov"]);
+        const next = [...prev];
+        const existingIndex = next.findIndex((item) =>
+          normalizeKey(item.product["Názov"]) === targetName &&
+          item.product["Kategória"] === product["Kategória"] &&
+          item.product["Podkategória"] === product["Podkategória"] &&
+          item.product["Zaradenie"] === product["Zaradenie"]
+        );
+        if (existingIndex >= 0) {
+          next[existingIndex] = { id: next[existingIndex].id, product };
+          return next;
+        }
+        return [...next, { id: makeId(), product }];
+      });
       setEditingLoadedRef(null);
     } else if (editingId) {
       setProducts((prev) =>
@@ -750,84 +706,45 @@ const addProduct = () => {
     resetFormFields();
   };
 
-  const handleLoadJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const loadShopJson = async (shopKey: string) => {
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      
-      // Parsovať názov súboru aby sa automaticky nastavili shop a dátumy
-      // Formát: "billa_18.06-24.06.2025.json"
-      const fileName = file.name.replace(".json", "");
-      const parts = fileName.split("_");
-      
-      if (parts.length >= 2) {
-        // Prvá časť je názov siete
-        const detectedShop = parts[0];
-        setShop(detectedShop);
-        
-        // Zvyšok je dátumová časť: "18.06-24.06.2025"
-        const dateString = parts.slice(1).join("_");
-        
-        // Parsovať dátumy: "18.06-24.06.2025"
-        // Regex: DDmM-DD.MM.YYYY alebo DD.MM-DD.MM.YYYY
-        const dateMatch = dateString.match(/(\d{1,2})\.(\d{2})-(\d{1,2})\.(\d{2})\.(\d{4})/);
-        
-        if (dateMatch) {
-          const [, day1, month1, day2, month2, year] = dateMatch;
-          const from = `${day1.padStart(2, "0")}.${month1}.${year}`;
-          const to = `${day2.padStart(2, "0")}.${month2}.${year}`;
-          setFlyerDateFrom(from);
-          setFlyerDateTo(to);
-        }
-      }
-      
-      // Uloži nahraný flyer bez zmeny produktov v UI
-      setLoadedFlyer(data);
-      setLoadedFileName(file.name);
-      setStatus(t("status_loaded_file"));
       setError("");
-      
-      // Reset file input
-      if (event.target) {
-        event.target.value = "";
+      setStatus("");
+      const safeShop = (shopKey || "").toLowerCase().trim();
+      if (!safeShop) return;
+      const response = await fetch(`/data/${safeShop}.json`, { cache: "no-store" });
+      if (!response.ok) {
+        setLoadedFlyer(null);
+        setError(t("error_load_json"));
+        return;
       }
+      const data = await response.json();
+      setLoadedFlyer(data);
+      setStatus(t("status_loaded_file"));
     } catch (err) {
+      setLoadedFlyer(null);
       setError(t("error_load_json"));
       console.error("Load JSON error:", err);
     }
   };
+
+  useEffect(() => {
+    if (!shop) return;
+    loadShopJson(shop);
+  }, [shop]);
 
   const buildFileName = () => {
     const safeShop = shop
       .toLowerCase()
       .replace(/[^a-z0-9._-]+/g, "_")
       .replace(/^_+|_+$/g, "");
-    
-    // Get current date as fallback
-    const today = new Date();
-    const fallbackDay = String(today.getDate()).padStart(2, "0");
-    const fallbackMonth = String(today.getMonth() + 1).padStart(2, "0");
-    const fallbackYear = today.getFullYear();
-    const fallbackDate = `${fallbackDay}.${fallbackMonth}.${fallbackYear}`;
-    
-    // Use flyerDateFrom and flyerDateTo for filename generation
-    const from = flyerDateFrom || fallbackDate;
-    const to = flyerDateTo || fallbackDate;
-    
-    // Extract day.month from 'from' (DD.MM.YYYY format)
-    const fromParts = from.split(".");
-    const fromShort = fromParts.length === 3 ? `${fromParts[0]}.${fromParts[1]}` : from;
-    
-    // Keep full 'to' date (DD.MM.YYYY format)
-    return `${safeShop || "letak"}_${fromShort}-${to}.json`;
+
+    return `${safeShop || "letak"}.json`;
   };
 
   const resolvedFileName = useMemo(() => {
     return buildFileName();
-  }, [shop, flyerDateFrom, flyerDateTo]);
+  }, [shop]);
 
   const downloadJson = () => {
     setStatus("");
@@ -919,38 +836,11 @@ const addProduct = () => {
           <div className="rounded-3xl bg-[color:var(--panel)] p-6 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                {t("products_count")} <span>{loadedProductsList.length + products.length}</span>
+                Produkty letáku <span>{products.length}</span>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4">
-              <div className="grid gap-2 text-sm text-[color:var(--ink)]">
-                <div>{t("label_load_json")}</div>
-                <div className="flex gap-3">
-                  <label htmlFor="json-file-input" className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:brightness-95 cursor-pointer">
-                    Vybrať súbor
-                  </label>
-                  <input
-                    key={loadedFileName || "file-input"}
-                    id="json-file-input"
-                    className="absolute opacity-0 w-0 h-0"
-                    type="file"
-                    accept=".json"
-                    onChange={handleLoadJson}
-                  />
-                  {loadedFileName && (
-                    <div className="rounded-lg border-2 border-orange-500 bg-orange-50 px-4 py-3 flex-1 flex items-center">
-                      <strong className="text-sm text-gray-700">📦 {loadedFileName}</strong>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border-2 border-orange-500 bg-orange-50 px-4 py-3">
-                <strong className="text-sm text-gray-700">📄 {t("label_final_filename")}:</strong>
-                <div className="mt-2 font-mono text-lg font-bold text-gray-900 break-all">{resolvedFileName}</div>
-              </div>
-
               <div className="grid gap-3 md:grid-cols-[0.25fr_0.75fr]">
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_storage_folder")}
@@ -968,57 +858,21 @@ const addProduct = () => {
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)] md:flex-1">
                     {t("label_shop")}
-                    <input
+                    <select
                       className="rounded-xl border border-black/10 bg-white px-5 py-4 text-lg md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={shop}
-                      onChange={(event) => setShop(event.target.value)}
-                      placeholder="Billa"
-                    />
+                      onChange={(event) => {
+                        const nextShop = event.target.value;
+                        setShop(nextShop);
+                      }}
+                    >
+                      {shopOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-
-                  <div className="flex items-center gap-3">
-                    <label className="grid gap-2 text-sm md:text-xl text-[color:var(--ink)]">
-                      {t("label_flyer_date_from")}
-                      <input
-                        type="date"
-                        className="rounded-xl border border-black/10 bg-white px-5 py-4 text-sm md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                        value={flyerDateFrom ? flyerDateFrom.split(".").reverse().join("-") : ""}
-                        onChange={(event) => {
-                          if (event.target.value) {
-                            const [year, month, day] = event.target.value.split("-");
-                            const newFromDate = `${day}.${month}.${year}`;
-                            const oldFrom = flyerDateFrom;
-                            setFlyerDateFrom(newFromDate);
-
-                            if (oldFrom && flyerDateTo) {
-                              const daysDifference = getDateDifference(oldFrom, flyerDateTo);
-                              const newToDate = addDaysToDate(newFromDate, daysDifference);
-                              setFlyerDateTo(newToDate);
-                            }
-                          } else {
-                            setFlyerDateFrom("");
-                          }
-                        }}
-                      />
-                    </label>
-
-                    <label className="grid gap-2 text-sm md:text-xl text-[color:var(--ink)]">
-                      {t("label_flyer_date_to")}
-                      <input
-                        type="date"
-                        className="rounded-xl border border-black/10 bg-white px-5 py-4 text-sm md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                        value={flyerDateTo ? flyerDateTo.split(".").reverse().join("-") : ""}
-                        onChange={(event) => {
-                          if (event.target.value) {
-                            const [year, month, day] = event.target.value.split("-");
-                            setFlyerDateTo(`${day}.${month}.${year}`);
-                          } else {
-                            setFlyerDateTo("");
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
                 </div>
               </div>
 
@@ -1292,7 +1146,6 @@ const addProduct = () => {
                         priceSaleUnit: calculateUnitPrice(prev.priceSale, newAmount, prev.unit),
                       }));
                     }}
-                    placeholder="1"
                   />
                 </label>
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
@@ -1333,13 +1186,13 @@ const addProduct = () => {
                         priceRegularUnit: calculateUnitPrice(newPrice, prev.amount, prev.unit),
                       }));
                     }}
-                    placeholder="1"
                   />
                 </label>
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_regular_unit_price")}
                   <input
                     tabIndex={-1}
+                    readOnly
                     className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceRegularUnit}
                     onChange={(event) =>
@@ -1348,7 +1201,6 @@ const addProduct = () => {
                         priceRegularUnit: normalizePrice(event.target.value),
                       }))
                     }
-                    placeholder="1"
                   />
                 </label>
               </div>
@@ -1367,13 +1219,13 @@ const addProduct = () => {
                         priceSaleUnit: calculateUnitPrice(newPrice, prev.amount, prev.unit),
                       }));
                     }}
-                    placeholder="1"
                   />
                 </label>
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_unit_price")}
                   <input
                     tabIndex={-1}
+                    readOnly
                     className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceSaleUnit}
                     onChange={(event) =>
@@ -1382,7 +1234,6 @@ const addProduct = () => {
                         priceSaleUnit: normalizePrice(event.target.value),
                       }))
                     }
-                    placeholder="1"
                   />
                 </label>
               </div>
@@ -1509,7 +1360,7 @@ const addProduct = () => {
                 </div>
               ) : null}
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-3 flex-nowrap">
                 <button
                   className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:brightness-95"
                   onClick={addProduct}
@@ -1531,18 +1382,32 @@ const addProduct = () => {
                   onClick={() => {
                     setProducts([]);
                     setLoadedFlyer(null);
-                    setLoadedFileName("");
                   }}
                   type="button"
                 >
                   {t("btn_clear_all")}
+                </button>
+                <button
+                  className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
+                  onClick={downloadJson}
+                  type="button"
+                >
+                  {t("btn_download_file")}
+                </button>
+                <button
+                  className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110 disabled:opacity-60"
+                  onClick={handleUploadClick}
+                  type="button"
+                  disabled={isUploading}
+                >
+                  {isUploading ? "Nahrávam..." : "Nahrať na server"}
                 </button>
               </div>
             </div>
 
             <div className="mt-8 border-t border-black/5 pt-6">
               <h3 className="font-[var(--font-display)] text-lg text-[color:var(--ink)]">
-                {t("section_products")}
+                Produkty letáku
               </h3>
               <div className="mt-4 grid gap-3">
                 <input
@@ -1609,41 +1474,7 @@ const addProduct = () => {
               </div>
             </div>
 
-          </div>
 
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col rounded-3xl bg-[#0f1b2b] p-6 text-white shadow-[var(--shadow)] animate-[float-in_0.6s_ease-out]">
-              <h2 className="font-[var(--font-display)] text-2xl">
-                {t("section_output")}
-              </h2>
-              <div className="mt-4 flex flex-col gap-3">
-                {/* <button
-                  className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#0f1b2b]"
-                  onClick={copyJson}
-                  type="button"
-                >
-                  {t("btn_copy_json")}
-                </button> */}
-                <button
-                  className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0f1b2b] hover:bg-white/90 transition-colors"
-                  onClick={downloadJson}
-                  type="button"
-                >
-                  {t("btn_download_file")}
-                </button>
-                <button
-                  className="rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors disabled:opacity-60"
-                  onClick={handleUploadClick}
-                  type="button"
-                  disabled={isUploading}
-                >
-                  {isUploading ? t("btn_uploading") : t("btn_upload_supabase")}
-                </button>
-              </div>
-              {/* <pre className="mt-4 max-h-[900px] overflow-auto rounded-2xl bg-[#0b1220] p-4 text-xs leading-5 text-white/80">
-                {jsonPreview}
-              </pre> */}
-            </div>
           </div>
         </section>
       </main>
