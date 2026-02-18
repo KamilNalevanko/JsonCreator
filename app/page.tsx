@@ -1494,22 +1494,14 @@ const addProduct = () => {
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold text-[color:var(--muted)] transition hover:border-black/30"
-                          onClick={() =>
-                            item.type === "loaded"
-                              ? handleSelectProduct(item.entry)
-                              : startEdit(item.entry)
-                          }
+                          onClick={() => startEdit(item.entry)}
                           type="button"
                         >
                           {t("btn_edit")}
                         </button>
                         <button
                           className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold text-[color:var(--muted)] transition hover:border-black/30"
-                          onClick={() =>
-                            item.type === "loaded"
-                              ? removeLoadedProduct(item.entry.ref)
-                              : removeProduct(item.entry.id)
-                          }
+                          onClick={() => removeProduct(item.entry.id)}
                           type="button"
                         >
                           {t("btn_remove")}
