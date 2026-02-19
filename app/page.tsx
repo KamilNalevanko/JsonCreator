@@ -89,8 +89,49 @@ const calculateUnitPrice = (price: string, amount: string, unit: string): string
 };
 
 const normalizePrice = (value: string) => (value || "").replace(/\./g, ",").trim();
+
+const foldSpecialLatin = (s: string) =>
+  (s || "")
+    // PL
+    .replace(/ł/g, "l")
+    .replace(/Ł/g, "l")
+    // bonus (neškodí)
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .replace(/ß/g, "ss")
+    .replace(/ø/g, "o")
+    .replace(/Ø/g, "o")
+    .replace(/æ/g, "ae")
+    .replace(/Æ/g, "ae")
+    .replace(/œ/g, "oe")
+    .replace(/Œ/g, "oe");
+
 const normalizeKey = (value: string) =>
-  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  foldSpecialLatin(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+// “zlepená” verzia – odstráni medzery, pomlčky, bodky… nech ostane len a-z/0-9
+const normalizeKeyTight = (value: string) =>
+  normalizeKey(value).replace(/[^a-z0-9]+/g, "");
+
+// ✅ jeden matcher pre všetko (názvy, info, zoznam…)
+const matchesSearch = (candidate: string, query: string) => {
+  const q = normalizeKey(query);
+  if (!q) return true;
+
+  const c = normalizeKey(candidate);
+  if (c.includes(q)) return true;
+
+  const qt = normalizeKeyTight(query);
+  const ct = normalizeKeyTight(candidate);
+  return qt.length > 0 && ct.includes(qt);
+};
+
+
+
 
 const parseDateFromSk = (dateStr: string): Date | null => {
   if (!dateStr) return null;
@@ -183,10 +224,21 @@ export default function Home() {
   const suggestionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
-  const shopOptions = [
-    { value: "lidl", label: "Lidl" },
-    { value: "billa", label: "Billa" },
-  ];
+  const shopOptionsByFolder: Record<
+    string,
+    Array<{ value: string; label: string }>
+  > = {
+    sk: [
+      { value: "lidl", label: "Lidl" },
+      { value: "billa", label: "Billa" },
+    ],
+    pl: [{ value: "lidl", label: "Lidl" }],
+    cz: [],
+  };
+  const shopOptions = useMemo(
+    () => shopOptionsByFolder[bucketPath] ?? [],
+    [bucketPath]
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem("theme");
@@ -199,6 +251,18 @@ export default function Home() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const available = shopOptionsByFolder[bucketPath] ?? [];
+    const hasCurrent = available.some((option) => option.value === shop);
+    if (!hasCurrent) {
+      setShop(available[0]?.value ?? "");
+    }
+    setLoadedFlyer(null);
+    setProducts([]);
+    setEditingId(null);
+    setEditingLoadedRef(null);
+  }, [bucketPath]);
 
   const currentLabels = useMemo(
     () => languageMap[language as keyof typeof languageMap] || languageMap.sk,
@@ -530,7 +594,68 @@ export default function Home() {
     );
   }, [displayProducts, productListQuery]);
 
-const addProduct = () => {
+  const isProductInLoadedFlyer = (product: FlyerProduct) =>
+    loadedProductsList.some(
+      (item) =>
+        normalizeKey(item.product["Názov"]) ===
+          normalizeKey(product["Názov"]) &&
+        item.product["Kategória"] === product["Kategória"] &&
+        item.product["Podkategória"] === product["Podkategória"] &&
+        item.product["Zaradenie"] === product["Zaradenie"]
+    );
+
+  const appendProductToLoadedFlyer = (product: FlyerProduct) => {
+    setLoadedFlyer((prev: HierarchyCategory[] | null) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as HierarchyCategory[];
+      const categoryIndex = next.findIndex(
+        (c: HierarchyCategory) => c["Kategória"] === product["Kategória"]
+      );
+      if (categoryIndex === -1) return prev;
+      const subIndex = (next[categoryIndex]["Podkategórie"] ?? []).findIndex(
+        (s: HierarchySubcategory) => s["Podkategória"] === product["Podkategória"]
+      );
+      if (subIndex === -1) return prev;
+      const placementIndex = (
+        next[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"] ?? []
+      ).findIndex(
+        (p: HierarchyPlacement) => p["Zaradenie"] === product["Zaradenie"]
+      );
+      if (placementIndex === -1) return prev;
+
+      const placement =
+        next[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"][
+          placementIndex
+        ];
+      if (!placement["Produkty"]) placement["Produkty"] = [];
+      const exists = placement["Produkty"].some(
+        (p: FlyerProduct) =>
+          normalizeKey(p["Názov"]) === normalizeKey(product["Názov"])
+      );
+      if (exists) return prev;
+      placement["Produkty"].push(product);
+      return next;
+    });
+  };
+
+  const persistNewProduct = async (product: FlyerProduct) => {
+    if (!bucketPath || !shop) return;
+    try {
+      const response = await fetch("/api/append-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketPath, shop, product }),
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        console.error("Append product failed:", message);
+      }
+    } catch (err) {
+      console.error("Append product failed:", err);
+    }
+  };
+
+  const addProduct = () => {
     setError("");
     setStatus("");
     if (!categoryKey || !subcategoryKey) {
@@ -557,6 +682,8 @@ const addProduct = () => {
       "Dátum akcie od": form.dateFrom?.trim() || "",
       "Dátum akcie do": form.dateTo?.trim() || "",
     };
+
+    const alreadyInLoadedFlyer = isProductInLoadedFlyer(product);
 
     if (editingLoadedRef && loadedFlyer) {
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
@@ -642,6 +769,10 @@ const addProduct = () => {
       setEditingId(null);
     } else {
       setProducts((prev) => [...prev, { id: makeId(), product }]);
+      if (!alreadyInLoadedFlyer) {
+        appendProductToLoadedFlyer(product);
+        void persistNewProduct(product);
+      }
     }
     resetFormFields();
        focusNameInput();
@@ -724,14 +855,35 @@ const addProduct = () => {
     try {
       setError("");
       setStatus("");
+      const safeFolder = (bucketPath || "sk").toLowerCase().trim();
       const safeShop = (shopKey || "").toLowerCase().trim();
-      if (!safeShop) return;
-      const response = await fetch(`/data/${safeShop}.json`, { cache: "no-store" });
-      if (!response.ok) {
+      if (!safeShop || !safeFolder) return;
+   const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+const candidates = [
+  `${base}/data/${safeFolder}/${safeShop}.json`,
+  `${base}/data/${safeFolder}/${safeShop}/${safeShop}.json`, // fallback ak raz prejdeš na zložky
+];
+
+// ak nechceš env, stačí aj čisto relatívne:
+// const candidates = [`data/${safeFolder}/${safeShop}.json`, `data/${safeFolder}/${safeShop}/${safeShop}.json`];
+
+      let response: Response | null = null;
+      let lastUrl = "";
+      for (const candidate of candidates) {
+        lastUrl = candidate;
+        const attempt = await fetch(candidate, { cache: "no-store" });
+        if (attempt.ok) {
+          response = attempt;
+          break;
+        }
+      }
+
+      if (!response) {
         setLoadedFlyer(null);
-        setError(t("error_load_json"));
+        setError(`${t("error_load_json")} (${lastUrl})`);
         return;
       }
+
       const data = await response.json();
       setLoadedFlyer(data);
       setStatus(t("status_loaded_file"));
@@ -745,7 +897,7 @@ const addProduct = () => {
   useEffect(() => {
     if (!shop) return;
     loadShopJson(shop);
-  }, [shop]);
+  }, [shop, bucketPath]);
 
   const buildFileName = () => {
     const safeShop = shop
@@ -934,9 +1086,10 @@ const addProduct = () => {
                       
                       // Filtrujem podľa obsahovania textu v názve (case-insensitive)
                       if (newName.trim() && loadedFlyer) {
-                        const filtered = loadedProductsList.filter((p) =>
-                          normalizeKey(p.name).includes(normalizeKey(newName))
+                       const filtered = loadedProductsList.filter((p) =>
+                        matchesSearch(p.name, newName)
                         );
+
                         setFilteredSuggestions(filtered);
                         setShowSuggestions(filtered.length > 0);
                         setActiveSuggestionIndex(filtered.length > 0 ? 0 : -1);
