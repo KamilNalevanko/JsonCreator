@@ -535,18 +535,6 @@
                 "Doplnková Informácia": "2ks v balení",
                 "Dátum akcie od": "07.07.2025",
                 "Dátum akcie do": "30.07.2025"
-              },
-              {
-                "Názov": "MINI KUŘÁTKO",
-                "Kategória": "m_so_ryby_a_deniny",
-                "Podkategória": "kuracie",
-                "Zaradenie": "kur_a",
-                "Množstvo": "650",
-                "Merná jednotka": "g",
-                "Akciová cena": "129,9",
-                "Akciová jednotková cena": "199.85",
-                "Dátum akcie od": "26.06.2025",
-                "Dátum akcie do": "02.07.2025"
               }
             ]
           },
@@ -629,20 +617,6 @@
                 "Akciová jednotková cena": "116.50",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kuřecí stehenní řízek",
-                "Kategória": "m_so_ryby_a_deniny",
-                "Podkategória": "kuracie",
-                "Zaradenie": "horn_stehno_kuracie",
-                "Množstvo": "1",
-                "Merná jednotka": "kg",
-                "Bežná cena za bal.": "198,9",
-                "Bežná jednotková cena": "198.90",
-                "Akciová cena": "119,90",
-                "Akciová jednotková cena": "119.90",
-                "Dátum akcie od": "26.06.2025",
-                "Dátum akcie do": "28.06.2025"
               },
               {
                 "Názov": "Kuřecí stehenní řízek tesco",
@@ -1451,20 +1425,6 @@
                 "Akciová jednotková cena": "159.00",
                 "Dátum akcie od": "26.06.2025",
                 "Dátum akcie do": "02.07.2025"
-              },
-              {
-                "Názov": "Poličan česká chuť",
-                "Kategória": "m_so_ryby_a_deniny",
-                "Podkategória": "deniny",
-                "Zaradenie": "such_sal_ma",
-                "Množstvo": "100",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "33,9",
-                "Bežná jednotková cena": "339.00",
-                "Akciová cena": "22,9",
-                "Akciová jednotková cena": "229.00",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
               }
             ]
           },
@@ -1524,21 +1484,6 @@
                 "Bežná jednotková cena": "432.78",
                 "Akciová cena": "59,9",
                 "Akciová jednotková cena": "332.78",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Poctivé\nvídeňské párky",
-                "Kategória": "m_so_ryby_a_deniny",
-                "Podkategória": "deniny",
-                "Zaradenie": "p_rky",
-                "Množstvo": "100",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "75,9",
-                "Bežná jednotková cena": "759.00",
-                "Akciová cena": "64,9",
-                "Akciová jednotková cena": "649.00",
-                "Doplnková Informácia": "3 druhy",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               },
@@ -2034,21 +1979,6 @@
                 "Bežná jednotková cena": "289.00",
                 "Akciová cena": "22,9",
                 "Akciová jednotková cena": "229.00",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Anglická slanina",
-                "Kategória": "m_so_ryby_a_deniny",
-                "Podkategória": "deniny",
-                "Zaradenie": "slanina",
-                "Množstvo": "1",
-                "Merná jednotka": "kg",
-                "Bežná cena za bal.": "269,9",
-                "Bežná jednotková cena": "269.90",
-                "Akciová cena": "239,9",
-                "Akciová jednotková cena": "239.90",
-                "Doplnková Informácia": "2druhy",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               },
@@ -3124,21 +3054,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Franz Josef Tuňák – steak",
-                "Kategória": "lah_dkov_al_ty_n_tierky_a_konzervy",
-                "Podkategória": "konzervy",
-                "Zaradenie": "rybie_konzervy",
-                "Množstvo": "160",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "84,9",
-                "Bežná jednotková cena": "530.62",
-                "Akciová cena": "49,9",
-                "Akciová jednotková cena": "311.88",
-                "Doplnková Informácia": "2 ks v bal.",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "TUŇÁK STEAK\nMARINNA",
                 "Kategória": "lah_dkov_al_ty_n_tierky_a_konzervy",
                 "Podkategória": "konzervy",
@@ -3945,20 +3860,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Excellent Makronky",
-                "Kategória": "pe_ivo",
-                "Podkategória": "balen_sladk_pe_ivo",
-                "Zaradenie": "kol_e",
-                "Množstvo": "144",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "129,9",
-                "Bežná jednotková cena": "902.08",
-                "Akciová cena": "99,9",
-                "Akciová jednotková cena": "693.75",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Kokosové pusinky",
                 "Kategória": "pe_ivo",
                 "Podkategória": "balen_sladk_pe_ivo",
@@ -4631,20 +4532,6 @@
                 "Dátum akcie do": "02.07.2025"
               },
               {
-                "Názov": "Smetana na vaření 12% kunín",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "smotana",
-                "Zaradenie": "sladk_10_smotana",
-                "Množstvo": "200",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "27,9",
-                "Bežná jednotková cena": "139.50",
-                "Akciová cena": "13,95",
-                "Akciová jednotková cena": "69.75",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Smetana 12% olma",
                 "Kategória": "mlie_ne_v_robky_a_vajcia",
                 "Podkategória": "smotana",
@@ -4699,20 +4586,6 @@
                 "Akciová cena": "34,9",
                 "Akciová jednotková cena": "139.60",
                 "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kunín Smetana ke šlehání 31%",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "smotana",
-                "Zaradenie": "smotana_na_ahanie",
-                "Množstvo": "200",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "39,9",
-                "Bežná jednotková cena": "199.50",
-                "Akciová cena": "22,9",
-                "Akciová jednotková cena": "114.50",
-                "Dátum akcie od": "02.07.2025",
                 "Dátum akcie do": "01.07.2025"
               },
               {
@@ -5166,36 +5039,6 @@
                 "Bežná jednotková cena": "176.67",
                 "Akciová cena": "8,9",
                 "Akciová jednotková cena": "98.89",
-                "Doplnková Informácia": "vybrané druhy",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Mléčný dezert monte",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "jogurty_pudingy_a_jogurtov_n_poje",
-                "Zaradenie": "smotanov_kr_m",
-                "Množstvo": "220",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "32,9",
-                "Bežná jednotková cena": "149.55",
-                "Akciová cena": "25,9",
-                "Akciová jednotková cena": "117.73",
-                "Doplnková Informácia": "2druhy, 4x55g",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Pribináček",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "jogurty_pudingy_a_jogurtov_n_poje",
-                "Zaradenie": "smotanov_kr_m",
-                "Množstvo": "125",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "29,9",
-                "Bežná jednotková cena": "239.20",
-                "Akciová cena": "21,9",
-                "Akciová jednotková cena": "175.20",
                 "Doplnková Informácia": "vybrané druhy",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
@@ -5808,21 +5651,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Král Sýrů Hermelín",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "m_kk_a_taven_syry",
-                "Zaradenie": "plesniv_syr",
-                "Množstvo": "240",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "107,9",
-                "Bežná jednotková cena": "449.58",
-                "Akciová cena": "59,9",
-                "Akciová jednotková cena": "249.58",
-                "Doplnková Informácia": "2 ks v bal.",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Zrající sýr boni",
                 "Kategória": "mlie_ne_v_robky_a_vajcia",
                 "Podkategória": "m_kk_a_taven_syry",
@@ -6044,49 +5872,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Apetito Rodinné",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "m_kk_a_taven_syry",
-                "Zaradenie": "taven_n_tierkov_syr",
-                "Množstvo": "200",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "66,9",
-                "Bežná jednotková cena": "334.50",
-                "Akciová cena": "44,9",
-                "Akciová jednotková cena": "224.50",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Lučina",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "m_kk_a_taven_syry",
-                "Zaradenie": "taven_n_tierkov_syr",
-                "Množstvo": "120",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "42,8",
-                "Bežná jednotková cena": "356.67",
-                "Akciová cena": "31,9",
-                "Akciová jednotková cena": "265.83",
-                "Doplnková Informácia": "více druhů",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Apetito Rodinné",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "m_kk_a_taven_syry",
-                "Zaradenie": "taven_n_tierkov_syr",
-                "Množstvo": "150",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "49,9",
-                "Bežná jednotková cena": "332.67",
-                "Akciová cena": "34,9",
-                "Akciová jednotková cena": "232.67",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Boník boni",
                 "Kategória": "mlie_ne_v_robky_a_vajcia",
                 "Podkategória": "m_kk_a_taven_syry",
@@ -6175,20 +5960,6 @@
                 "Akciová cena": "27,9",
                 "Akciová jednotková cena": "242.61",
                 "Doplnková Informácia": "vybrané druhy",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Balkánsky sýr madeta",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "m_kk_a_taven_syry",
-                "Zaradenie": "feta",
-                "Množstvo": "115",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "35,9",
-                "Bežná jednotková cena": "312.17",
-                "Akciová cena": "27,9",
-                "Akciová jednotková cena": "242.61",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               }
@@ -6625,18 +6396,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Majonéza hellmann´s",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "majon_zy_om_ky_dresingy",
-                "Zaradenie": "majon_za",
-                "Množstvo": "405",
-                "Merná jednotka": "g",
-                "Akciová cena": "49,9",
-                "Akciová jednotková cena": "123.21",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Majonéza KARLOVA KORUNA",
                 "Kategória": "mlie_ne_v_robky_a_vajcia",
                 "Podkategória": "majon_zy_om_ky_dresingy",
@@ -6680,18 +6439,6 @@
                 "Bežná jednotková cena": "264.41",
                 "Akciová cena": "39,9",
                 "Akciová jednotková cena": "117.35",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Tatarská omáčka hellmann´s",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "majon_zy_om_ky_dresingy",
-                "Zaradenie": "tatarsk_om_ka",
-                "Množstvo": "405",
-                "Merná jednotka": "ml",
-                "Akciová cena": "49,9",
-                "Akciová jednotková cena": "123.21",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               },
@@ -6846,19 +6593,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Coca-cola",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "limon_dy",
-                "Zaradenie": "cola",
-                "Množstvo": "1,5",
-                "Merná jednotka": "l",
-                "Akciová cena": "31,9",
-                "Akciová jednotková cena": "21.27",
-                "Doplnková Informácia": "více druhů",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Royal crown",
                 "Kategória": "nealko_n_poje_k_vy_a_aje",
                 "Podkategória": "limon_dy",
@@ -6872,49 +6606,6 @@
                 "Doplnková Informácia": "2 druhy",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kofola",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "limon_dy",
-                "Zaradenie": "cola",
-                "Množstvo": "8",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "169,9",
-                "Bežná jednotková cena": "21.24",
-                "Akciová cena": "99,6",
-                "Akciová jednotková cena": "12.45",
-                "Doplnková Informácia": "4x2l",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kofola",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "limon_dy",
-                "Zaradenie": "cola",
-                "Množstvo": "2",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "39,9",
-                "Bežná jednotková cena": "19.95",
-                "Akciová cena": "27,9",
-                "Akciová jednotková cena": "13.95",
-                "Dátum akcie od": "26.06.2025",
-                "Dátum akcie do": "02.07.2025"
-              },
-              {
-                "Názov": "Pepsi",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "limon_dy",
-                "Zaradenie": "cola",
-                "Množstvo": "2,5",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "49,9",
-                "Bežná jednotková cena": "19.96",
-                "Akciová cena": "31,9",
-                "Akciová jednotková cena": "12.76",
-                "Dátum akcie od": "28.06.2025",
-                "Dátum akcie do": "29.06.2025"
               }
             ]
           },
@@ -7008,20 +6699,6 @@
                 "Doplnková Informácia": "více druhů",
                 "Dátum akcie od": "26.06.2025",
                 "Dátum akcie do": "02.07.2025"
-              },
-              {
-                "Názov": "Mirinda",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "limon_dy",
-                "Zaradenie": "ovocn_limon_da",
-                "Množstvo": "2,5",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "49,9",
-                "Bežná jednotková cena": "19.96",
-                "Akciová cena": "31,9",
-                "Akciová jednotková cena": "12.76",
-                "Dátum akcie od": "28.06.2025",
-                "Dátum akcie do": "29.06.2025"
               }
             ]
           },
@@ -7366,21 +7043,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Korunní",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "miner_lne_vody",
-                "Zaradenie": "neochuten_miner_lna_voda",
-                "Množstvo": "1,5",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "38,9",
-                "Bežná jednotková cena": "25.93",
-                "Akciová cena": "27,9",
-                "Akciová jednotková cena": "18.60",
-                "Doplnková Informácia": "vybrané druhy",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Gemerka",
                 "Kategória": "nealko_n_poje_k_vy_a_aje",
                 "Podkategória": "miner_lne_vody",
@@ -7477,21 +7139,6 @@
                 "Bežná jednotková cena": "128.43",
                 "Akciová cena": "59,9",
                 "Akciová jednotková cena": "85.57",
-                "Doplnková Informácia": "vybrané druhy",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Sirup jupí",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "sirupy",
-                "Zaradenie": "ovocny_sirup",
-                "Množstvo": "3",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "199",
-                "Bežná jednotková cena": "66.33",
-                "Akciová cena": "139",
-                "Akciová jednotková cena": "46.33",
                 "Doplnková Informácia": "vybrané druhy",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
@@ -7708,34 +7355,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Capri-Sun",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "d_sy_a_adov_aje",
-                "Zaradenie": "d_sy",
-                "Množstvo": "0,33",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "29,9",
-                "Bežná jednotková cena": "90.61",
-                "Akciová cena": "24,9",
-                "Akciová jednotková cena": "75.45",
-                "Doplnková Informácia": "více druhů",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Caprio",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "d_sy_a_adov_aje",
-                "Zaradenie": "d_sy",
-                "Množstvo": "1,75",
-                "Merná jednotka": "l",
-                "Akciová cena": "24,9",
-                "Akciová jednotková cena": "14.23",
-                "Doplnková Informácia": "více druhů",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "ČERSTVÁ ŠŤÁVA  Z JABLEK 100% solevita",
                 "Kategória": "nealko_n_poje_k_vy_a_aje",
                 "Podkategória": "d_sy_a_adov_aje",
@@ -7944,19 +7563,6 @@
                 "Bežná jednotková cena": "658.00",
                 "Akciová cena": "259",
                 "Akciová jednotková cena": "518.00",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "L’or zrnková",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "k_vy",
-                "Zaradenie": "zrnkov",
-                "Množstvo": "500",
-                "Merná jednotka": "g",
-                "Akciová cena": "299",
-                "Akciová jednotková cena": "598.00",
-                "Doplnková Informácia": "více druhů",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               },
@@ -8579,31 +8185,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Jägermeister",
-                "Kategória": "alkohol_v_no_a_pivo",
-                "Podkategória": "alkohol",
-                "Zaradenie": "bylinn_lik_r",
-                "Množstvo": "0,7",
-                "Merná jednotka": "l",
-                "Akciová cena": "299,9",
-                "Akciová jednotková cena": "428.43",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Becherovka",
-                "Kategória": "alkohol_v_no_a_pivo",
-                "Podkategória": "alkohol",
-                "Zaradenie": "bylinn_lik_r",
-                "Množstvo": "0,5",
-                "Merná jednotka": "l",
-                "Akciová cena": "179,9",
-                "Akciová jednotková cena": "359.80",
-                "Doplnková Informácia": "více druhů",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Fernet stock",
                 "Kategória": "alkohol_v_no_a_pivo",
                 "Podkategória": "alkohol",
@@ -9083,19 +8664,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Pilsner Urquell láhev",
-                "Kategória": "alkohol_v_no_a_pivo",
-                "Podkategória": "pivo",
-                "Zaradenie": "alkoholick_pivo",
-                "Množstvo": "1,98",
-                "Merná jednotka": "l",
-                "Akciová cena": "145",
-                "Akciová jednotková cena": "73.23",
-                "Doplnková Informácia": "6ks",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Kozel 10 plech.",
                 "Kategória": "alkohol_v_no_a_pivo",
                 "Podkategória": "pivo",
@@ -9179,33 +8747,6 @@
                 "Akciová jednotková cena": "27.80",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Krušovice 12 plech.",
-                "Kategória": "alkohol_v_no_a_pivo",
-                "Podkategória": "pivo",
-                "Zaradenie": "alkoholick_pivo",
-                "Množstvo": "6",
-                "Merná jednotka": "l",
-                "Akciová cena": "169,9",
-                "Akciová jednotková cena": "28.32",
-                "Doplnková Informácia": "12ks bal.",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Pilsner Urquell láhev",
-                "Kategória": "alkohol_v_no_a_pivo",
-                "Podkategória": "pivo",
-                "Zaradenie": "alkoholick_pivo",
-                "Množstvo": "0,5",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "31,9",
-                "Bežná jednotková cena": "63.80",
-                "Akciová cena": "25,9",
-                "Akciová jednotková cena": "51.80",
-                "Dátum akcie od": "26.06.2025",
-                "Dátum akcie do": "02.07.2025"
               },
               {
                 "Názov": "Krušovice bohém láhev",
@@ -9341,20 +8882,6 @@
                 "Akciová cena": "7,9",
                 "Akciová jednotková cena": "15.80",
                 "Dátum akcie od": "08.07.2025",
-                "Dátum akcie do": "30.07.2025"
-              },
-              {
-                "Názov": "Radegast 10 plech.",
-                "Kategória": "alkohol_v_no_a_pivo",
-                "Podkategória": "pivo",
-                "Zaradenie": "alkoholick_pivo",
-                "Množstvo": "0,5",
-                "Merná jednotka": "l",
-                "Bežná cena za bal.": "23,9",
-                "Bežná jednotková cena": "47.80",
-                "Akciová cena": "17,9",
-                "Akciová jednotková cena": "35.80",
-                "Dátum akcie od": "07.07.2025",
                 "Dátum akcie do": "30.07.2025"
               },
               {
@@ -9716,18 +9243,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Perla Máslová příchuť",
-                "Kategória": "oleje_tuky_a_maslo",
-                "Podkategória": "maslo",
-                "Zaradenie": "rastlinn_maslo",
-                "Množstvo": "450",
-                "Merná jednotka": "g",
-                "Akciová cena": "29,9",
-                "Akciová jednotková cena": "66.44",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Flora gold",
                 "Kategória": "oleje_tuky_a_maslo",
                 "Podkategória": "maslo",
@@ -10033,20 +9548,6 @@
                 "Akciová jednotková cena": "69.90",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Meruňky",
-                "Kategória": "ovocie",
-                "Podkategória": "erstv_ovocie",
-                "Zaradenie": "marhule",
-                "Množstvo": "500",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "59,9",
-                "Bežná jednotková cena": "119.80",
-                "Akciová cena": "29,9",
-                "Akciová jednotková cena": "59.80",
-                "Dátum akcie od": "26.06.2025",
-                "Dátum akcie do": "02.07.2025"
               }
             ]
           },
@@ -10308,20 +9809,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Nugeta",
-                "Kategória": "ovocie",
-                "Podkategória": "d_emy_marmel_dy_a_sladk_n_tierky",
-                "Zaradenie": "orie_kov_n_tierka",
-                "Množstvo": "42",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "13,9",
-                "Bežná jednotková cena": "330.95",
-                "Akciová cena": "9,9",
-                "Akciová jednotková cena": "235.71",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "Nutella",
                 "Kategória": "ovocie",
                 "Podkategória": "d_emy_marmel_dy_a_sladk_n_tierky",
@@ -10348,18 +9835,6 @@
                 "Akciová jednotková cena": "199.71",
                 "Dátum akcie od": "26.06.2025",
                 "Dátum akcie do": "02.07.2025"
-              },
-              {
-                "Názov": "Nutella",
-                "Kategória": "ovocie",
-                "Podkategória": "d_emy_marmel_dy_a_sladk_n_tierky",
-                "Zaradenie": "orie_kov_n_tierka",
-                "Množstvo": "350",
-                "Merná jednotka": "g",
-                "Akciová cena": "74,9",
-                "Akciová jednotková cena": "214.00",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
               }
             ]
           }
@@ -10474,20 +9949,6 @@
                 "Akciová jednotková cena": "99.90",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Česnek volný",
-                "Kategória": "zelenina",
-                "Podkategória": "erstv_zelenina",
-                "Zaradenie": "cesnak",
-                "Množstvo": "1",
-                "Merná jednotka": "ks",
-                "Bežná cena za bal.": "49,9",
-                "Bežná jednotková cena": "49.90",
-                "Akciová cena": "34,9",
-                "Akciová jednotková cena": "34.90",
-                "Dátum akcie od": "30.06.2025",
-                "Dátum akcie do": "02.07.2025"
               }
             ]
           },
@@ -10958,34 +10419,6 @@
                 "Akciová jednotková cena": "19.95",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Brambory\nkonzumní rané",
-                "Kategória": "zelenina",
-                "Podkategória": "erstv_zelenina",
-                "Zaradenie": "zemiaky",
-                "Množstvo": "1",
-                "Merná jednotka": "kg",
-                "Bežná cena za bal.": "34,9",
-                "Bežná jednotková cena": "34.90",
-                "Akciová cena": "16,9",
-                "Akciová jednotková cena": "16.90",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Brambory konzumní rané",
-                "Kategória": "zelenina",
-                "Podkategória": "erstv_zelenina",
-                "Zaradenie": "zemiaky",
-                "Množstvo": "1,5",
-                "Merná jednotka": "kg",
-                "Bežná cena za bal.": "49,9",
-                "Bežná jednotková cena": "33.27",
-                "Akciová cena": "21,9",
-                "Akciová jednotková cena": "14.60",
-                "Dátum akcie od": "02.07.2025",
-                "Dátum akcie do": "02.07.2025"
               }
             ]
           },
@@ -11066,20 +10499,6 @@
                 "Akciová jednotková cena": "49.90",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Lilek",
-                "Kategória": "zelenina",
-                "Podkategória": "erstv_zelenina",
-                "Zaradenie": "baklazan",
-                "Množstvo": "1",
-                "Merná jednotka": "ks",
-                "Bežná cena za bal.": "19,9",
-                "Bežná jednotková cena": "19.90",
-                "Akciová cena": "9,9",
-                "Akciová jednotková cena": "9.90",
-                "Dátum akcie od": "07.07.2025",
-                "Dátum akcie do": "30.07.2025"
               }
             ]
           }
@@ -12025,34 +11444,6 @@
                 "Doplnková Informácia": "více druhů",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Tatranky",
-                "Kategória": "sladkosti_a_pochutiny",
-                "Podkategória": "keksy",
-                "Zaradenie": "plnen_keks",
-                "Množstvo": "47",
-                "Merná jednotka": "g",
-                "Akciová cena": "7,95",
-                "Akciová jednotková cena": "169.15",
-                "Doplnková Informácia": "vybrané druhy 1+1",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kavenky",
-                "Kategória": "sladkosti_a_pochutiny",
-                "Podkategória": "keksy",
-                "Zaradenie": "plnen_keks",
-                "Množstvo": "50",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "15,9",
-                "Bežná jednotková cena": "318.00",
-                "Akciová cena": "11,9",
-                "Akciová jednotková cena": "238.00",
-                "Doplnková Informácia": "více druhů",
-                "Dátum akcie od": "26.06.2025",
-                "Dátum akcie do": "02.07.2025"
               },
               {
                 "Názov": "Oreo remix",
@@ -13562,20 +12953,6 @@
                 "Dátum akcie do": "01.07.2025"
               },
               {
-                "Názov": "Filé nowaco",
-                "Kategória": "mrazen_a_chladen_v_robky",
-                "Podkategória": "mrazen_polotovary",
-                "Zaradenie": "mrazen_ryby",
-                "Množstvo": "300",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "89,9",
-                "Bežná jednotková cena": "299.67",
-                "Akciová cena": "59,9",
-                "Akciová jednotková cena": "199.67",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
                 "Názov": "MOŘSKÁ\nŠTIKA FILÉ\nZ ALJAŠKY",
                 "Kategória": "mrazen_a_chladen_v_robky",
                 "Podkategória": "mrazen_polotovary",
@@ -14326,20 +13703,6 @@
                 "Doplnková Informácia": "vybrané druhy",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Vitana\nPaprika mletá",
-                "Kategória": "so_cukor_dochucovadl_koreniny",
-                "Podkategória": "koreniny",
-                "Zaradenie": "mlet_paprika",
-                "Množstvo": "100",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "58,9",
-                "Bežná jednotková cena": "589.00",
-                "Akciová cena": "35,9",
-                "Akciová jednotková cena": "359.00",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
               }
             ]
           },
@@ -14381,20 +13744,6 @@
                 "Bežná jednotková cena": "710.71",
                 "Akciová cena": "15,9",
                 "Akciová jednotková cena": "567.86",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kmín drcený vitana",
-                "Kategória": "so_cukor_dochucovadl_koreniny",
-                "Podkategória": "koreniny",
-                "Zaradenie": "rasca",
-                "Množstvo": "60",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "42,9",
-                "Bežná jednotková cena": "715.00",
-                "Akciová cena": "29,9",
-                "Akciová jednotková cena": "498.33",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               }
@@ -14502,21 +13851,6 @@
                 "Bežná jednotková cena": "153.65",
                 "Akciová cena": "49,9",
                 "Akciová jednotková cena": "95.96",
-                "Dátum akcie od": "25.06.2025",
-                "Dátum akcie do": "01.07.2025"
-              },
-              {
-                "Názov": "Kečup jemný hellmann´s",
-                "Kategória": "so_cukor_dochucovadl_koreniny",
-                "Podkategória": "dochucovadl",
-                "Zaradenie": "ke_up",
-                "Množstvo": "470",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "66,9",
-                "Bežná jednotková cena": "142.34",
-                "Akciová cena": "59,9",
-                "Akciová jednotková cena": "127.45",
-                "Doplnková Informácia": "Hovězí\nburgersteak",
                 "Dátum akcie od": "25.06.2025",
                 "Dátum akcie do": "01.07.2025"
               },

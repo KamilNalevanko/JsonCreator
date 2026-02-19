@@ -21,18 +21,6 @@
                 "Dátum akcie do": "05.07.2025"
               },
               {
-                "Názov": "Polędwica wieprzowa RZEŹNIK",
-                "Kategória": "m_so_ryby_a_deniny",
-                "Podkategória": "brav_ov",
-                "Zaradenie": "panenka_brav_ov",
-                "Množstvo": "1",
-                "Merná jednotka": "kg",
-                "Akciová cena": "29,99",
-                "Akciová jednotková cena": "29.99",
-                "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
-              },
-              {
                 "Názov": "Polędwica wieprzowa Stoisko mięsne",
                 "Kategória": "m_so_ryby_a_deniny",
                 "Podkategória": "brav_ov",
@@ -2717,21 +2705,6 @@
                 "Doplnková Informácia": "2x",
                 "Dátum akcie od": "03.07.2025",
                 "Dátum akcie do": "05.07.2025"
-              },
-              {
-                "Názov": "Mięso w słoiku Kraina Wędlin",
-                "Kategória": "lah_dkov_al_ty_n_tierky_a_konzervy",
-                "Podkategória": "konzervy",
-                "Zaradenie": "m_sov_konzervy",
-                "Množstvo": "300",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "8,89",
-                "Bežná jednotková cena": "29.63",
-                "Akciová cena": "5,99",
-                "Akciová jednotková cena": "19.97",
-                "Doplnková Informácia": "2x, różne rodzaje",
-                "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
               }
             ]
           },
@@ -4428,7 +4401,8 @@
                 "Akciová jednotková cena": "25.85",
                 "Doplnková Informácia": "3x",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               }
             ]
           }
@@ -5392,21 +5366,6 @@
                 "Merná jednotka": "g",
                 "Akciová cena": "13,99",
                 "Akciová jednotková cena": "34.98",
-                "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
-              },
-              {
-                "Názov": "Rolada ustrzycka w plastrach REGIONALNE POLSKIE SZLAKI",
-                "Kategória": "mlie_ne_v_robky_a_vajcia",
-                "Podkategória": "tvrd_a_polotvrd_syry",
-                "Zaradenie": "ostatn_zrej_ce_syry",
-                "Množstvo": "300",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "11,99",
-                "Bežná jednotková cena": "39.97",
-                "Akciová cena": "10,49",
-                "Akciová jednotková cena": "34.97",
-                "Doplnková Informácia": "różne rodzaje",
                 "Dátum akcie od": "03.07.2025",
                 "Dátum akcie do": "05.07.2025"
               },
@@ -6376,6 +6335,19 @@
                 "Dátum akcie do": "05.07.2025"
               },
               {
+                "Názov": "KUBUŚ PLAY",
+                "Kategória": "nealko_n_poje_k_vy_a_aje",
+                "Podkategória": "d_sy_a_adov_aje",
+                "Zaradenie": "d_sy",
+                "Množstvo": "1200",
+                "Merná jednotka": "ml",
+                "Akciová cena": "7,39",
+                "Akciová jednotková cena": "6.16",
+                "Doplnková Informácia": "3x400ml, różne rodzaje",
+                "Dátum akcie od": "03.07.2025",
+                "Dátum akcie do": "05.07.2025"
+              },
+              {
                 "Názov": "Sok 100%\ntłoczony Bracia Sadownicy",
                 "Kategória": "nealko_n_poje_k_vy_a_aje",
                 "Podkategória": "d_sy_a_adov_aje",
@@ -6635,19 +6607,6 @@
                 "Dátum akcie do": "30.07.2025"
               },
               {
-                "Názov": "KUBUŚ PLAY",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "d_sy_a_adov_aje",
-                "Zaradenie": "d_sy",
-                "Množstvo": "0,4",
-                "Merná jednotka": "l",
-                "Akciová cena": "2,19",
-                "Akciová jednotková cena": "5.47",
-                "Doplnková Informácia": "różne rodzaje",
-                "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
-              },
-              {
                 "Názov": "Sok jabłkowy bezpośrednio tłoczony Stąd takie dobre",
                 "Kategória": "nealko_n_poje_k_vy_a_aje",
                 "Podkategória": "d_sy_a_adov_aje",
@@ -6659,19 +6618,6 @@
                 "Akciová cena": "9,99",
                 "Akciová jednotková cena": "3.33",
                 "Dátum akcie od": "06.07.2025",
-                "Dátum akcie do": "30.07.2025"
-              },
-              {
-                "Názov": "Sok 100% tłoczony Bracia Sadownicy",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "d_sy_a_adov_aje",
-                "Zaradenie": "d_sy",
-                "Množstvo": "750",
-                "Merná jednotka": "ml",
-                "Akciová cena": "5,49",
-                "Akciová jednotková cena": "7.32",
-                "Doplnková Informácia": "różne rodzaje",
-                "Dátum akcie od": "05.07.2025",
                 "Dátum akcie do": "30.07.2025"
               }
             ]
@@ -6908,20 +6854,6 @@
                 "Bežná jednotková cena": "61.63",
                 "Akciová cena": "14",
                 "Akciová jednotková cena": "46.67",
-                "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
-              },
-              {
-                "Názov": "Kawa rozpuszczalna O Poranku Cafe d'Or",
-                "Kategória": "nealko_n_poje_k_vy_a_aje",
-                "Podkategória": "k_vy",
-                "Zaradenie": "instantn",
-                "Množstvo": "300",
-                "Merná jednotka": "g",
-                "Bežná cena za bal.": "18,49",
-                "Bežná jednotková cena": "61.63",
-                "Akciová cena": "14,49",
-                "Akciová jednotková cena": "48.30",
                 "Dátum akcie od": "03.07.2025",
                 "Dátum akcie do": "05.07.2025"
               },
@@ -8332,8 +8264,8 @@
                 "Bežná jednotková cena": "11.99",
                 "Akciová cena": "7,99",
                 "Akciová jednotková cena": "7.99",
-                "Dátum akcie od": "05.07.2025",
-                "Dátum akcie do": "30.07.2025"
+                "Dátum akcie od": "03.07.2025",
+                "Dátum akcie do": "05.07.2025"
               }
             ]
           },
@@ -8374,7 +8306,7 @@
             "Zaradenie": "hrozno",
             "Produkty": [
               {
-                "Názov": "Winogrono jasne",
+                "Názov": "Winogrona ciemne",
                 "Kategória": "ovocie",
                 "Podkategória": "erstv_ovocie",
                 "Zaradenie": "hrozno",
@@ -8386,18 +8318,16 @@
                 "Dátum akcie do": "05.07.2025"
               },
               {
-                "Názov": "Winogrona ciemne",
+                "Názov": "Winogrono jasne",
                 "Kategória": "ovocie",
                 "Podkategória": "erstv_ovocie",
                 "Zaradenie": "hrozno",
                 "Množstvo": "1",
                 "Merná jednotka": "kg",
-                "Bežná cena za bal.": "17,99",
-                "Bežná jednotková cena": "17.99",
-                "Akciová cena": "11,99",
-                "Akciová jednotková cena": "11.99",
-                "Dátum akcie od": "05.07.2025",
-                "Dátum akcie do": "30.07.2025"
+                "Akciová cena": "12,99",
+                "Akciová jednotková cena": "12.99",
+                "Dátum akcie od": "03.07.2025",
+                "Dátum akcie do": "05.07.2025"
               }
             ]
           },
@@ -8601,7 +8531,6 @@
           },
           {
             "Zaradenie": "kivi",
-            "Produkta": [],
             "Produkty": []
           },
           {
@@ -9079,8 +9008,8 @@
                 "Merná jednotka": "kg",
                 "Akciová cena": "2,99",
                 "Akciová jednotková cena": "2.99",
-                "Dátum akcie od": "05.07.2025",
-                "Dátum akcie do": "30.07.2025"
+                "Dátum akcie od": "03.07.2025",
+                "Dátum akcie do": "05.07.2025"
               }
             ]
           },
@@ -10897,19 +10826,6 @@
                 "Doplnková Informácia": "rózne rodzaje",
                 "Dátum akcie od": "06.07.2025",
                 "Dátum akcie do": "30.07.2025"
-              },
-              {
-                "Názov": "LAY’S Chipsy",
-                "Kategória": "sladkosti_a_pochutiny",
-                "Podkategória": "slan_pochutiny",
-                "Zaradenie": "chipsy",
-                "Množstvo": "200",
-                "Merná jednotka": "g",
-                "Akciová cena": "9,49",
-                "Akciová jednotková cena": "47.45",
-                "Doplnková Informácia": "różne rodzaje",
-                "Dátum akcie od": "06.07.2025",
-                "Dátum akcie do": "30.07.2025"
               }
             ]
           },
@@ -11941,8 +11857,8 @@
                 "Bežná jednotková cena": "10.65",
                 "Akciová cena": "14,99",
                 "Akciová jednotková cena": "9.99",
-                "Dátum akcie od": "05.07.2025",
-                "Dátum akcie do": "30.07.2025"
+                "Dátum akcie od": "03.07.2025",
+                "Dátum akcie do": "05.07.2025"
               }
             ]
           },
@@ -13014,7 +12930,8 @@
                 "Akciová jednotková cena": "19.39",
                 "Doplnková Informácia": "różne rodzaje",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               }
             ]
           }
@@ -13060,7 +12977,8 @@
                 "Akciová jednotková cena": "28.56",
                 "Doplnková Informácia": "różne rodzaje",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               },
               {
                 "Názov": "Płatki kukurydziane\nCorn Flakes",
@@ -13074,7 +12992,8 @@
                 "Akciová jednotková cena": "21.18",
                 "Doplnková Informácia": "2x",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               },
               {
                 "Názov": "Płatki Nestlé",
@@ -13086,7 +13005,8 @@
                 "Akciová jednotková cena": "27.71",
                 "Doplnková Informácia": "2x, różne rodzaje",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               }
             ]
           }
@@ -13108,7 +13028,8 @@
                 "Akciová jednotková cena": "45.75",
                 "Doplnková Informácia": "paprykowe",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               },
               {
                 "Názov": "Pieczywo chrupkie Wasa",
@@ -13121,7 +13042,8 @@
                 "Akciová cena": "4,59",
                 "Akciová jednotková cena": "41.73",
                 "Dátum akcie od": "03.07.2025",
-                "Dátum akcie do": "05.07.2025"
+                "Dátum akcie do": "05.07.2025",
+                "Zaradenie": ""
               }
             ]
           }
