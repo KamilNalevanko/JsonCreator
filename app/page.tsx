@@ -229,11 +229,51 @@ export default function Home() {
     Array<{ value: string; label: string }>
   > = {
     sk: [
-      { value: "lidl", label: "Lidl" },
       { value: "billa", label: "Billa" },
+      { value: "coop", label: "COOP" },
+      { value: "coop-jednota", label: "COOP Jednota" },
+      { value: "coop-tempo", label: "COOP Tempo" },
+      { value: "fresh", label: "Fresh" },
+      { value: "kaufland", label: "Kaufland" },
+      { value: "lidl", label: "Lidl" },
+      { value: "milk-agro", label: "Milk Agro" },
+      { value: "moj-obchod", label: "Môj Obchod" },
+      { value: "tesco-hypermarket", label: "Tesco Hypermarket" },
+      { value: "tesco-supermarket", label: "Tesco Supermarket" },
+      { value: "biedronka", label: "Biedronka" },
     ],
-    pl: [{ value: "lidl", label: "Lidl" }],
-    cz: [],
+    pl: [
+      { value: "biedronka", label: "Biedronka" },
+      { value: "billa", label: "Billa" },
+      { value: "kaufland", label: "Kaufland" },
+      { value: "lidl", label: "Lidl" },
+      { value: "tesco", label: "Tesco" },
+      { value: "tesco-hipermarket", label: "Tesco Hipermarket" },
+      { value: "tesco-supermarket", label: "Tesco Supermarket" },
+      { value: "coop", label: "COOP" },
+      { value: "coop-tempo", label: "COOP Tempo" },
+      { value: "coop-supermarket", label: "COOP Supermarket" },
+      { value: "fresh", label: "Fresh" },
+      { value: "milk-agro", label: "Milk Agro" },
+    ],
+    cz: [
+      { value: "tesco-hypermarket", label: "Tesco Hypermarket" },
+      { value: "tesco-supermarket", label: "Tesco Supermarket" },
+      { value: "peny", label: "Peny" },
+      { value: "ldil", label: "Ldil" },
+      { value: "kaufland", label: "Kaufland" },
+      { value: "globus", label: "Globus" },
+      { value: "billa-velka", label: "Billa veľká" },
+      { value: "billa-mala", label: "Billa malá" },
+      { value: "bala", label: "Bala" },
+      { value: "albert-hypermarket", label: "Albert Hypermarket" },
+      { value: "albert-supermarket", label: "Albert Supermarket" },
+    ],
+  };
+  const countryFileByFolder: Record<string, string> = {
+    sk: "slovakia",
+    pl: "poland",
+    cz: "czechia",
   };
   const shopOptions = useMemo(
     () => shopOptionsByFolder[bucketPath] ?? [],
@@ -258,6 +298,7 @@ export default function Home() {
     if (!hasCurrent) {
       setShop(available[0]?.value ?? "");
     }
+    setError("");
     setLoadedFlyer(null);
     setProducts([]);
     setEditingId(null);
@@ -856,16 +897,18 @@ export default function Home() {
       setError("");
       setStatus("");
       const safeFolder = (bucketPath || "sk").toLowerCase().trim();
-      const safeShop = (shopKey || "").toLowerCase().trim();
-      if (!safeShop || !safeFolder) return;
-   const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
-const candidates = [
-  `${base}/data/${safeFolder}/${safeShop}.json`,
-  `${base}/data/${safeFolder}/${safeShop}/${safeShop}.json`, // fallback ak raz prejdeš na zložky
-];
+      const fileBase = (countryFileByFolder[safeFolder] || safeFolder)
+        .toLowerCase()
+        .trim();
+      if (!fileBase || !safeFolder) return;
+      const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+      const candidates = [
+        `${base}/data/${safeFolder}/${fileBase}.json`,
+        `${base}/data/${safeFolder}/${fileBase}/${fileBase}.json`,
+      ];
 
-// ak nechceš env, stačí aj čisto relatívne:
-// const candidates = [`data/${safeFolder}/${safeShop}.json`, `data/${safeFolder}/${safeShop}/${safeShop}.json`];
+      // ak nechceš env, stačí aj čisto relatívne:
+      // const candidates = [`data/${safeFolder}/${fileBase}.json`, `data/${safeFolder}/${fileBase}/${fileBase}.json`];
 
       let response: Response | null = null;
       let lastUrl = "";
