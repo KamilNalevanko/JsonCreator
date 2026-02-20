@@ -1,16 +1,70 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-type FlyerProduct = Record<string, any>;
+type FlyerProduct = {
+  "Názov": string;
+  "Kategória": string;
+  "Podkategória": string;
+  "Zaradenie": string;
+  "Množstvo": string;
+  "Merná jednotka": string;
+  "Bežná cena za bal.": string;
+  "Bežná jednotková cena": string;
+  "Akciová cena": string;
+  "Akciová jednotková cena": string;
+  "Doplnková Informácia": string;
+  "Dátum akcie od": string;
+  "Dátum akcie do": string;
+};
 
-const normName = (s: string) =>
-  (s || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
+type HierarchyPlacement = {
+  "Zaradenie": string;
+  "Produkty"?: FlyerProduct[];
+};
+
+type HierarchySubcategory = {
+  "Podkategória": string;
+  "Zaradenia": HierarchyPlacement[];
+};
+
+type HierarchyCategory = {
+  "Kategória": string;
+  "Podkategórie": HierarchySubcategory[];
+};
+
+const trimName = (value: string) => (value || "").toString().trim();
+const productExistsInPlacement = (
+  placement: HierarchyPlacement,
+  product: FlyerProduct
+) =>
+  (placement["Produkty"] ?? []).some(
+    (p) =>
+      trimName(p["Názov"]) === trimName(product["Názov"]) &&
+      p["Kategória"] === product["Kategória"] &&
+      p["Podkategória"] === product["Podkategória"] &&
+      p["Zaradenie"] === product["Zaradenie"]
+  );
+
+const appendQueue = new Map<string, Promise<void>>();
+
+const withAppendLock = async <T>(key: string, work: () => Promise<T>): Promise<T> => {
+  const prior = appendQueue.get(key) ?? Promise.resolve();
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  appendQueue.set(key, prior.then(() => gate));
+  await prior;
+  try {
+    return await work();
+  } finally {
+    release();
+    if (appendQueue.get(key) === gate) {
+      appendQueue.delete(key);
+    }
+  }
+};
 
 export async function POST(req: Request) {
   try {
@@ -50,71 +104,106 @@ export async function POST(req: Request) {
       auth: { persistSession: false },
     });
 
-    // 1) Download existing master JSON
-    const dl = await supabase.storage.from("cap-data").download(storagePath);
+    return await withAppendLock(storagePath, async () => {
+      const dl = await supabase.storage.from("cap-data").download(storagePath);
 
-    if (dl.error || !dl.data) {
-      // IMPORTANT: do NOT overwrite when we cannot download the existing file
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Cannot download existing master JSON: ${storagePath}`,
-          detail: dl.error?.message || "Unknown download error",
-          path: storagePath,
-        },
-        { status: 404 }
+      if (dl.error || !dl.data) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `Cannot download existing master JSON: ${storagePath}`,
+            detail: dl.error?.message || "Unknown download error",
+            path: storagePath,
+          },
+          { status: 404 }
+        );
+      }
+
+      const text = await dl.data.text();
+      let master: any;
+      try {
+        master = JSON.parse(text);
+      } catch {
+        return NextResponse.json(
+          { ok: false, error: "Country JSON is not valid JSON.", path: storagePath },
+          { status: 500 }
+        );
+      }
+
+      if (!Array.isArray(master)) {
+        return NextResponse.json(
+          { ok: false, error: "Country JSON is not an array.", path: storagePath },
+          { status: 500 }
+        );
+      }
+
+      const data = master as HierarchyCategory[];
+      const categoryIndex = data.findIndex(
+        (c) => c["Kategória"] === product["Kategória"]
       );
-    }
+      if (categoryIndex === -1) {
+        return NextResponse.json(
+          { ok: false, error: "Category not found.", path: storagePath },
+          { status: 400 }
+        );
+      }
 
-    const text = await dl.data.text();
-    let master: any;
-    try {
-      master = JSON.parse(text);
-    } catch {
-      return NextResponse.json(
-        { ok: false, error: "Master JSON is not valid JSON.", path: storagePath },
-        { status: 500 }
+      const subIndex = (data[categoryIndex]["Podkategórie"] ?? []).findIndex(
+        (s) => s["Podkategória"] === product["Podkategória"]
       );
-    }
+      if (subIndex === -1) {
+        return NextResponse.json(
+          { ok: false, error: "Subcategory not found.", path: storagePath },
+          { status: 400 }
+        );
+      }
 
-    if (!master || typeof master !== "object") master = {};
-    if (!Array.isArray(master.Produkty)) master.Produkty = [];
+      const placementIndex = (
+        data[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"] ?? []
+      ).findIndex((p) => p["Zaradenie"] === product["Zaradenie"]);
+      if (placementIndex === -1) {
+        return NextResponse.json(
+          { ok: false, error: "Placement not found.", path: storagePath },
+          { status: 400 }
+        );
+      }
 
-    // 2) Deduplicate by NAME only (as you want)
-    const targetName = normName(product["Názov"]);
-    const exists = master.Produkty.some(
-      (p: any) => normName(p?.["Názov"] || "") === targetName
-    );
+      const placement =
+        data[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"][
+          placementIndex
+        ];
+      if (!placement["Produkty"]) placement["Produkty"] = [];
 
-    if (!exists) {
-      master.Produkty.push(product);
-    }
+      const exists = productExistsInPlacement(placement, product);
+      if (!exists) {
+        placement["Produkty"].push(product);
+      }
 
-    // 3) Upload back (upsert)
-    const payload = JSON.stringify(master, null, 2);
-    const up = await supabase.storage
-      .from("cap-data")
-      .upload(storagePath, payload, {
-        contentType: "application/json",
-        upsert: true,
+      const payload = JSON.stringify(data, null, 2);
+      const up = await supabase.storage
+        .from("cap-data")
+        .upload(storagePath, payload, {
+          contentType: "application/json",
+          cacheControl: "0",
+          upsert: true,
+        });
+
+      if (up.error) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `Upload failed for ${storagePath}`,
+            detail: up.error.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        path: storagePath,
+        added: !exists,
       });
-
-    if (up.error) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Upload failed for ${storagePath}`,
-          detail: up.error.message,
-        },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      path: storagePath,
-      added: !exists,
-      total: master.Produkty.length,
     });
   } catch (e: any) {
     return NextResponse.json(

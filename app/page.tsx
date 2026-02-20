@@ -226,6 +226,7 @@ export default function Home() {
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
   const lastLoadKeyRef = useRef<string>("");
+  const appendQueueRef = useRef<Promise<void>>(Promise.resolve());
   const shopOptionsByFolder: Record<
     string,
     Array<{ value: string; label: string }>
@@ -656,6 +657,16 @@ export default function Home() {
         item.product["Zaradenie"] === product["Zaradenie"]
     );
 
+  const isProductInLoadedFlyerExact = (product: FlyerProduct) =>
+    loadedProductsList.some(
+      (item) =>
+        (item.product["Názov"] || "").trim() ===
+          (product["Názov"] || "").trim() &&
+        item.product["Kategória"] === product["Kategória"] &&
+        item.product["Podkategória"] === product["Podkategória"] &&
+        item.product["Zaradenie"] === product["Zaradenie"]
+    );
+
   const appendProductToLoadedFlyer = (product: FlyerProduct) => {
     setLoadedFlyer((prev: HierarchyCategory[] | null) => {
       if (!prev) return prev;
@@ -691,21 +702,50 @@ export default function Home() {
   };
 
   const persistNewProduct = async (product: FlyerProduct) => {
-    // Persist into the country master JSON stored in Supabase Storage (server-side upsert).
-    if (!bucketPath) return;
+    // Persist into the country JSON stored in Supabase Storage (server-side upsert).
+    if (!bucketPath) return { ok: false, added: false };
     try {
-      const response = await fetch("/api/master-products/append", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: bucketPath, product }),
-      });
+      const run = async () => {
+        const response = await fetch("/api/master-products/append", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ country: bucketPath, product }),
+        });
 
-      if (!response.ok) {
-        const payload = await response.text();
-        console.error("Master append failed:", payload);
-      }
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          console.error("Master append failed:", payload);
+          setError(
+            t("error_upload_failed_detail", {
+              message: payload?.error || "Append failed",
+            })
+          );
+          return { ok: false, added: false };
+        }
+
+        if (payload?.added) {
+          setStatus("Produkt bol pridany do databazy.");
+        } else {
+          setStatus("Produkt uz existuje v databaze.");
+        }
+
+        return { ok: true, added: !!payload?.added };
+      };
+
+      const queued = appendQueueRef.current.then(run, run);
+      appendQueueRef.current = queued.then(
+        () => {},
+        () => {}
+      );
+
+      return await queued;
     } catch (err) {
       console.error("Master append failed:", err);
+      setError(
+        t("error_upload_failed_detail", { message: "Append failed" })
+      );
+      return { ok: false, added: false };
     }
   };
 
@@ -739,6 +779,37 @@ export default function Home() {
     };
 
     const alreadyInLoadedFlyer = isProductInLoadedFlyer(product);
+
+    const isCloneFromLoaded = (() => {
+      if (!editingLoadedRef || !loadedFlyer) return false;
+      const { categoryIndex, subcategoryIndex, placementIndex, productIndex } =
+        editingLoadedRef;
+      const original =
+        loadedFlyer[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.[
+          "Zaradenia"
+        ]?.[placementIndex]?.["Produkty"]?.[productIndex];
+      if (!original) return false;
+      const originalName = (original["Názov"] || "").trim();
+      const nextName = (product["Názov"] || "").trim();
+      return originalName !== nextName;
+    })();
+
+    if (isCloneFromLoaded) {
+      setEditingLoadedRef(null);
+      setEditingId(null);
+      setProducts((prev) => [...prev, { id: makeId(), product }]);
+      if (!isProductInLoadedFlyerExact(product)) {
+        appendProductToLoadedFlyer(product);
+        void persistNewProduct(product).then((result) => {
+          if (result.ok) {
+            loadShopJson(shop, true);
+          }
+        });
+      }
+      resetFormFields();
+      focusNameInput();
+      return;
+    }
 
     if (editingLoadedRef && loadedFlyer) {
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
@@ -826,7 +897,11 @@ export default function Home() {
       setProducts((prev) => [...prev, { id: makeId(), product }]);
       if (!alreadyInLoadedFlyer) {
         appendProductToLoadedFlyer(product);
-        void persistNewProduct(product);
+        void persistNewProduct(product).then((result) => {
+          if (result.ok) {
+            loadShopJson(shop, true);
+          }
+        });
       }
     }
     resetFormFields();
@@ -906,7 +981,7 @@ export default function Home() {
     resetFormFields();
   };
 
-  const loadShopJson = async (shopKey: string) => {
+  const loadShopJson = async (shopKey: string, forceRefresh = false) => {
     try {
       setError("");
       setStatus("");
@@ -921,9 +996,13 @@ export default function Home() {
         : supabaseUrl
           ? `${supabaseUrl}/storage/v1/object/public/cap-data/${storagePath}`
           : "";
+      const cacheBust = forceRefresh ? `v=${Date.now()}` : "";
+      const publicUrlWithCache = publicUrl
+        ? publicUrl + (publicUrl.includes("?") ? "&" : "?") + cacheBust
+        : "";
 
-      if (publicUrl) {
-        const resp = await fetch(publicUrl, { cache: "no-store" });
+      if (publicUrlWithCache) {
+        const resp = await fetch(publicUrlWithCache, { cache: "no-store" });
         if (!resp.ok) {
           setLoadedFlyer(null);
           setError(`${t("error_load_json")} (${storagePath})`);
