@@ -227,6 +227,8 @@ export default function Home() {
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
   const lastLoadKeyRef = useRef<string>("");
   const appendQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingAppendRef = useRef(0);
+  const [isAppending, setIsAppending] = useState(false);
   const shopOptionsByFolder: Record<
     string,
     Array<{ value: string; label: string }>
@@ -263,7 +265,7 @@ export default function Home() {
       { value: "tesco-hypermarket", label: "Tesco Hypermarket" },
       { value: "tesco-supermarket", label: "Tesco Supermarket" },
       { value: "peny", label: "Peny" },
-      { value: "ldil", label: "Ldil" },
+      { value: "lidl", label: "Lidl" },
       { value: "kaufland", label: "Kaufland" },
       { value: "globus", label: "Globus" },
       { value: "billa-velka", label: "Billa veľká" },
@@ -706,6 +708,8 @@ export default function Home() {
     if (!bucketPath) return { ok: false, added: false };
     try {
       const run = async () => {
+        pendingAppendRef.current += 1;
+        setIsAppending(true);
         const response = await fetch("/api/master-products/append", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -738,7 +742,6 @@ export default function Home() {
         () => {},
         () => {}
       );
-
       return await queued;
     } catch (err) {
       console.error("Master append failed:", err);
@@ -746,6 +749,11 @@ export default function Home() {
         t("error_upload_failed_detail", { message: "Append failed" })
       );
       return { ok: false, added: false };
+    } finally {
+      pendingAppendRef.current = Math.max(0, pendingAppendRef.current - 1);
+      if (pendingAppendRef.current === 0) {
+        setIsAppending(false);
+      }
     }
   };
 
@@ -753,6 +761,10 @@ export default function Home() {
   const addProduct = () => {
     setError("");
     setStatus("");
+    if (isAppending) {
+      setStatus("Prebieha ukladanie. Skus o chvilu.");
+      return;
+    }
     if (!categoryKey || !subcategoryKey) {
       setError(t("error_select_hierarchy"));
       return;
@@ -800,11 +812,7 @@ export default function Home() {
       setProducts((prev) => [...prev, { id: makeId(), product }]);
       if (!isProductInLoadedFlyerExact(product)) {
         appendProductToLoadedFlyer(product);
-        void persistNewProduct(product).then((result) => {
-          if (result.ok) {
-            loadShopJson(shop, true);
-          }
-        });
+       void persistNewProduct(product); // bez reloadu, nech sa pridá do mastera a bude vidieť pri ďalšom načítaní letáku
       }
       resetFormFields();
       focusNameInput();
@@ -897,11 +905,7 @@ export default function Home() {
       setProducts((prev) => [...prev, { id: makeId(), product }]);
       if (!alreadyInLoadedFlyer) {
         appendProductToLoadedFlyer(product);
-        void persistNewProduct(product).then((result) => {
-          if (result.ok) {
-            loadShopJson(shop, true);
-          }
-        });
+        void persistNewProduct(product);
       }
     }
     resetFormFields();
@@ -1786,9 +1790,10 @@ const deleteDebugFile = async () => {
 
               <div className="flex items-center gap-3 flex-nowrap">
                 <button
-                  className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95"
+                  className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95 disabled:opacity-60"
                   onClick={addProduct}
                   type="button"
+                  disabled={isAppending}
                 >
                   {editingId || editingLoadedRef ? t("btn_save_changes") : t("btn_add_product")}
                 </button>
