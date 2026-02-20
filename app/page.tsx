@@ -202,6 +202,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [bucketPath, setBucketPath] = useState("sk");
   const [editingLoadedRef, setEditingLoadedRef] = useState<LoadedProductRef | null>(null);
   const [previewProduct, setPreviewProduct] = useState<{
@@ -987,10 +988,6 @@ export default function Home() {
       : `${resolvedFileName}.json`;
     const nameStem = safeName.replace(/\.json$/i, "");
     const nameExt = ".json";
-    const safeShop = shop
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, "_")
-      .replace(/^_+|_+$/g, "");
     const basePath = `databazy/${bucketPath}`;
 
     try {
@@ -999,7 +996,7 @@ export default function Home() {
       let attempt = 0;
       while (attempt < maxAttempts) {
         const fileName = attempt === 0 ? safeName : `${nameStem}_${attempt}${nameExt}`;
-        const attemptPath = `${basePath}/${safeShop || "nezaradene"}/${fileName}`;
+        const attemptPath = `${basePath}/${fileName}`;
         const { error: uploadError } = await supabase.storage
           .from("cap-data")
           .upload(attemptPath, jsonPreview, {
@@ -1037,6 +1034,61 @@ export default function Home() {
       setIsUploading(false);
     }
   };
+
+
+
+
+const deleteDebugFile = async () => {
+  setError("");
+  setStatus("");
+
+  if (!supabase) {
+    setError(t("error_supabase_env"));
+    return;
+  }
+
+  const countryFolder = "sk";
+  const fileName = "lidl.json";
+  const filePath = `databazy/${countryFolder}/${fileName}`;
+
+  if (!confirm(`Naozaj chces zmazat ${filePath}?`)) return;
+
+  try {
+    setIsDeleting(true);
+
+    // 1) Skús rovno zmazať – ak nemáš práva, uvidíš 403, ak neexistuje, uvidíš chybu/empty.
+    const { data, error } = await supabase.storage
+      .from("cap-data")
+      .remove([filePath]);
+
+    if (error) {
+      // Najčastejšie: 403 (policy), alebo 404 (path)
+      const detail = `${error.message} (status: ${error.statusCode ?? "?"}, code: ${(error as any).error ?? "?"}, path: ${filePath})`;
+      setError(t("error_upload_failed_detail", { message: detail }));
+      return;
+    }
+
+    // Supabase niekedy vráti data aj keď nič nezmazal? – ošetri prázdne.
+    if (!data || data.length === 0) {
+      setError(`Nepodarilo sa zmazať alebo súbor neexistuje: ${filePath}`);
+      return;
+    }
+
+    // data má položky s name/path podľa verzie SDK
+    const removedNames = data
+      .map((item: any) => item?.name ?? item?.path ?? filePath)
+      .join(", ");
+
+    setStatus(`Subor zmazany: ${removedNames}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    setError(t("error_upload_failed_detail", { message }));
+    console.error("Delete failed:", err);
+  } finally {
+    setIsDeleting(false);
+  }
+};
+
 
   return (
     <div className="relative min-h-screen bg-gray-200">
@@ -1643,6 +1695,16 @@ export default function Home() {
                 >
                   {isUploading ? "Nahrávam..." : "Nahrať na server"}
                 </button>
+                {/*
+                <button
+                  className="rounded-full border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-60"
+                  onClick={deleteDebugFile}
+                  type="button"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Mažem..." : "Debug: zmazať lidl.json"}
+                </button>
+                */}
               </div>
             </div>
 
