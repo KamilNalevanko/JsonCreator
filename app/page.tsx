@@ -225,6 +225,7 @@ export default function Home() {
   const suggestionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const lastLoadKeyRef = useRef<string>("");
   const shopOptionsByFolder: Record<
     string,
     Array<{ value: string; label: string }>
@@ -466,9 +467,18 @@ export default function Home() {
     }));
   }, [products, hierarchy]);
 
+  const normalizeLoadedFlyer = (payload: unknown): HierarchyCategory[] | null => {
+    if (Array.isArray(payload)) return payload as HierarchyCategory[];
+    const data = (payload as { data?: unknown })?.data;
+    if (Array.isArray(data)) return data as HierarchyCategory[];
+    const items = (payload as { items?: unknown })?.items;
+    if (Array.isArray(items)) return items as HierarchyCategory[];
+    return null;
+  };
+
   // Extrahovať všetky produkty z loadedFlyer s ich metadátami
   const loadedProductsList = useMemo<LoadedProductEntry[]>(() => {
-    if (!loadedFlyer) return [];
+    if (!loadedFlyer || !Array.isArray(loadedFlyer)) return [];
 
     const allProducts: LoadedProductEntry[] = [];
 
@@ -503,7 +513,7 @@ export default function Home() {
 
   // Extrahovať všetky unikátne doplnkové info z loadedFlyer
   const loadedExtraInfosList = useMemo(() => {
-    if (!loadedFlyer) return [];
+    if (!loadedFlyer || !Array.isArray(loadedFlyer)) return [];
     
     const infos = new Set<string>();
     for (const category of loadedFlyer as HierarchyCategory[]) {
@@ -681,21 +691,24 @@ export default function Home() {
   };
 
   const persistNewProduct = async (product: FlyerProduct) => {
-    if (!bucketPath || !shop) return;
+    // Persist into the country master JSON stored in Supabase Storage (server-side upsert).
+    if (!bucketPath) return;
     try {
-      const response = await fetch("/api/append-product", {
+      const response = await fetch("/api/master-products/append", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bucketPath, shop, product }),
+        body: JSON.stringify({ country: bucketPath, product }),
       });
+
       if (!response.ok) {
-        const message = await response.text();
-        console.error("Append product failed:", message);
+        const payload = await response.text();
+        console.error("Master append failed:", payload);
       }
     } catch (err) {
-      console.error("Append product failed:", err);
+      console.error("Master append failed:", err);
     }
   };
+
 
   const addProduct = () => {
     setError("");
@@ -902,13 +915,40 @@ export default function Home() {
         .toLowerCase()
         .trim();
       if (!fileBase || !safeFolder) return;
+      const storagePath = `databazy/${safeFolder}/${fileBase}.json`;
+      const publicUrl = supabase
+        ? supabase.storage.from("cap-data").getPublicUrl(storagePath).data?.publicUrl
+        : supabaseUrl
+          ? `${supabaseUrl}/storage/v1/object/public/cap-data/${storagePath}`
+          : "";
+
+      if (publicUrl) {
+        const resp = await fetch(publicUrl, { cache: "no-store" });
+        if (!resp.ok) {
+          setLoadedFlyer(null);
+          setError(`${t("error_load_json")} (${storagePath})`);
+          return;
+        }
+
+        const data = await resp.json();
+        const normalized = normalizeLoadedFlyer(data);
+        if (!normalized) {
+          setLoadedFlyer(null);
+          setError(`${t("error_load_json")} (unexpected JSON shape: ${storagePath})`);
+          return;
+        }
+        setLoadedFlyer(normalized);
+        setStatus(t("status_loaded_file"));
+        return;
+      }
+
       const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
       const candidates = [
         `${base}/data/${safeFolder}/${fileBase}.json`,
         `${base}/data/${safeFolder}/${fileBase}/${fileBase}.json`,
       ];
 
-      // ak nechceš env, stačí aj čisto relatívne:
+      // ak nechces env, staci aj cisto relativne:
       // const candidates = [`data/${safeFolder}/${fileBase}.json`, `data/${safeFolder}/${fileBase}/${fileBase}.json`];
 
       let response: Response | null = null;
@@ -929,7 +969,13 @@ export default function Home() {
       }
 
       const data = await response.json();
-      setLoadedFlyer(data);
+      const normalized = normalizeLoadedFlyer(data);
+      if (!normalized) {
+        setLoadedFlyer(null);
+        setError(`${t("error_load_json")} (unexpected JSON shape: ${lastUrl})`);
+        return;
+      }
+      setLoadedFlyer(normalized);
       setStatus(t("status_loaded_file"));
     } catch (err) {
       setLoadedFlyer(null);
@@ -940,6 +986,12 @@ export default function Home() {
 
   useEffect(() => {
     if (!shop) return;
+    const available = shopOptionsByFolder[bucketPath] ?? [];
+    const hasCurrent = available.some((option) => option.value === shop);
+    if (!hasCurrent) return;
+    const nextKey = `${bucketPath}:${shop}`;
+    if (lastLoadKeyRef.current === nextKey) return;
+    lastLoadKeyRef.current = nextKey;
     loadShopJson(shop);
   }, [shop, bucketPath]);
 
