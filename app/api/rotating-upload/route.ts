@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type IndexState = {
   next: number;
@@ -24,7 +25,7 @@ const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getExistingState = async (
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   basePath: string,
   fileBase: string
 ) => {
@@ -77,7 +78,7 @@ const getExistingState = async (
 };
 
 const readIndex = async (
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   indexPath: string
 ): Promise<{ found: boolean; state: IndexState }> => {
   const dl = await supabase.storage.from("cap-data").download(indexPath);
@@ -96,7 +97,7 @@ const readIndex = async (
 };
 
 const writeIndex = async (
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   indexPath: string,
   state: IndexState
 ) => {
@@ -108,8 +109,32 @@ const writeIndex = async (
   });
 };
 
+const uploadQueue = new Map<string, Promise<void>>();
+
+const withUploadLock = async <T>(
+  key: string,
+  work: () => Promise<T>
+): Promise<T> => {
+  const prior = uploadQueue.get(key) ?? Promise.resolve();
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  uploadQueue.set(key, prior.then(() => gate));
+  await prior;
+  try {
+    return await work();
+  } finally {
+    release();
+    if (uploadQueue.get(key) === gate) {
+      uploadQueue.delete(key);
+    }
+  }
+};
+
 const rotateFiles = async (
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   basePath: string,
   fileBase: string
 ) => {
@@ -189,77 +214,82 @@ export async function POST(req: Request) {
       auth: { persistSession: false },
     });
 
-    const existing = await getExistingState(supabase, basePath, fileBase);
+    return await withUploadLock(`${basePath}/${fileBase}`, async () => {
+      const existing = await getExistingState(supabase, basePath, fileBase);
 
-    if (existing.ok && existing.hasBase && !existing.hasSlotOne) {
-      const from = `${basePath}/${fileBase}.json`;
-      const to = `${basePath}/${fileBase}_1.json`;
-      const moveRes = await supabase.storage.from("cap-data").move(from, to);
-      if (!moveRes.error) {
-        existing.state.next = Math.max(existing.state.next, 2);
+      if (existing.ok && existing.hasBase && !existing.hasSlotOne) {
+        const from = `${basePath}/${fileBase}.json`;
+        const to = `${basePath}/${fileBase}_1.json`;
+        const moveRes = await supabase.storage.from("cap-data").move(from, to);
+        if (!moveRes.error) {
+          existing.state.next = Math.max(existing.state.next, 2);
+        }
       }
-    }
 
-    const { found, state: storedIndex } = await readIndex(supabase, indexPath);
-    let indexState = found ? storedIndex : existing.state;
+      const { found, state: storedIndex } = await readIndex(
+        supabase,
+        indexPath
+      );
+      let indexState = found ? storedIndex : existing.state;
 
-    if (existing.ok) {
-      if (
-        existing.state.next < indexState.next ||
-        existing.state.isFull !== indexState.isFull
-      ) {
-        indexState = existing.state;
+      if (existing.ok) {
+        if (
+          existing.state.next < indexState.next ||
+          existing.state.isFull !== indexState.isFull
+        ) {
+          indexState = existing.state;
+        }
       }
-    }
 
-    if (indexState.next > 10 && indexState.isFull) {
-      const rotate = await rotateFiles(supabase, basePath, fileBase);
-      if (!rotate.ok) {
+      if (indexState.next > 10 && indexState.isFull) {
+        const rotate = await rotateFiles(supabase, basePath, fileBase);
+        if (!rotate.ok) {
+          return NextResponse.json(
+            { ok: false, error: rotate.error },
+            { status: 500 }
+          );
+        }
+        indexState = { next: 6, isFull: true };
+      } else if (indexState.next > 10) {
+        indexState = { next: 1, isFull: false };
+      }
+
+      const slot = clampIndex(indexState.next);
+      const targetPath = `${basePath}/${fileBase}_${slot}.json`;
+
+      const uploadRes = await supabase.storage
+        .from("cap-data")
+        .upload(targetPath, content, {
+          contentType: "application/json",
+          upsert: true,
+          cacheControl: "0",
+        });
+
+      if (uploadRes.error) {
         return NextResponse.json(
-          { ok: false, error: rotate.error },
+          { ok: false, error: uploadRes.error.message, path: targetPath },
           { status: 500 }
         );
       }
-      indexState = { next: 6, isFull: true };
-    } else if (indexState.next > 10) {
-      indexState = { next: 1, isFull: false };
-    }
 
-    const slot = clampIndex(indexState.next);
-    const targetPath = `${basePath}/${fileBase}_${slot}.json`;
+      const next = slot + 1;
+      const isFull = indexState.isFull || next > 10;
+      const nextState: IndexState = { next, isFull };
 
-    const uploadRes = await supabase.storage
-      .from("cap-data")
-      .upload(targetPath, content, {
-        contentType: "application/json",
-        upsert: true,
-        cacheControl: "0",
+      const indexRes = await writeIndex(supabase, indexPath, nextState);
+      if (indexRes.error) {
+        return NextResponse.json(
+          { ok: false, error: indexRes.error.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        path: targetPath,
+        next: nextState.next,
+        isFull: nextState.isFull,
       });
-
-    if (uploadRes.error) {
-      return NextResponse.json(
-        { ok: false, error: uploadRes.error.message, path: targetPath },
-        { status: 500 }
-      );
-    }
-
-    const next = slot + 1;
-    const isFull = indexState.isFull || next > 10;
-    const nextState: IndexState = { next, isFull };
-
-    const indexRes = await writeIndex(supabase, indexPath, nextState);
-    if (indexRes.error) {
-      return NextResponse.json(
-        { ok: false, error: indexRes.error.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      path: targetPath,
-      next: nextState.next,
-      isFull: nextState.isFull,
     });
   } catch (e: any) {
     return NextResponse.json(
