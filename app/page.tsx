@@ -383,7 +383,7 @@ export default function Home() {
     if (!showInfoSuggestions) return;
     if (activeInfoSuggestionIndex < 0) return;
     const el = infoSuggestionItemRefs.current[activeInfoSuggestionIndex];
-    if (el) el.scrollIntoView({ block: "nearest" });
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "auto" });
   }, [activeInfoSuggestionIndex, showInfoSuggestions, filteredInfoSuggestions.length]);
 
   // Keep keyboard highlight visible inside the suggestions dropdown
@@ -1524,7 +1524,7 @@ const deleteDebugFile = async () => {
                             selectLoadedSuggestion(p);
                           }}
                           onMouseEnter={() => setActiveSuggestionIndex(idx)}
-                          className={`w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 ${
+                          className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-[2.75rem] flex items-center ${
                             idx === activeSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
                           }`}
                         >
@@ -1785,8 +1785,10 @@ const deleteDebugFile = async () => {
                     onChange={(event) => {
                       if (event.target.value) {
                         const [year, month, day] = event.target.value.split("-");
-                        const newFromDate = `${day}.${month}.${year}`;
-                        setForm((prev) => ({ ...prev, dateFrom: newFromDate }));
+                        if (year.length === 4) {
+                          const newFromDate = `${day}.${month}.${year}`;
+                          setForm((prev) => ({ ...prev, dateFrom: newFromDate }));
+                        }
                       } else {
                         setForm((prev) => ({ ...prev, dateFrom: "" }));
                       }
@@ -1802,10 +1804,12 @@ const deleteDebugFile = async () => {
                     onChange={(event) => {
                       if (event.target.value) {
                         const [year, month, day] = event.target.value.split("-");
-                        setForm((prev) => ({
-                          ...prev,
-                          dateTo: `${day}.${month}.${year}`,
-                        }));
+                        if (year.length === 4) {
+                          setForm((prev) => ({
+                            ...prev,
+                            dateTo: `${day}.${month}.${year}`,
+                          }));
+                        }
                       } else {
                         setForm((prev) => ({
                           ...prev,
@@ -1926,7 +1930,7 @@ placeholder={t("placeholder_extra_info")}
                               setActiveInfoSuggestionIndex(-1);
                             }}
                             onMouseEnter={() => setActiveInfoSuggestionIndex(idx)}
-                            className={`w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 ${
+                            className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-[2.75rem] flex items-center ${
                               idx === activeInfoSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
                             }`}
                           >
