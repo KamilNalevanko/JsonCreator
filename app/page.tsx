@@ -217,6 +217,8 @@ export default function Home() {
   const [filteredSuggestions, setFilteredSuggestions] = useState<typeof loadedProductsList>([]);
   const [showInfoSuggestions, setShowInfoSuggestions] = useState(false);
   const [filteredInfoSuggestions, setFilteredInfoSuggestions] = useState<string[]>([]);
+  const [activeInfoSuggestionIndex, setActiveInfoSuggestionIndex] = useState<number>(-1);
+  const infoSuggestionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const suggestionsBoxRef = useRef<HTMLDivElement | null>(null);
   const infoInputRef = useRef<HTMLInputElement | null>(null);
@@ -367,6 +369,7 @@ export default function Home() {
         if (!insideInfo && !insideInfoSuggestions) {
           setShowInfoSuggestions(false);
           setFilteredInfoSuggestions([]);
+          setActiveInfoSuggestionIndex(-1);
         }
       }
     };
@@ -374,6 +377,14 @@ export default function Home() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showSuggestions, showInfoSuggestions]);
+
+  // Keep keyboard highlight visible inside the info suggestions dropdown
+  useEffect(() => {
+    if (!showInfoSuggestions) return;
+    if (activeInfoSuggestionIndex < 0) return;
+    const el = infoSuggestionItemRefs.current[activeInfoSuggestionIndex];
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }, [activeInfoSuggestionIndex, showInfoSuggestions, filteredInfoSuggestions.length]);
 
   // Keep keyboard highlight visible inside the suggestions dropdown
   useEffect(() => {
@@ -616,6 +627,94 @@ export default function Home() {
     setFilteredSuggestions([]);
     setActiveSuggestionIndex(-1);
   };
+
+
+  // Global keyboard nav for suggestion dropdowns (prevents page scroll when focus is not on the input)
+  useEffect(() => {
+    const hasNameList = showSuggestions && filteredSuggestions.length > 0;
+    const hasInfoList = showInfoSuggestions && filteredInfoSuggestions.length > 0;
+    if (!hasNameList && !hasInfoList) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const key = e.key;
+      if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Enter" && key !== "Escape") return;
+
+      // If any list is open, consume keys so the page doesn't scroll.
+      e.preventDefault();
+
+      if (key === "Escape") {
+        if (hasNameList) {
+          setShowSuggestions(false);
+          setFilteredSuggestions([]);
+          setActiveSuggestionIndex(-1);
+        }
+        if (hasInfoList) {
+          setShowInfoSuggestions(false);
+          setFilteredInfoSuggestions([]);
+          setActiveInfoSuggestionIndex(-1);
+        }
+        return;
+      }
+
+      if (key === "Enter") {
+        if (hasInfoList) {
+          const picked = filteredInfoSuggestions[activeInfoSuggestionIndex];
+          if (picked) {
+            setForm((prev) => ({ ...prev, info: picked }));
+          }
+          setShowInfoSuggestions(false);
+          setFilteredInfoSuggestions([]);
+          setActiveInfoSuggestionIndex(-1);
+          focusInfoInput();
+          return;
+        }
+
+        if (hasNameList) {
+          const p = filteredSuggestions[activeSuggestionIndex];
+          if (p) {
+            selectLoadedSuggestion(p);
+          }
+        }
+        return;
+      }
+
+      if (key === "ArrowDown") {
+        if (hasInfoList) {
+          setActiveInfoSuggestionIndex((prev) =>
+            Math.min((prev < 0 ? 0 : prev) + 1, filteredInfoSuggestions.length - 1)
+          );
+          return;
+        }
+        if (hasNameList) {
+          setActiveSuggestionIndex((prev) =>
+            Math.min((prev < 0 ? 0 : prev) + 1, filteredSuggestions.length - 1)
+          );
+        }
+        return;
+      }
+
+      if (key === "ArrowUp") {
+        if (hasInfoList) {
+          setActiveInfoSuggestionIndex((prev) => Math.max((prev < 0 ? 0 : prev) - 1, 0));
+          return;
+        }
+        if (hasNameList) {
+          setActiveSuggestionIndex((prev) => Math.max((prev < 0 ? 0 : prev) - 1, 0));
+        }
+      }
+    };
+
+    // capture=true so we catch it even if focus is on body/button and stop page scrolling
+    document.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => document.removeEventListener("keydown", onKeyDown, { capture: true } as any);
+  }, [
+    showSuggestions,
+    filteredSuggestions.length,
+    activeSuggestionIndex,
+    showInfoSuggestions,
+    filteredInfoSuggestions.length,
+    activeInfoSuggestionIndex,
+  ]);
 
 
 
@@ -929,6 +1028,15 @@ export default function Home() {
   });
 };
 
+  // dôležité: keď otvoríš dropdown cez šípku, focus sa môže stratiť z inputu
+  // a potom šípky hore/dole nevolajú onKeyDown na inpute.
+  const focusInfoInput = () => {
+    requestAnimationFrame(() => {
+      infoInputRef.current?.focus();
+      infoInputRef.current?.select();
+    });
+  };
+
   const removeLoadedProduct = (ref: LoadedProductRef) => {
     const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = ref;
     setLoadedFlyer((prev: HierarchyCategory[] | null) => {
@@ -1114,31 +1222,53 @@ export default function Home() {
     setShowUploadConfirm(false);
     setError("");
     setStatus("");
+    if (!supabase) {
+      setError(t("error_supabase_env"));
+      return;
+    }
+    const safeName = resolvedFileName.endsWith(".json")
+      ? resolvedFileName
+      : `${resolvedFileName}.json`;
+    const nameStem = safeName.replace(/\.json$/i, "");
+    const nameExt = ".json";
+    const basePath = `databazy/${bucketPath}`;
 
     try {
       setIsUploading(true);
-      const response = await fetch("/api/rotating-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          country: bucketPath,
-          shop,
-          payload: jsonPreview,
-        }),
-      });
+      const maxAttempts = 50;
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        const fileName = attempt === 0 ? safeName : `${nameStem}_${attempt}${nameExt}`;
+        const attemptPath = `${basePath}/${fileName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("cap-data")
+          .upload(attemptPath, jsonPreview, {
+            contentType: "application/json",
+            upsert: false,
+          });
 
-      const payload = await response.json().catch(() => ({}));
+        if (!uploadError) {
+          setStatus(t("status_uploaded"));
+          return;
+        }
 
-      if (!response.ok) {
+        if (uploadError.message?.toLowerCase().includes("already exists")) {
+          attempt += 1;
+          continue;
+        }
+
         setError(
-          t("error_upload_failed_detail", {
-            message: payload?.error || "Upload failed",
-          })
+          t("error_upload_failed_detail", { message: uploadError.message })
         );
         return;
       }
 
-      setStatus(t("status_uploaded"));
+      setError(
+        t("error_upload_failed_detail", {
+          message: "Nepodarilo sa najst volny nazov suboru.",
+        })
+      );
+      return;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(t("error_upload_failed_detail", { message }));
@@ -1367,6 +1497,7 @@ const deleteDebugFile = async () => {
                           setFilteredSuggestions(loadedProductsList);
                           setShowSuggestions(true);
                           setActiveSuggestionIndex(0);
+                          focusNameInput();
                         }
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
@@ -1696,21 +1827,62 @@ const deleteDebugFile = async () => {
                         
                         if (newInfo.trim() && loadedFlyer) {
                           const filtered = loadedExtraInfosList.filter((info) =>
-                            normalizeKey(info).includes(normalizeKey(newInfo))
+                            matchesSearch(info, newInfo)
                           );
                           setFilteredInfoSuggestions(filtered);
                           setShowInfoSuggestions(filtered.length > 0);
+                          setActiveInfoSuggestionIndex(filtered.length > 0 ? 0 : -1);
                         } else {
                           setShowInfoSuggestions(false);
                           setFilteredInfoSuggestions([]);
+                          setActiveInfoSuggestionIndex(-1);
                         }
                       }}
                       onFocus={() => {
                         if (form.info.trim() && filteredInfoSuggestions.length > 0) {
                           setShowInfoSuggestions(true);
+                          setActiveInfoSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
                         }
                       }}
-                      placeholder={t("placeholder_extra_info")}
+                                            onKeyDown={(e) => {
+                        const hasList = showInfoSuggestions && filteredInfoSuggestions.length > 0;
+
+                        if (!hasList && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                          if (filteredInfoSuggestions.length > 0) {
+                            e.preventDefault();
+                            setShowInfoSuggestions(true);
+                            setActiveInfoSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
+                          }
+                          return;
+                        }
+
+                        if (!hasList) return;
+
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setActiveInfoSuggestionIndex((prev) =>
+                            Math.min(prev + 1, filteredInfoSuggestions.length - 1)
+                          );
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setActiveInfoSuggestionIndex((prev) => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          const picked = filteredInfoSuggestions[activeInfoSuggestionIndex];
+                          if (picked) {
+                            setForm((prev) => ({ ...prev, info: picked }));
+                            setShowInfoSuggestions(false);
+                            setFilteredInfoSuggestions([]);
+                            setActiveInfoSuggestionIndex(-1);
+                          }
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          setShowInfoSuggestions(false);
+                          setFilteredInfoSuggestions([]);
+                          setActiveInfoSuggestionIndex(-1);
+                        }
+                      }}
+placeholder={t("placeholder_extra_info")}
                     />
                     
                     {loadedFlyer && loadedExtraInfosList.length > 0 && (
@@ -1720,9 +1892,13 @@ const deleteDebugFile = async () => {
                         onClick={() => {
                           if (showInfoSuggestions) {
                             setShowInfoSuggestions(false);
+                            setFilteredInfoSuggestions([]);
+                            setActiveInfoSuggestionIndex(-1);
                           } else {
                             setFilteredInfoSuggestions(loadedExtraInfosList);
                             setShowInfoSuggestions(true);
+                            setActiveInfoSuggestionIndex(0);
+                            focusInfoInput();
                           }
                         }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
@@ -1738,13 +1914,21 @@ const deleteDebugFile = async () => {
                         {filteredInfoSuggestions.map((info, idx) => (
                           <button
                             key={idx}
+                            ref={(el) => {
+                              infoSuggestionItemRefs.current[idx] = el;
+                            }}
                             type="button"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
                               setForm((prev) => ({ ...prev, info }));
                               setShowInfoSuggestions(false);
                               setFilteredInfoSuggestions([]);
+                              setActiveInfoSuggestionIndex(-1);
                             }}
-                            className="w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] hover:bg-[color:var(--accent)]/10 transition border-b border-black/5 last:border-b-0"
+                            onMouseEnter={() => setActiveInfoSuggestionIndex(idx)}
+                            className={`w-full px-4 py-2 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 ${
+                              idx === activeInfoSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
+                            }`}
                           >
                             {info}
                           </button>
