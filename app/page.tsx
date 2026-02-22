@@ -1114,53 +1114,31 @@ export default function Home() {
     setShowUploadConfirm(false);
     setError("");
     setStatus("");
-    if (!supabase) {
-      setError(t("error_supabase_env"));
-      return;
-    }
-    const safeName = resolvedFileName.endsWith(".json")
-      ? resolvedFileName
-      : `${resolvedFileName}.json`;
-    const nameStem = safeName.replace(/\.json$/i, "");
-    const nameExt = ".json";
-    const basePath = `databazy/${bucketPath}`;
 
     try {
       setIsUploading(true);
-      const maxAttempts = 50;
-      let attempt = 0;
-      while (attempt < maxAttempts) {
-        const fileName = attempt === 0 ? safeName : `${nameStem}_${attempt}${nameExt}`;
-        const attemptPath = `${basePath}/${fileName}`;
-        const { error: uploadError } = await supabase.storage
-          .from("cap-data")
-          .upload(attemptPath, jsonPreview, {
-            contentType: "application/json",
-            upsert: false,
-          });
+      const response = await fetch("/api/rotating-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: bucketPath,
+          shop,
+          payload: jsonPreview,
+        }),
+      });
 
-        if (!uploadError) {
-          setStatus(t("status_uploaded"));
-          return;
-        }
+      const payload = await response.json().catch(() => ({}));
 
-        if (uploadError.message?.toLowerCase().includes("already exists")) {
-          attempt += 1;
-          continue;
-        }
-
+      if (!response.ok) {
         setError(
-          t("error_upload_failed_detail", { message: uploadError.message })
+          t("error_upload_failed_detail", {
+            message: payload?.error || "Upload failed",
+          })
         );
         return;
       }
 
-      setError(
-        t("error_upload_failed_detail", {
-          message: "Nepodarilo sa najst volny nazov suboru.",
-        })
-      );
-      return;
+      setStatus(t("status_uploaded"));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(t("error_upload_failed_detail", { message }));
