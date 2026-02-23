@@ -1108,7 +1108,7 @@ export default function Home() {
         .toLowerCase()
         .trim();
       if (!fileBase || !safeFolder) return;
-      const storagePath = `databazy/${safeFolder}/${fileBase}.json`;
+      const storagePath = `data/${safeFolder}/${fileBase}.json`;
       const publicUrl = supabase
         ? supabase.storage.from("cap-data").getPublicUrl(storagePath).data?.publicUrl
         : supabaseUrl
@@ -1237,7 +1237,7 @@ export default function Home() {
       : `${resolvedFileName}.json`;
     const nameStem = safeName.replace(/\.json$/i, "");
     const nameExt = ".json";
-    const basePath = `databazy/${bucketPath}`;
+    const basePath = `data/${bucketPath}`;
 
     try {
       setIsUploading(true);
@@ -1298,7 +1298,7 @@ const deleteDebugFile = async () => {
 
   const countryFolder = "sk";
   const fileName = "lidl.json";
-  const filePath = `databazy/${countryFolder}/${fileName}`;
+  const filePath = `data/${countryFolder}/${fileName}`;
 
   if (!confirm(`Naozaj chces zmazat ${filePath}?`)) return;
 
