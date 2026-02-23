@@ -639,6 +639,12 @@ export default function Home() {
       const key = e.key;
       if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Enter" && key !== "Escape") return;
 
+      // Skip if focus is on an input element (local handlers will manage it)
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) {
+        return;
+      }
+
       // If any list is open, consume keys so the page doesn't scroll.
       e.preventDefault();
 
