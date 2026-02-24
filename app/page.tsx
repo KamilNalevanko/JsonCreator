@@ -36,6 +36,7 @@ type FlyerProduct = {
   "Doplnková Informácia": string;
   "Dátum akcie od": string;
   "Dátum akcie do": string;
+  "Obchody"?: string[];
 };
 
 type ProductEntry = {
@@ -116,6 +117,35 @@ const normalizeKey = (value: string) =>
 // “zlepená” verzia – odstráni medzery, pomlčky, bodky… nech ostane len a-z/0-9
 const normalizeKeyTight = (value: string) =>
   normalizeKey(value).replace(/[^a-z0-9]+/g, "");
+
+const GLOBAL_SHOP_TOKEN = "global";
+const SHOP_ALIASES: Record<string, string> = {
+  billa: "billa",
+  coop: "potraviny",
+  coopjednota: "potraviny",
+  coopjednotasupermarket: "supermarket",
+  supermarket: "supermarket",
+  cooptempo: "tempo",
+  tempo: "tempo",
+  fresh: "fresh",
+  kaufland: "kaufland",
+  lidl: "lidl",
+  milkagro: "milkagro",
+  mojobchod: "mojobchod",
+  tescohypermarket: "tescohypermarket",
+  tescosupermarket: "tescosupermarket",
+  biedronka: "biedronka",
+  potraviny: "potraviny",
+};
+const normalizeShopToken = (value: string) => {
+  const normalized = normalizeKeyTight(value);
+  return SHOP_ALIASES[normalized] ?? normalized;
+};
+const productMatchesShop = (product: FlyerProduct, shopKey: string) => {
+  const target = normalizeShopToken(shopKey);
+  const tokens = (product["Obchody"] ?? []).map(normalizeShopToken);
+  return tokens.includes(GLOBAL_SHOP_TOKEN) || (target && tokens.includes(target));
+};
 
 // ✅ jeden matcher pre všetko (názvy, info, zoznam…)
 const matchesSearch = (candidate: string, query: string) => {
@@ -237,8 +267,8 @@ export default function Home() {
   > = {
     sk: [
       { value: "billa", label: "Billa" },
-      { value: "coop", label: "COOP" },
-      { value: "coop-jednota", label: "COOP Jednota" },
+      { value: "coop", label: "COOP Jednota" },
+      { value: "coop-jednota", label: "COOP Jednota Supermarket" },
       { value: "coop-tempo", label: "COOP Tempo" },
       { value: "fresh", label: "Fresh" },
       { value: "kaufland", label: "Kaufland" },
@@ -257,7 +287,7 @@ export default function Home() {
       { value: "tesco", label: "Tesco" },
       { value: "tesco-hipermarket", label: "Tesco Hipermarket" },
       { value: "tesco-supermarket", label: "Tesco Supermarket" },
-      { value: "coop", label: "COOP" },
+      { value: "coop", label: "COOP Jednota" },
       { value: "coop-tempo", label: "COOP Tempo" },
       { value: "coop-supermarket", label: "COOP Supermarket" },
       { value: "fresh", label: "Fresh" },
@@ -503,6 +533,7 @@ export default function Home() {
         (subcategory["Zaradenia"] ?? []).forEach((placement: HierarchyPlacement, placementIndex: number) => {
           const placementKey = placement["Zaradenie"];
           (placement["Produkty"] ?? []).forEach((product: FlyerProduct, productIndex: number) => {
+            if (!productMatchesShop(product, shop)) return;
             allProducts.push({
               id: `loaded-${categoryIndex}-${subcategoryIndex}-${placementIndex}-${productIndex}`,
               name: product["Názov"],
@@ -523,7 +554,7 @@ export default function Home() {
     });
 
     return allProducts;
-  }, [loadedFlyer]);
+  }, [loadedFlyer, shop]);
 
   // Extrahovať všetky unikátne doplnkové info z loadedFlyer
   const loadedExtraInfosList = useMemo(() => {
@@ -534,6 +565,7 @@ export default function Home() {
       for (const subcategory of category["Podkategórie"] ?? [] as HierarchySubcategory[]) {
         for (const placement of subcategory["Zaradenia"] ?? [] as HierarchyPlacement[]) {
           for (const product of placement["Produkty"] ?? [] as FlyerProduct[]) {
+            if (!productMatchesShop(product, shop)) continue;
             const info = product["Doplnková Informácia"]?.trim();
             if (info) {
               infos.add(info);
@@ -544,7 +576,7 @@ export default function Home() {
     }
 
     return Array.from(infos).sort();
-  }, [loadedFlyer]);
+  }, [loadedFlyer, shop]);
 
   const jsonPreview = useMemo(() => {
     return JSON.stringify(flyerData, null, 2);
@@ -879,6 +911,23 @@ export default function Home() {
       return;
     }
 
+    const resolveProductShops = (): string[] => {
+      if (editingLoadedRef && loadedFlyer) {
+        const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
+        const original =
+          loadedFlyer[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[
+            placementIndex
+          ]?.["Produkty"]?.[productIndex];
+        return Array.isArray(original?.["Obchody"]) ? original["Obchody"] : [];
+      }
+      if (editingId) {
+        const existing = products.find((entry) => entry.id === editingId);
+        return Array.isArray(existing?.product?.["Obchody"]) ? existing!.product["Obchody"] : [];
+      }
+      const normalized = normalizeShopToken(shop);
+      return normalized ? [normalized] : [];
+    };
+
     const product: FlyerProduct = {
       "Názov": form.name.trim(),
       "Kategória": categoryKey,
@@ -893,6 +942,7 @@ export default function Home() {
       "Doplnková Informácia": form.info?.trim() || "",
       "Dátum akcie od": form.dateFrom?.trim() || "",
       "Dátum akcie do": form.dateTo?.trim() || "",
+      "Obchody": resolveProductShops(),
     };
 
     const alreadyInLoadedFlyer = isProductInLoadedFlyer(product);
@@ -1108,7 +1158,7 @@ export default function Home() {
         .toLowerCase()
         .trim();
       if (!fileBase || !safeFolder) return;
-      const storagePath = `data/${safeFolder}/${fileBase}.json`;
+      const storagePath = `databazy/${safeFolder}/${fileBase}.json`;
       const publicUrl = supabase
         ? supabase.storage.from("cap-data").getPublicUrl(storagePath).data?.publicUrl
         : supabaseUrl
@@ -1228,53 +1278,35 @@ export default function Home() {
     setShowUploadConfirm(false);
     setError("");
     setStatus("");
-    if (!supabase) {
-      setError(t("error_supabase_env"));
-      return;
-    }
+    
     const safeName = resolvedFileName.endsWith(".json")
       ? resolvedFileName
       : `${resolvedFileName}.json`;
-    const nameStem = safeName.replace(/\.json$/i, "");
-    const nameExt = ".json";
-    const basePath = `data/${bucketPath}`;
+    const shop = safeName.replace(/\.json$/i, "");
 
     try {
       setIsUploading(true);
-      const maxAttempts = 50;
-      let attempt = 0;
-      while (attempt < maxAttempts) {
-        const fileName = attempt === 0 ? safeName : `${nameStem}_${attempt}${nameExt}`;
-        const attemptPath = `${basePath}/${fileName}`;
-        const { error: uploadError } = await supabase.storage
-          .from("cap-data")
-          .upload(attemptPath, jsonPreview, {
-            contentType: "application/json",
-            upsert: false,
-          });
+      
+      const response = await fetch("/api/rotating-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: bucketPath,
+          shop: shop,
+          payload: jsonPreview,
+        }),
+      });
 
-        if (!uploadError) {
-          setStatus(t("status_uploaded"));
-          return;
-        }
+      const result = await response.json();
 
-        if (uploadError.message?.toLowerCase().includes("already exists")) {
-          attempt += 1;
-          continue;
-        }
-
+      if (!response.ok || !result.ok) {
         setError(
-          t("error_upload_failed_detail", { message: uploadError.message })
+          t("error_upload_failed_detail", { message: result.error || "Unknown error" })
         );
         return;
       }
 
-      setError(
-        t("error_upload_failed_detail", {
-          message: "Nepodarilo sa najst volny nazov suboru.",
-        })
-      );
-      return;
+      setStatus(t("status_uploaded") + ` (${result.path})`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(t("error_upload_failed_detail", { message }));
@@ -1298,7 +1330,7 @@ const deleteDebugFile = async () => {
 
   const countryFolder = "sk";
   const fileName = "lidl.json";
-  const filePath = `data/${countryFolder}/${fileName}`;
+  const filePath = `databazy/${countryFolder}/${fileName}`;
 
   if (!confirm(`Naozaj chces zmazat ${filePath}?`)) return;
 

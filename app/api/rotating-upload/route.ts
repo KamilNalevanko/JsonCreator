@@ -207,7 +207,7 @@ export async function POST(req: Request) {
     }
 
     const fileBase = sanitizeBase(shop);
-    const basePath = `data/${country}`;
+    const basePath = `databazy/${country}`;
     const indexPath = `${basePath}/_indexes/${fileBase}.json`;
 
     const supabase = createClient(supabaseUrl, serviceRole, {

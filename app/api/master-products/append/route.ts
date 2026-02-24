@@ -98,7 +98,7 @@ export async function POST(req: Request) {
 
     const fileBase =
       country === "sk" ? "slovakia" : country === "cz" ? "czechia" : "poland";
-    const storagePath = `data/${country}/${fileBase}.json`;
+    const storagePath = `databazy/${country}/${fileBase}.json`;
 
     const supabase = createClient(supabaseUrl, serviceRole, {
       auth: { persistSession: false },
