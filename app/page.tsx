@@ -124,9 +124,7 @@ const SHOP_ALIASES: Record<string, string> = {
   coop: "potraviny",
   coopjednota: "potraviny",
   coopjednotasupermarket: "supermarket",
-  supermarket: "supermarket",
   cooptempo: "tempo",
-  tempo: "tempo",
   fresh: "fresh",
   kaufland: "kaufland",
   lidl: "lidl",
@@ -144,7 +142,21 @@ const normalizeShopToken = (value: string) => {
 const productMatchesShop = (product: FlyerProduct, shopKey: string) => {
   const target = normalizeShopToken(shopKey);
   const tokens = (product["Obchody"] ?? []).map(normalizeShopToken);
-  return tokens.includes(GLOBAL_SHOP_TOKEN) || (target && tokens.includes(target));
+  if (tokens.includes(GLOBAL_SHOP_TOKEN)) return true;
+
+  const allowedTargets = new Set([target]);
+  if (target === "tempo") {
+    allowedTargets.add("potraviny");
+  }
+  if (target === "supermarket") {
+    allowedTargets.add("potraviny");
+    allowedTargets.add("tempo");
+  }
+  if (target === "tescohypermarket") {
+    allowedTargets.add("tescosupermarket");
+  }
+
+  return tokens.some((token) => allowedTargets.has(token));
 };
 
 // ✅ jeden matcher pre všetko (názvy, info, zoznam…)
@@ -271,8 +283,8 @@ export default function Home() {
   > = {
     sk: [
       { value: "billa", label: "Billa" },
-      { value: "coop", label: "COOP Jednota" },
-      { value: "coop-jednota", label: "COOP Jednota Supermarket" },
+      { value: "coop-jednota", label: "COOP Jednota" },
+      { value: "coop-jednota-supermarket", label: "COOP Jednota Supermarket" },
       { value: "coop-tempo", label: "COOP Tempo" },
       { value: "fresh", label: "Fresh" },
       { value: "kaufland", label: "Kaufland" },

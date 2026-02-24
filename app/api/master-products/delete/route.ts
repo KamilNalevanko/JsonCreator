@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { withStorageLock } from "../storageLock";
 
 type HierarchyPlacement = {
   "Zaradenie": string;
@@ -23,26 +24,6 @@ type LoadedProductRef = {
   productIndex: number;
 };
 
-const deleteQueue = new Map<string, Promise<void>>();
-
-const withDeleteLock = async <T>(key: string, work: () => Promise<T>): Promise<T> => {
-  const prior = deleteQueue.get(key) ?? Promise.resolve();
-  let release: () => void = () => {};
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-
-  deleteQueue.set(key, prior.then(() => gate));
-  await prior;
-  try {
-    return await work();
-  } finally {
-    release();
-    if (deleteQueue.get(key) === gate) {
-      deleteQueue.delete(key);
-    }
-  }
-};
 
 export async function POST(req: Request) {
   try {
@@ -82,7 +63,7 @@ export async function POST(req: Request) {
       auth: { persistSession: false },
     });
 
-    return await withDeleteLock(storagePath, async () => {
+    return await withStorageLock(storagePath, async () => {
       const dl = await supabase.storage.from("cap-data").download(storagePath);
 
       if (dl.error || !dl.data) {
