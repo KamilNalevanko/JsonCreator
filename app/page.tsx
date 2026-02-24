@@ -943,6 +943,40 @@ export default function Home() {
     }
   };
 
+  const persistUpdatedProduct = async (ref: LoadedProductRef, product: FlyerProduct) => {
+    if (!bucketPath) return { ok: false };
+    setError("");
+    setStatus("");
+
+    try {
+      setIsDbUpdating(true);
+      const response = await fetch("/api/master-products/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: bucketPath, ref, product }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        setError(
+          t("error_upload_failed_detail", {
+            message: payload?.error || "Update failed",
+          })
+        );
+        return { ok: false };
+      }
+
+      setStatus("Produkt v databaze bol upraveny.");
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(t("error_upload_failed_detail", { message }));
+      return { ok: false };
+    } finally {
+      setIsDbUpdating(false);
+    }
+  };
+
 
   const addProduct = () => {
     setError("");
@@ -1009,6 +1043,7 @@ export default function Home() {
     }
 
     if (editingLoadedRef && loadedFlyer) {
+      const refToUpdate = editingLoadedRef;
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
       setLoadedFlyer((prev: HierarchyCategory[] | null) => {
         if (!prev) return prev;
@@ -1082,6 +1117,7 @@ export default function Home() {
         }
         return [...next, { id: makeId(), product }];
       });
+      void persistUpdatedProduct(refToUpdate, product);
       setEditingLoadedRef(null);
     } else if (editingId) {
       setProducts((prev) =>
