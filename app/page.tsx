@@ -1872,24 +1872,19 @@ const deleteDebugFile = async () => {
                               suggestionItemRefs.current[idx] = el;
                             }}
                             onMouseEnter={() => setActiveSuggestionIndex(idx)}
-                            className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-auto flex items-center justify-between gap-3 ${
+                            onMouseDown={(e) => {
+                              // Use mouse down so the click isn't lost due to input blur
+                              e.preventDefault();
+                              selectLoadedSuggestion(p);
+                            }}
+                            className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-auto flex items-center justify-between gap-3 cursor-pointer ${
                               idx === activeSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
                             }`}
                           >
-                            <button
-                              type="button"
-                              onMouseDown={(e) => {
-                                // Use mouse down so the click isn't lost due to input blur
-                                e.preventDefault();
-                                selectLoadedSuggestion(p);
-                              }}
-                              className="flex-1 text-left"
-                            >
-                              {p.name}
-                            </button>
+                            <span className="flex-1 text-left">{p.name}</span>
                             <div className="flex items-center gap-2" />
-                        </div>
-                      ))}
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>
