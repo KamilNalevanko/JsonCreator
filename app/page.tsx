@@ -855,6 +855,39 @@ export default function Home() {
         item.product["Zaradenie"] === product["Zaradenie"]
     );
 
+  const normalizeProductValue = (value: unknown) => {
+    if (Array.isArray(value)) {
+      return [...value].map(String).sort().join("|");
+    }
+    if (typeof value === "string") return value.trim();
+    if (value == null) return "";
+    return value;
+  };
+
+  const hasProductChanges = (original: FlyerProduct, next: FlyerProduct) => {
+    const keys: (keyof FlyerProduct)[] = [
+      "Názov",
+      "Kategória",
+      "Podkategória",
+      "Zaradenie",
+      "Množstvo",
+      "Merná jednotka",
+      "Bežná cena za bal.",
+      "Bežná jednotková cena",
+      "Akciová cena",
+      "Akciová jednotková cena",
+      "Doplnková Informácia",
+      "Dátum akcie od",
+      "Dátum akcie do",
+      "Obchody",
+    ];
+
+    return keys.some(
+      (key) =>
+        normalizeProductValue(original[key]) !== normalizeProductValue(next[key])
+    );
+  };
+
   const appendProductToLoadedFlyer = (product: FlyerProduct) => {
     setLoadedFlyer((prev: HierarchyCategory[] | null) => {
       if (!prev) return prev;
@@ -1044,6 +1077,14 @@ export default function Home() {
 
     if (editingLoadedRef && loadedFlyer) {
       const refToUpdate = editingLoadedRef;
+      const originalProduct =
+        loadedFlyer[refToUpdate.categoryIndex]?.["Podkategórie"]?.[
+          refToUpdate.subcategoryIndex
+        ]?.["Zaradenia"]?.[refToUpdate.placementIndex]?.["Produkty"]?.[
+          refToUpdate.productIndex
+        ];
+      const shouldUpdateDb =
+        !originalProduct || hasProductChanges(originalProduct, product);
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
       setLoadedFlyer((prev: HierarchyCategory[] | null) => {
         if (!prev) return prev;
@@ -1117,7 +1158,9 @@ export default function Home() {
         }
         return [...next, { id: makeId(), product }];
       });
-      void persistUpdatedProduct(refToUpdate, product);
+      if (shouldUpdateDb) {
+        void persistUpdatedProduct(refToUpdate, product);
+      }
       setEditingLoadedRef(null);
     } else if (editingId) {
       setProducts((prev) =>
@@ -1820,24 +1863,7 @@ const deleteDebugFile = async () => {
                             >
                               {p.name}
                             </button>
-                            <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => startDbEdit(p)}
-                              className="rounded-md border border-black/10 px-5 py-3 text-base font-semibold text-[color:var(--muted)] hover:border-black/30"
-                            >
-                              Upravit v DB
-                            </button>
-                            <button
-                              type="button"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => deleteProductFromDb(p)}
-                              className="rounded-md border border-red-200 px-5 py-3 text-base font-semibold text-red-700 hover:border-red-300"
-                            >
-                              Zmazat z DB
-                            </button>
-                          </div>
+                            <div className="flex items-center gap-2" />
                         </div>
                       ))}
                     </div>
@@ -1849,15 +1875,8 @@ const deleteDebugFile = async () => {
                     <button
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => startDbEdit(selectedLoadedEntry)}
-                      className="rounded-md border border-black/10 px-5 py-3 text-base font-semibold text-[color:var(--muted)] hover:border-black/30"
-                    >
-                      Upravit v DB
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => deleteProductFromDb(selectedLoadedEntry)}
+                      tabIndex={-1}
                       className="rounded-md border border-red-200 px-5 py-3 text-base font-semibold text-red-700 hover:border-red-300"
                     >
                       Zmazat z DB
@@ -2310,6 +2329,7 @@ placeholder={t("placeholder_extra_info")}
                           deleteProductFromDb(dbEditEntry);
                         }
                       }}
+                      tabIndex={-1}
                       type="button"
                       disabled={!dbEditEntry}
                     >
@@ -2336,16 +2356,6 @@ placeholder={t("placeholder_extra_info")}
                       </button>
                     ) : null}
                     <button
-                      className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
-                      onClick={() => {
-                        setProducts([]);
-                        setEditingId(null);
-                      }}
-                      type="button"
-                    >
-                      {t("btn_clear_all")}
-                    </button>
-                    <button
                       className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
                       onClick={downloadJson}
                       type="button"
@@ -2359,6 +2369,16 @@ placeholder={t("placeholder_extra_info")}
                       disabled={isUploading}
                     >
                       {isUploading ? "Nahrávam..." : "Nahrať na server"}
+                    </button>
+                    <button
+                      className="ml-auto rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200/60 transition hover:bg-red-700"
+                      onClick={() => {
+                        setProducts([]);
+                        setEditingId(null);
+                      }}
+                      type="button"
+                    >
+                      {t("btn_clear_all")}
                     </button>
                   </>
                 )}
