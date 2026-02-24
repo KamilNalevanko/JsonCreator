@@ -271,6 +271,7 @@ export default function Home() {
   const suggestionItemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
   const [dbDeleteConfirmRef, setDbDeleteConfirmRef] = useState<LoadedProductEntry | null>(null);
   const lastLoadKeyRef = useRef<string>("");
   const appendQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -1566,6 +1567,16 @@ export default function Home() {
     setShowUploadConfirm(true);
   };
 
+  const handleClearAllClick = () => {
+    setShowClearAllConfirm(true);
+  };
+
+  const confirmClearAll = () => {
+    setShowClearAllConfirm(false);
+    setProducts([]);
+    setEditingId(null);
+  };
+
   const uploadToSupabase = async () => {
     setShowUploadConfirm(false);
     setError("");
@@ -1829,6 +1840,7 @@ const deleteDebugFile = async () => {
                       {loadedFlyer && loadedProductsList.length > 0 && (
                       <button
                         type="button"
+                        tabIndex={-1}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           if (showSuggestions) {
@@ -2254,6 +2266,7 @@ placeholder={t("placeholder_extra_info")}
                     {loadedFlyer && loadedExtraInfosList.length > 0 && (
                       <button
                         type="button"
+                        tabIndex={-1}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           if (showInfoSuggestions) {
@@ -2384,10 +2397,7 @@ placeholder={t("placeholder_extra_info")}
                     </button>
                     <button
                       className="ml-auto rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200/60 transition hover:bg-red-700"
-                      onClick={() => {
-                        setProducts([]);
-                        setEditingId(null);
-                      }}
+                      onClick={handleClearAllClick}
                       type="button"
                     >
                       {t("btn_clear_all")}
@@ -2524,6 +2534,34 @@ placeholder={t("placeholder_extra_info")}
                 className="flex-1 rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:brightness-90 transition-colors"
               >
                 {t("btn_confirm_upload")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear All Confirmation Modal */}
+      {showClearAllConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[#0f1b2b] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
+            <h3 className="font-[var(--font-display)] text-2xl font-semibold mb-3">
+              Naozaj chceš vymazať všetko?
+            </h3>
+            <p className="text-sm text-white/70 mb-6">
+              Týmto sa vymažú všetky produkty z aktuálneho letáku.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearAllConfirm(false)}
+                className="flex-1 rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+              >
+                {t("btn_cancel")}
+              </button>
+              <button
+                onClick={confirmClearAll}
+                className="flex-1 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+              >
+                {t("btn_clear_all")}
               </button>
             </div>
           </div>
