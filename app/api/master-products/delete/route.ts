@@ -1,26 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-type FlyerProduct = {
-  "Názov": string;
-  "Kategória": string;
-  "Podkategória": string;
-  "Zaradenie": string;
-  "Množstvo": string;
-  "Merná jednotka": string;
-  "Bežná cena za bal.": string;
-  "Bežná jednotková cena": string;
-  "Akciová cena": string;
-  "Akciová jednotková cena": string;
-  "Doplnková Informácia": string;
-  "Dátum akcie od": string;
-  "Dátum akcie do": string;
-  "Obchody"?: string[];
-};
-
 type HierarchyPlacement = {
   "Zaradenie": string;
-  "Produkty"?: FlyerProduct[];
+  "Produkty"?: unknown[];
 };
 
 type HierarchySubcategory = {
@@ -33,36 +16,30 @@ type HierarchyCategory = {
   "Podkategórie": HierarchySubcategory[];
 };
 
-const trimName = (value: string) => (value || "").toString().trim();
-const productExistsInPlacement = (
-  placement: HierarchyPlacement,
-  product: FlyerProduct
-) =>
-  (placement["Produkty"] ?? []).some(
-    (p) =>
-      trimName(p["Názov"]) === trimName(product["Názov"]) &&
-      p["Kategória"] === product["Kategória"] &&
-      p["Podkategória"] === product["Podkategória"] &&
-      p["Zaradenie"] === product["Zaradenie"]
-  );
+type LoadedProductRef = {
+  categoryIndex: number;
+  subcategoryIndex: number;
+  placementIndex: number;
+  productIndex: number;
+};
 
-const appendQueue = new Map<string, Promise<void>>();
+const deleteQueue = new Map<string, Promise<void>>();
 
-const withAppendLock = async <T>(key: string, work: () => Promise<T>): Promise<T> => {
-  const prior = appendQueue.get(key) ?? Promise.resolve();
+const withDeleteLock = async <T>(key: string, work: () => Promise<T>): Promise<T> => {
+  const prior = deleteQueue.get(key) ?? Promise.resolve();
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
 
-  appendQueue.set(key, prior.then(() => gate));
+  deleteQueue.set(key, prior.then(() => gate));
   await prior;
   try {
     return await work();
   } finally {
     release();
-    if (appendQueue.get(key) === gate) {
-      appendQueue.delete(key);
+    if (deleteQueue.get(key) === gate) {
+      deleteQueue.delete(key);
     }
   }
 };
@@ -81,7 +58,7 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const country = (body?.country || "").toString().toLowerCase().trim();
-    const product = body?.product as FlyerProduct | undefined;
+    const ref = body?.ref as LoadedProductRef | undefined;
 
     if (!country || !["sk", "cz", "pl"].includes(country)) {
       return NextResponse.json(
@@ -90,9 +67,9 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!product || !product["Názov"]) {
+    if (!ref) {
       return NextResponse.json(
-        { ok: false, error: "Missing product or product['Názov']." },
+        { ok: false, error: "Missing product reference." },
         { status: 400 }
       );
     }
@@ -105,7 +82,7 @@ export async function POST(req: Request) {
       auth: { persistSession: false },
     });
 
-    return await withAppendLock(storagePath, async () => {
+    return await withDeleteLock(storagePath, async () => {
       const dl = await supabase.storage.from("cap-data").download(storagePath);
 
       if (dl.error || !dl.data) {
@@ -139,46 +116,26 @@ export async function POST(req: Request) {
       }
 
       const data = master as HierarchyCategory[];
-      const categoryIndex = data.findIndex(
-        (c) => c["Kategória"] === product["Kategória"]
-      );
-      if (categoryIndex === -1) {
+      const category = data[ref.categoryIndex];
+      const subcategory = category?.["Podkategórie"]?.[ref.subcategoryIndex];
+      const placement = subcategory?.["Zaradenia"]?.[ref.placementIndex];
+      const products = placement?.["Produkty"];
+
+      if (!category || !subcategory || !placement || !products) {
         return NextResponse.json(
-          { ok: false, error: "Category not found.", path: storagePath },
+          { ok: false, error: "Product reference is out of range.", path: storagePath },
           { status: 400 }
         );
       }
 
-      const subIndex = (data[categoryIndex]["Podkategórie"] ?? []).findIndex(
-        (s) => s["Podkategória"] === product["Podkategória"]
-      );
-      if (subIndex === -1) {
+      if (!products[ref.productIndex]) {
         return NextResponse.json(
-          { ok: false, error: "Subcategory not found.", path: storagePath },
-          { status: 400 }
+          { ok: false, error: "Product not found at reference.", path: storagePath },
+          { status: 404 }
         );
       }
 
-      const placementIndex = (
-        data[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"] ?? []
-      ).findIndex((p) => p["Zaradenie"] === product["Zaradenie"]);
-      if (placementIndex === -1) {
-        return NextResponse.json(
-          { ok: false, error: "Placement not found.", path: storagePath },
-          { status: 400 }
-        );
-      }
-
-      const placement =
-        data[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"][
-          placementIndex
-        ];
-      if (!placement["Produkty"]) placement["Produkty"] = [];
-
-      const exists = productExistsInPlacement(placement, product);
-      if (!exists) {
-        placement["Produkty"].push(product);
-      }
+      products.splice(ref.productIndex, 1);
 
       const payload = JSON.stringify(data, null, 2);
       const up = await supabase.storage
@@ -200,11 +157,7 @@ export async function POST(req: Request) {
         );
       }
 
-      return NextResponse.json({
-        ok: true,
-        path: storagePath,
-        added: !exists,
-      });
+      return NextResponse.json({ ok: true, path: storagePath });
     });
   } catch (e: any) {
     return NextResponse.json(

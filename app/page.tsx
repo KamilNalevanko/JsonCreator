@@ -235,7 +235,9 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [bucketPath, setBucketPath] = useState("sk");
   const [editingLoadedRef, setEditingLoadedRef] = useState<LoadedProductRef | null>(null);
+  const [dbEditRef, setDbEditRef] = useState<LoadedProductRef | null>(null);
   const [previewProduct, setPreviewProduct] = useState<{
+    id?: string;
     name: string;
     product: FlyerProduct;
     categoryKey: string;
@@ -254,13 +256,15 @@ export default function Home() {
   const infoInputRef = useRef<HTMLInputElement | null>(null);
   const infoSuggestionsBoxRef = useRef<HTMLDivElement | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
-  const suggestionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const suggestionItemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const [dbDeleteConfirmRef, setDbDeleteConfirmRef] = useState<LoadedProductEntry | null>(null);
   const lastLoadKeyRef = useRef<string>("");
   const appendQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingAppendRef = useRef(0);
   const [isAppending, setIsAppending] = useState(false);
+  const [isDbUpdating, setIsDbUpdating] = useState(false);
   const shopOptionsByFolder: Record<
     string,
     Array<{ value: string; label: string }>
@@ -340,6 +344,7 @@ export default function Home() {
     setProducts([]);
     setEditingId(null);
     setEditingLoadedRef(null);
+    setDbEditRef(null);
   }, [bucketPath]);
 
   const currentLabels = useMemo(
@@ -358,6 +363,23 @@ export default function Home() {
         acc.replace(new RegExp(`\\{${varKey}\\}`, "g"), value),
       template
     );
+  };
+
+  const resolveProductShops = (ref?: LoadedProductRef | null, entryId?: string | null) => {
+    if (ref && loadedFlyer) {
+      const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = ref;
+      const original =
+        loadedFlyer[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[
+          placementIndex
+        ]?.["Produkty"]?.[productIndex];
+      return Array.isArray(original?.["Obchody"]) ? original["Obchody"] : [];
+    }
+    if (entryId) {
+      const existing = products.find((entry) => entry.id === entryId);
+      return Array.isArray(existing?.product?.["Obchody"]) ? existing!.product["Obchody"] : [];
+    }
+    const normalized = normalizeShopToken(shop);
+    return normalized ? [normalized] : [];
   };
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -556,6 +578,32 @@ export default function Home() {
     return allProducts;
   }, [loadedFlyer, shop]);
 
+  const selectedLoadedEntry = useMemo(() => {
+    if (!editingLoadedRef) return null;
+    return (
+      loadedProductsList.find(
+        (entry) =>
+          entry.ref.categoryIndex === editingLoadedRef.categoryIndex &&
+          entry.ref.subcategoryIndex === editingLoadedRef.subcategoryIndex &&
+          entry.ref.placementIndex === editingLoadedRef.placementIndex &&
+          entry.ref.productIndex === editingLoadedRef.productIndex
+      ) ?? null
+    );
+  }, [editingLoadedRef, loadedProductsList]);
+
+  const dbEditEntry = useMemo(() => {
+    if (!dbEditRef) return null;
+    return (
+      loadedProductsList.find(
+        (entry) =>
+          entry.ref.categoryIndex === dbEditRef.categoryIndex &&
+          entry.ref.subcategoryIndex === dbEditRef.subcategoryIndex &&
+          entry.ref.placementIndex === dbEditRef.placementIndex &&
+          entry.ref.productIndex === dbEditRef.productIndex
+      ) ?? null
+    );
+  }, [dbEditRef, loadedProductsList]);
+
   // Extrahovať všetky unikátne doplnkové info z loadedFlyer
   const loadedExtraInfosList = useMemo(() => {
     if (!loadedFlyer || !Array.isArray(loadedFlyer)) return [];
@@ -605,6 +653,7 @@ export default function Home() {
     placementKey: string;
     ref?: LoadedProductRef;
   }) => {
+    setDbEditRef(null);
     if (selectedProductData.ref) {
       setEditingLoadedRef(selectedProductData.ref);
       setEditingId(null);
@@ -911,22 +960,7 @@ export default function Home() {
       return;
     }
 
-    const resolveProductShops = (): string[] => {
-      if (editingLoadedRef && loadedFlyer) {
-        const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
-        const original =
-          loadedFlyer[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[
-            placementIndex
-          ]?.["Produkty"]?.[productIndex];
-        return Array.isArray(original?.["Obchody"]) ? original["Obchody"] : [];
-      }
-      if (editingId) {
-        const existing = products.find((entry) => entry.id === editingId);
-        return Array.isArray(existing?.product?.["Obchody"]) ? existing!.product["Obchody"] : [];
-      }
-      const normalized = normalizeShopToken(shop);
-      return normalized ? [normalized] : [];
-    };
+    const shops = resolveProductShops(editingLoadedRef, editingId);
 
     const product: FlyerProduct = {
       "Názov": form.name.trim(),
@@ -942,7 +976,7 @@ export default function Home() {
       "Doplnková Informácia": form.info?.trim() || "",
       "Dátum akcie od": form.dateFrom?.trim() || "",
       "Dátum akcie do": form.dateTo?.trim() || "",
-      "Obchody": resolveProductShops(),
+      "Obchody": shops,
     };
 
     const alreadyInLoadedFlyer = isProductInLoadedFlyer(product);
@@ -1065,6 +1099,173 @@ export default function Home() {
     }
     resetFormFields();
        focusNameInput();
+  };
+
+  const startDbEdit = (entry: LoadedProductEntry) => {
+    setEditingLoadedRef(null);
+    setEditingId(null);
+    setDbEditRef(entry.ref);
+    setShowSuggestions(false);
+    setFilteredSuggestions([]);
+    setActiveSuggestionIndex(-1);
+    setCategoryKey(entry.categoryKey);
+    setSubcategoryKey(entry.subcategoryKey);
+    setPlacementKey(entry.placementKey);
+    setForm((prev) => ({
+      ...prev,
+      name: entry.product["Názov"] ?? "",
+      amount: entry.product["Množstvo"] ?? "",
+      unit: entry.product["Merná jednotka"] ?? "kg",
+      priceRegular: normalizePrice(entry.product["Bežná cena za bal."] ?? ""),
+      priceRegularUnit: normalizePrice(entry.product["Bežná jednotková cena"] ?? ""),
+      priceSale: normalizePrice(entry.product["Akciová cena"] ?? ""),
+      priceSaleUnit: normalizePrice(entry.product["Akciová jednotková cena"] ?? ""),
+      info: entry.product["Doplnková Informácia"] ?? "",
+      dateFrom: entry.product["Dátum akcie od"] ?? prev.dateFrom,
+      dateTo: entry.product["Dátum akcie do"] ?? prev.dateTo,
+    }));
+  };
+
+  const cancelDbEdit = () => {
+    setDbEditRef(null);
+    resetFormFields();
+    focusNameInput();
+  };
+
+  const updateProductInDb = async () => {
+    if (!dbEditRef || !bucketPath) return;
+    setError("");
+    setStatus("");
+
+    if (!form.name.trim()) {
+      setError(t("error_product_name"));
+      return;
+    }
+
+    const shops = resolveProductShops(dbEditRef, null);
+    const product: FlyerProduct = {
+      "Názov": form.name.trim(),
+      "Kategória": categoryKey,
+      "Podkategória": subcategoryKey,
+      "Zaradenie": placementKey,
+      "Množstvo": form.amount.trim(),
+      "Merná jednotka": form.unit,
+      "Bežná cena za bal.": normalizePrice(form.priceRegular),
+      "Bežná jednotková cena": normalizePrice(form.priceRegularUnit),
+      "Akciová cena": normalizePrice(form.priceSale),
+      "Akciová jednotková cena": normalizePrice(form.priceSaleUnit),
+      "Doplnková Informácia": form.info?.trim() || "",
+      "Dátum akcie od": form.dateFrom?.trim() || "",
+      "Dátum akcie do": form.dateTo?.trim() || "",
+      "Obchody": shops,
+    };
+
+    try {
+      setIsDbUpdating(true);
+      const response = await fetch("/api/master-products/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: bucketPath, ref: dbEditRef, product }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        setError(
+          t("error_upload_failed_detail", {
+            message: payload?.error || "Update failed",
+          })
+        );
+        return;
+      }
+
+      setLoadedFlyer((prev) => {
+        if (!prev) return prev;
+        const next = JSON.parse(JSON.stringify(prev));
+        const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = dbEditRef;
+        const placement =
+          next?.[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[
+            placementIndex
+          ];
+        if (placement?.["Produkty"]?.[productIndex]) {
+          placement["Produkty"][productIndex] = product;
+        }
+        return next;
+      });
+
+      setStatus("Produkt v databaze bol upraveny.");
+      setDbEditRef(null);
+      resetFormFields();
+      focusNameInput();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(t("error_upload_failed_detail", { message }));
+    } finally {
+      setIsDbUpdating(false);
+    }
+  };
+
+  const deleteProductFromDb = async (entry: LoadedProductEntry) => {
+    if (!bucketPath) return;
+    setDbDeleteConfirmRef(entry);
+  };
+
+  const confirmDeleteProductFromDb = async () => {
+    if (!dbDeleteConfirmRef || !bucketPath) return;
+    const entry = dbDeleteConfirmRef;
+    setDbDeleteConfirmRef(null);
+    setError("");
+    setStatus("");
+
+    try {
+      setIsDbUpdating(true);
+      const response = await fetch("/api/master-products/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: bucketPath, ref: entry.ref }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.ok) {
+        setError(
+          t("error_upload_failed_detail", {
+            message: payload?.error || "Delete failed",
+          })
+        );
+        return;
+      }
+
+      setLoadedFlyer((prev) => {
+        if (!prev) return prev;
+        const next = JSON.parse(JSON.stringify(prev));
+        const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = entry.ref;
+        const placement =
+          next?.[categoryIndex]?.["Podkategórie"]?.[subcategoryIndex]?.["Zaradenia"]?.[
+            placementIndex
+          ];
+        if (placement?.["Produkty"]) {
+          placement["Produkty"].splice(productIndex, 1);
+        }
+        return next;
+      });
+
+      if (
+        dbEditRef &&
+        dbEditRef.categoryIndex === entry.ref.categoryIndex &&
+        dbEditRef.subcategoryIndex === entry.ref.subcategoryIndex &&
+        dbEditRef.placementIndex === entry.ref.placementIndex &&
+        dbEditRef.productIndex === entry.ref.productIndex
+      ) {
+        setDbEditRef(null);
+        resetFormFields();
+      }
+
+      setStatus("Produkt bol zmazany z databazy.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(t("error_upload_failed_detail", { message }));
+    } finally {
+      setIsDbUpdating(false);
+    }
   };
 
   const removeProduct = (id: string) => {
@@ -1307,6 +1508,15 @@ export default function Home() {
       }
 
       setStatus(t("status_uploaded") + ` (${result.path})`);
+      setProducts([]);
+      setEditingId(null);
+      setEditingLoadedRef(null);
+      setDbEditRef(null);
+      setPreviewProduct(null);
+      setShowSuggestions(false);
+      setFilteredSuggestions([]);
+      setActiveSuggestionIndex(-1);
+      resetFormFields();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(t("error_upload_failed_detail", { message }));
@@ -1451,128 +1661,175 @@ const deleteDebugFile = async () => {
 
               <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                 {t("label_product_name")}
-                <div className="relative">
-                  <input
-                    ref={nameInputRef}
-                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                    value={form.name}
-                    onChange={(event) => {
-                      const newName = event.target.value;
-                      setForm((prev) => ({ ...prev, name: newName }));
-                      
-                      // Filtrujem podľa obsahovania textu v názve (case-insensitive)
-                      if (newName.trim() && loadedFlyer) {
-                       const filtered = loadedProductsList.filter((p) =>
-                        matchesSearch(p.name, newName)
-                        );
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 max-w-[600px]">
+                    <input
+                      ref={nameInputRef}
+                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      value={form.name}
+                      onChange={(event) => {
+                        const newName = event.target.value;
+                        setForm((prev) => ({ ...prev, name: newName }));
+                        
+                        // Filtrujem podľa obsahovania textu v názve (case-insensitive)
+                        if (newName.trim() && loadedFlyer) {
+                         const filtered = loadedProductsList.filter((p) =>
+                          matchesSearch(p.name, newName)
+                          );
 
-                        setFilteredSuggestions(filtered);
-                        setShowSuggestions(filtered.length > 0);
-                        setActiveSuggestionIndex(filtered.length > 0 ? 0 : -1);
-                        setPreviewProduct(null);
-                      } else {
-                        setShowSuggestions(false);
-                        setFilteredSuggestions([]);
-                        setActiveSuggestionIndex(-1);
-                        setPreviewProduct(null);
-                      }
-                    }}
-                    onFocus={() => {
-                      if (form.name.trim() && filteredSuggestions.length > 0) {
-                        setShowSuggestions(true);
-                        setActiveSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      const hasList = showSuggestions && filteredSuggestions.length > 0;
-
-                      if (!hasList && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-                        if (filteredSuggestions.length > 0) {
-                          e.preventDefault();
-                          setShowSuggestions(true);
-                          setActiveSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
-                        }
-                        return;
-                      }
-
-                      if (!hasList) return;
-
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setActiveSuggestionIndex((prev) =>
-                          Math.min(prev + 1, filteredSuggestions.length - 1)
-                        );
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setActiveSuggestionIndex((prev) => Math.max(prev - 1, 0));
-                      } else if (e.key === "Enter") {
-                        e.preventDefault();
-                        const p = filteredSuggestions[activeSuggestionIndex];
-                        if (p) {
-                          selectLoadedSuggestion(p);
-                        }
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        setShowSuggestions(false);
-                        setFilteredSuggestions([]);
-                        setActiveSuggestionIndex(-1);
-                      }
-                    }}
-                    placeholder={t("placeholder_product_name")}
-                  />
-                  
-                  {/* Chevron button pre zobrazenie všetkých možnností */}
-                    {loadedFlyer && loadedProductsList.length > 0 && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        if (showSuggestions) {
+                          setFilteredSuggestions(filtered);
+                          setShowSuggestions(filtered.length > 0);
+                          setActiveSuggestionIndex(filtered.length > 0 ? 0 : -1);
+                        } else {
                           setShowSuggestions(false);
                           setFilteredSuggestions([]);
                           setActiveSuggestionIndex(-1);
-                        } else {
-                          setFilteredSuggestions(loadedProductsList);
-                          setShowSuggestions(true);
-                          setActiveSuggestionIndex(0);
-                          focusNameInput();
+                          // Resetuj previewProduct len ak je input prázdny
+                          if (!newName.trim()) {
+                            setPreviewProduct(null);
+                          }
                         }
                       }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M6 8l4 4 4-4" />
-                      </svg>
-                    </button>
-                  )}
-                  
-                  {/* Custom dropdown menu */}
-                    {showSuggestions && filteredSuggestions.length > 0 && (
-                    <div ref={suggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
-                      {filteredSuggestions.map((p, idx) => (
-                        <button
-                          key={p.id ?? idx}
-                          ref={(el) => {
-                            suggestionItemRefs.current[idx] = el;
-                          }}
-                          type="button"
-                          onMouseDown={(e) => {
-                            // Use mouse down so the click isn't lost due to input blur
+                      onFocus={() => {
+                        if (form.name.trim() && filteredSuggestions.length > 0) {
+                          setShowSuggestions(true);
+                          setActiveSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        const hasList = showSuggestions && filteredSuggestions.length > 0;
+
+                        if (!hasList && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                          if (filteredSuggestions.length > 0) {
                             e.preventDefault();
+                            setShowSuggestions(true);
+                            setActiveSuggestionIndex((prev) => (prev < 0 ? 0 : prev));
+                          }
+                          return;
+                        }
+
+                        if (!hasList) return;
+
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setActiveSuggestionIndex((prev) =>
+                            Math.min(prev + 1, filteredSuggestions.length - 1)
+                          );
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setActiveSuggestionIndex((prev) => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          const p = filteredSuggestions[activeSuggestionIndex];
+                          if (p) {
                             selectLoadedSuggestion(p);
-                          }}
-                          onMouseEnter={() => setActiveSuggestionIndex(idx)}
-                          className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-[2.75rem] flex items-center ${
-                            idx === activeSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
-                          }`}
-                        >
-                          {p.name}
-                        </button>
+                          }
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          setShowSuggestions(false);
+                          setFilteredSuggestions([]);
+                          setActiveSuggestionIndex(-1);
+                        }
+                      }}
+                      placeholder={t("placeholder_product_name")}
+                    />
+                    
+                    {/* Chevron button pre zobrazenie všetkých možnností */}
+                      {loadedFlyer && loadedProductsList.length > 0 && (
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          if (showSuggestions) {
+                            setShowSuggestions(false);
+                            setFilteredSuggestions([]);
+                            setActiveSuggestionIndex(-1);
+                          } else {
+                            setFilteredSuggestions(loadedProductsList);
+                            setShowSuggestions(true);
+                            setActiveSuggestionIndex(0);
+                            focusNameInput();
+                          }
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M6 8l4 4 4-4" />
+                        </svg>
+                      </button>
+                    )}
+                    
+                    {/* Custom dropdown menu */}
+                      {showSuggestions && filteredSuggestions.length > 0 && (
+                      <div ref={suggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
+                        {filteredSuggestions.map((p, idx) => (
+                          <div
+                            key={p.id ?? idx}
+                            ref={(el) => {
+                              suggestionItemRefs.current[idx] = el;
+                            }}
+                            onMouseEnter={() => setActiveSuggestionIndex(idx)}
+                            className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-auto flex items-center justify-between gap-3 ${
+                              idx === activeSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onMouseDown={(e) => {
+                                // Use mouse down so the click isn't lost due to input blur
+                                e.preventDefault();
+                                selectLoadedSuggestion(p);
+                              }}
+                              className="flex-1 text-left"
+                            >
+                              {p.name}
+                            </button>
+                            <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => startDbEdit(p)}
+                              className="rounded-md border border-black/10 px-5 py-3 text-base font-semibold text-[color:var(--muted)] hover:border-black/30"
+                            >
+                              Upravit v DB
+                            </button>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => deleteProductFromDb(p)}
+                              className="rounded-md border border-red-200 px-5 py-3 text-base font-semibold text-red-700 hover:border-red-300"
+                            >
+                              Zmazat z DB
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
-              </label>
+                {/* Buttons vedľa inputu - viditeľné iba keď je vybraný produkt z DB */}
+                {selectedLoadedEntry && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => startDbEdit(selectedLoadedEntry)}
+                      className="rounded-md border border-black/10 px-5 py-3 text-base font-semibold text-[color:var(--muted)] hover:border-black/30"
+                    >
+                      Upravit v DB
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => deleteProductFromDb(selectedLoadedEntry)}
+                      className="rounded-md border border-red-200 px-5 py-3 text-base font-semibold text-red-700 hover:border-red-300"
+                    >
+                      Zmazat z DB
+                    </button>
+                  </div>
+                )}
+              </div>
+            </label>
 
               {/* Preview BOX pre vybraný produkt */}
               {previewProduct && (
@@ -1993,48 +2250,82 @@ placeholder={t("placeholder_extra_info")}
               ) : null}
 
               <div className="flex items-center gap-3 flex-nowrap">
-                <button
-                  className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95 disabled:opacity-60"
-                  onClick={addProduct}
-                  type="button"
-                  disabled={isAppending}
-                >
-                  {editingId || editingLoadedRef ? t("btn_save_changes") : t("btn_add_product")}
-                </button>
-                {editingId || editingLoadedRef ? (
-                  <button
-                    className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
-                    onClick={cancelEdit}
-                    type="button"
-                  >
-                    {t("btn_cancel_edit")}
-                  </button>
-                ) : null}
-                <button
-                  className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
-                  onClick={() => {
-                    setProducts([]);
-                    setEditingId(null);
-                  }}
-                  type="button"
-                >
-                  {t("btn_clear_all")}
-                </button>
-                <button
-                  className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
-                  onClick={downloadJson}
-                  type="button"
-                >
-                  {t("btn_download_file")}
-                </button>
-                <button
-                  className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110 disabled:opacity-60"
-                  onClick={handleUploadClick}
-                  type="button"
-                  disabled={isUploading}
-                >
-                  {isUploading ? "Nahrávam..." : "Nahrať na server"}
-                </button>
+                {dbEditRef ? (
+                  <>
+                    <button
+                      className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95 disabled:opacity-60"
+                      onClick={updateProductInDb}
+                      type="button"
+                      disabled={isDbUpdating}
+                    >
+                      {isDbUpdating ? "Ukladam..." : "Ulozit zmeny do DB"}
+                    </button>
+                    <button
+                      className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                      onClick={cancelDbEdit}
+                      type="button"
+                    >
+                      Zrusit zmeny DB
+                    </button>
+                    <button
+                      className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200/60 transition hover:bg-red-700 disabled:opacity-60"
+                      onClick={() => {
+                        if (dbEditEntry) {
+                          deleteProductFromDb(dbEditEntry);
+                        }
+                      }}
+                      type="button"
+                      disabled={!dbEditEntry}
+                    >
+                      Zmazat produkt z DB
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95 disabled:opacity-60"
+                      onClick={addProduct}
+                      type="button"
+                      disabled={isAppending}
+                    >
+                      {editingId || editingLoadedRef ? t("btn_save_changes") : t("btn_add_product")}
+                    </button>
+                    {editingId || editingLoadedRef ? (
+                      <button
+                        className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                        onClick={cancelEdit}
+                        type="button"
+                      >
+                        {t("btn_cancel_edit")}
+                      </button>
+                    ) : null}
+                    <button
+                      className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                      onClick={() => {
+                        setProducts([]);
+                        setEditingId(null);
+                      }}
+                      type="button"
+                    >
+                      {t("btn_clear_all")}
+                    </button>
+                    <button
+                      className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
+                      onClick={downloadJson}
+                      type="button"
+                    >
+                      {t("btn_download_file")}
+                    </button>
+                    <button
+                      className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110 disabled:opacity-60"
+                      onClick={handleUploadClick}
+                      type="button"
+                      disabled={isUploading}
+                    >
+                      {isUploading ? "Nahrávam..." : "Nahrať na server"}
+                    </button>
+                  </>
+                )}
                 {/*
                 <button
                   className="rounded-full border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-60"
@@ -2113,6 +2404,35 @@ placeholder={t("placeholder_extra_info")}
           </div>
         </section>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {dbDeleteConfirmRef && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[#0f1b2b] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
+            <h3 className="font-[var(--font-display)] text-2xl font-semibold mb-3">
+              Zmazať z databázy?
+            </h3>
+            <p className="text-sm text-white/70 mb-6">
+              Naozaj chceš zmazať produkt <strong>"{dbDeleteConfirmRef.name}"</strong> z databázy?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDbDeleteConfirmRef(null)}
+                className="flex-1 rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+              >
+                {t("btn_cancel")}
+              </button>
+              <button
+                onClick={confirmDeleteProductFromDb}
+                disabled={isDbUpdating}
+                className="flex-1 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {isDbUpdating ? "Mažu..." : "Zmazať"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upload Confirmation Modal */}
       {showUploadConfirm && (
