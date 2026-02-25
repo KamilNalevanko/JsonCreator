@@ -24,6 +24,22 @@ type LoadedProductRef = {
   productIndex: number;
 };
 
+type ProductIdentity = {
+  "Názov"?: string;
+  "Kategória"?: string;
+  "Podkategória"?: string;
+  "Zaradenie"?: string;
+};
+
+const norm = (s: string) =>
+  (s || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+
 
 export async function POST(req: Request) {
   try {
@@ -40,6 +56,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const country = (body?.country || "").toString().toLowerCase().trim();
     const ref = body?.ref as LoadedProductRef | undefined;
+    const product = body?.product as ProductIdentity | undefined;
 
     if (!country || !["sk", "cz", "pl"].includes(country)) {
       return NextResponse.json(
@@ -48,7 +65,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!ref) {
+    if (!ref && !product) {
       return NextResponse.json(
         { ok: false, error: "Missing product reference." },
         { status: 400 }
@@ -97,26 +114,47 @@ export async function POST(req: Request) {
       }
 
       const data = master as HierarchyCategory[];
-      const category = data[ref.categoryIndex];
-      const subcategory = category?.["Podkategórie"]?.[ref.subcategoryIndex];
-      const placement = subcategory?.["Zaradenia"]?.[ref.placementIndex];
-      const products = placement?.["Produkty"];
+      let removed = false;
 
-      if (!category || !subcategory || !placement || !products) {
-        return NextResponse.json(
-          { ok: false, error: "Product reference is out of range.", path: storagePath },
-          { status: 400 }
-        );
+      if (ref) {
+        const category = data[ref.categoryIndex];
+        const subcategory = category?.["Podkategórie"]?.[ref.subcategoryIndex];
+        const placement = subcategory?.["Zaradenia"]?.[ref.placementIndex];
+        const products = placement?.["Produkty"];
+
+        if (category && subcategory && placement && products?.[ref.productIndex]) {
+          products.splice(ref.productIndex, 1);
+          removed = true;
+        }
       }
 
-      if (!products[ref.productIndex]) {
+      if (!removed && product?.["Názov"] && product?.["Kategória"] && product?.["Podkategória"] && product?.["Zaradenie"]) {
+        const cat = data.find((c) => c?.["Kategória"] === product["Kategória"]);
+        const sub = cat?.["Podkategórie"]?.find(
+          (s) => s?.["Podkategória"] === product["Podkategória"]
+        );
+        const plc = sub?.["Zaradenia"]?.find(
+          (p) => p?.["Zaradenie"] === product["Zaradenie"]
+        );
+        const products = plc?.["Produkty"];
+        if (products && Array.isArray(products)) {
+          const nameKey = norm(product["Názov"]);
+          const idx = products.findIndex(
+            (p: any) => norm(p?.["Názov"] || "") === nameKey
+          );
+          if (idx >= 0) {
+            products.splice(idx, 1);
+            removed = true;
+          }
+        }
+      }
+
+      if (!removed) {
         return NextResponse.json(
-          { ok: false, error: "Product not found at reference.", path: storagePath },
+          { ok: false, error: "Product not found for delete.", path: storagePath },
           { status: 404 }
         );
       }
-
-      products.splice(ref.productIndex, 1);
 
       const payload = JSON.stringify(data, null, 2);
       const up = await supabase.storage

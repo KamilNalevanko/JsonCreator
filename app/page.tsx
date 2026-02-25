@@ -142,6 +142,7 @@ const normalizeShopToken = (value: string) => {
 const productMatchesShop = (product: FlyerProduct, shopKey: string) => {
   const target = normalizeShopToken(shopKey);
   const tokens = (product["Obchody"] ?? []).map(normalizeShopToken);
+  if (tokens.length === 0) return true;
   if (tokens.includes(GLOBAL_SHOP_TOKEN)) return true;
 
   const allowedTargets = new Set([target]);
@@ -272,7 +273,10 @@ export default function Home() {
   const [productListQuery, setProductListQuery] = useState("");
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-  const [dbDeleteConfirmRef, setDbDeleteConfirmRef] = useState<LoadedProductEntry | null>(null);
+  const [dbDeleteConfirmRef, setDbDeleteConfirmRef] = useState<{
+    ref: LoadedProductRef;
+    name: string;
+  } | null>(null);
   const lastLoadKeyRef = useRef<string>("");
   const appendQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingAppendRef = useRef(0);
@@ -1296,13 +1300,20 @@ export default function Home() {
     }
   };
 
-  const deleteProductFromDb = async (entry: LoadedProductEntry) => {
+  const deleteProductFromDb = async (ref: LoadedProductRef, name: string) => {
     if (!bucketPath) return;
-    setDbDeleteConfirmRef(entry);
+    setDbDeleteConfirmRef({ ref, name });
   };
 
   const confirmDeleteProductFromDb = async () => {
-    if (!dbDeleteConfirmRef || !bucketPath) return;
+    if (!dbDeleteConfirmRef) {
+      setError("Chyba: nie je vybrany produkt na zmazanie.");
+      return;
+    }
+    if (!bucketPath) {
+      setError("Chyba: nie je vybrana krajina.");
+      return;
+    }
     const entry = dbDeleteConfirmRef;
     setDbDeleteConfirmRef(null);
     setError("");
@@ -1313,7 +1324,16 @@ export default function Home() {
       const response = await fetch("/api/master-products/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: bucketPath, ref: entry.ref }),
+        body: JSON.stringify({
+          country: bucketPath,
+          ref: entry.ref,
+          product: {
+            "Názov": entry.name,
+            "Kategória": categoryKey,
+            "Podkategória": subcategoryKey,
+            "Zaradenie": placementKey,
+          },
+        }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -1894,7 +1914,12 @@ const deleteDebugFile = async () => {
                     <button
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => deleteProductFromDb(selectedLoadedEntry)}
+                      onClick={() =>
+                        deleteProductFromDb(
+                          selectedLoadedEntry.ref,
+                          selectedLoadedEntry.name
+                        )
+                      }
                       tabIndex={-1}
                       className="rounded-md border border-red-200 px-5 py-3 text-base font-semibold text-red-700 hover:border-red-300"
                     >
@@ -2345,13 +2370,13 @@ placeholder={t("placeholder_extra_info")}
                     <button
                       className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200/60 transition hover:bg-red-700 disabled:opacity-60"
                       onClick={() => {
-                        if (dbEditEntry) {
-                          deleteProductFromDb(dbEditEntry);
-                        }
+                        if (!dbEditRef) return;
+                        const name = form.name.trim() || dbEditEntry?.name || "produkt";
+                        deleteProductFromDb(dbEditRef, name);
                       }}
                       tabIndex={-1}
                       type="button"
-                      disabled={!dbEditEntry}
+                      disabled={isDbUpdating}
                     >
                       Zmazat produkt z DB
                     </button>
@@ -2491,6 +2516,7 @@ placeholder={t("placeholder_extra_info")}
             <div className="flex gap-3">
               <button
                 onClick={() => setDbDeleteConfirmRef(null)}
+                type="button"
                 className="flex-1 rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
               >
                 {t("btn_cancel")}
@@ -2498,6 +2524,7 @@ placeholder={t("placeholder_extra_info")}
               <button
                 onClick={confirmDeleteProductFromDb}
                 disabled={isDbUpdating}
+                type="button"
                 className="flex-1 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 {isDbUpdating ? "Mažu..." : "Zmazať"}
