@@ -1,28 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { withStorageLock } from "../storageLock";
-
-type HierarchyPlacement = {
-  "Zaradenie": string;
-  "Produkty"?: unknown[];
-};
-
-type HierarchySubcategory = {
-  "Podkategória": string;
-  "Zaradenia": HierarchyPlacement[];
-};
-
-type HierarchyCategory = {
-  "Kategória": string;
-  "Podkategórie": HierarchySubcategory[];
-};
-
-type LoadedProductRef = {
-  categoryIndex: number;
-  subcategoryIndex: number;
-  placementIndex: number;
-  productIndex: number;
-};
 
 type ProductIdentity = {
   "Názov"?: string;
@@ -31,8 +8,8 @@ type ProductIdentity = {
   "Zaradenie"?: string;
 };
 
-const norm = (s: string) =>
-  (s || "")
+const normalizeNameKey = (value: string) =>
+  (value || "")
     .toString()
     .trim()
     .toLowerCase()
@@ -40,10 +17,10 @@ const norm = (s: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ");
 
-
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRole) {
@@ -55,7 +32,6 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const country = (body?.country || "").toString().toLowerCase().trim();
-    const ref = body?.ref as LoadedProductRef | undefined;
     const product = body?.product as ProductIdentity | undefined;
 
     if (!country || !["sk", "cz", "pl"].includes(country)) {
@@ -65,119 +41,40 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!ref && !product) {
+    if (!product?.["Názov"]) {
       return NextResponse.json(
-        { ok: false, error: "Missing product reference." },
+        { ok: false, error: "Missing product name." },
         { status: 400 }
       );
     }
-
-    const fileBase =
-      country === "sk" ? "slovakia" : country === "cz" ? "czechia" : "poland";
-    const storagePath = `databazy/${country}/${fileBase}.json`;
 
     const supabase = createClient(supabaseUrl, serviceRole, {
       auth: { persistSession: false },
     });
 
-    return await withStorageLock(storagePath, async () => {
-      const dl = await supabase.storage.from("cap-data").download(storagePath);
+    const nameKey = normalizeNameKey(product["Názov"]);
+    const { data, error } = await supabase
+      .from("master_products_v2")
+      .delete()
+      .eq("country", country)
+      .eq("name_key", nameKey)
+      .select("id");
 
-      if (dl.error || !dl.data) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: `Cannot download existing master JSON: ${storagePath}`,
-            detail: dl.error?.message || "Unknown download error",
-            path: storagePath,
-          },
-          { status: 404 }
-        );
-      }
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 }
+      );
+    }
 
-      const text = await dl.data.text();
-      let master: any;
-      try {
-        master = JSON.parse(text);
-      } catch {
-        return NextResponse.json(
-          { ok: false, error: "Country JSON is not valid JSON.", path: storagePath },
-          { status: 500 }
-        );
-      }
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Product not found for delete." },
+        { status: 404 }
+      );
+    }
 
-      if (!Array.isArray(master)) {
-        return NextResponse.json(
-          { ok: false, error: "Country JSON is not an array.", path: storagePath },
-          { status: 500 }
-        );
-      }
-
-      const data = master as HierarchyCategory[];
-      let removed = false;
-
-      if (ref) {
-        const category = data[ref.categoryIndex];
-        const subcategory = category?.["Podkategórie"]?.[ref.subcategoryIndex];
-        const placement = subcategory?.["Zaradenia"]?.[ref.placementIndex];
-        const products = placement?.["Produkty"];
-
-        if (category && subcategory && placement && products?.[ref.productIndex]) {
-          products.splice(ref.productIndex, 1);
-          removed = true;
-        }
-      }
-
-      if (!removed && product?.["Názov"] && product?.["Kategória"] && product?.["Podkategória"] && product?.["Zaradenie"]) {
-        const cat = data.find((c) => c?.["Kategória"] === product["Kategória"]);
-        const sub = cat?.["Podkategórie"]?.find(
-          (s) => s?.["Podkategória"] === product["Podkategória"]
-        );
-        const plc = sub?.["Zaradenia"]?.find(
-          (p) => p?.["Zaradenie"] === product["Zaradenie"]
-        );
-        const products = plc?.["Produkty"];
-        if (products && Array.isArray(products)) {
-          const nameKey = norm(product["Názov"]);
-          const idx = products.findIndex(
-            (p: any) => norm(p?.["Názov"] || "") === nameKey
-          );
-          if (idx >= 0) {
-            products.splice(idx, 1);
-            removed = true;
-          }
-        }
-      }
-
-      if (!removed) {
-        return NextResponse.json(
-          { ok: false, error: "Product not found for delete.", path: storagePath },
-          { status: 404 }
-        );
-      }
-
-      const payload = JSON.stringify(data, null, 2);
-      const up = await supabase.storage
-        .from("cap-data")
-        .upload(storagePath, payload, {
-          contentType: "application/json",
-          cacheControl: "0",
-          upsert: true,
-        });
-
-      if (up.error) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: `Upload failed for ${storagePath}`,
-            detail: up.error.message,
-          },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({ ok: true, path: storagePath });
-    });
+    return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message || "Unknown error" },

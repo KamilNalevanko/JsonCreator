@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { withStorageLock } from "../storageLock";
 
 type FlyerProduct = {
   "Názov": string;
@@ -19,38 +18,24 @@ type FlyerProduct = {
   "Obchody"?: string[];
 };
 
-type HierarchyPlacement = {
-  "Zaradenie": string;
-  "Produkty"?: FlyerProduct[];
-};
+const normalizeNameKey = (value: string) =>
+  (value || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
 
-type HierarchySubcategory = {
-  "Podkategória": string;
-  "Zaradenia": HierarchyPlacement[];
-};
+const normalizeShops = (value?: string[]) =>
+  Array.isArray(value) ? value.map((item) => String(item)) : [];
 
-type HierarchyCategory = {
-  "Kategória": string;
-  "Podkategórie": HierarchySubcategory[];
-};
-
-const trimName = (value: string) => (value || "").toString().trim();
-const productExistsInPlacement = (
-  placement: HierarchyPlacement,
-  product: FlyerProduct
-) =>
-  (placement["Produkty"] ?? []).some(
-    (p) =>
-      trimName(p["Názov"]) === trimName(product["Názov"]) &&
-      p["Kategória"] === product["Kategória"] &&
-      p["Podkategória"] === product["Podkategória"] &&
-      p["Zaradenie"] === product["Zaradenie"]
-  );
-
+const NO_SHOP_TOKEN = "<NO_SHOP>";
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRole) {
@@ -78,115 +63,62 @@ export async function POST(req: Request) {
       );
     }
 
-    const fileBase =
-      country === "sk" ? "slovakia" : country === "cz" ? "czechia" : "poland";
-    const storagePath = `databazy/${country}/${fileBase}.json`;
-
     const supabase = createClient(supabaseUrl, serviceRole, {
       auth: { persistSession: false },
     });
 
-    return await withStorageLock(storagePath, async () => {
-      const dl = await supabase.storage.from("cap-data").download(storagePath);
+    const nameKey = normalizeNameKey(product["Názov"]);
+    const baseRecord = {
+      country,
+      name: product["Názov"],
+      name_key: nameKey,
+      category: product["Kategória"],
+      subcategory: product["Podkategória"],
+      placement: product["Zaradenie"],
+      amount: product["Množstvo"],
+      unit: product["Merná jednotka"],
+      price_regular: product["Bežná cena za bal."],
+      price_regular_unit: product["Bežná jednotková cena"],
+      price_sale: product["Akciová cena"],
+      price_sale_unit: product["Akciová jednotková cena"],
+      info: product["Doplnková Informácia"],
+      date_from: product["Dátum akcie od"],
+      date_to: product["Dátum akcie do"],
+    };
 
-      if (dl.error || !dl.data) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: `Cannot download existing master JSON: ${storagePath}`,
-            detail: dl.error?.message || "Unknown download error",
-            path: storagePath,
-          },
-          { status: 404 }
-        );
-      }
+    const rawShops = normalizeShops(product["Obchody"]);
+    const shops = rawShops.length ? rawShops : [NO_SHOP_TOKEN];
 
-      const text = await dl.data.text();
-      let master: any;
-      try {
-        master = JSON.parse(text);
-      } catch {
-        return NextResponse.json(
-          { ok: false, error: "Country JSON is not valid JSON.", path: storagePath },
-          { status: 500 }
-        );
-      }
+    const { data: existing, error: existingError } = await supabase
+      .from("master_products_v2")
+      .select("id,shop")
+      .eq("country", baseRecord.country)
+      .eq("name_key", baseRecord.name_key)
+      .in("shop", shops);
 
-      if (!Array.isArray(master)) {
-        return NextResponse.json(
-          { ok: false, error: "Country JSON is not an array.", path: storagePath },
-          { status: 500 }
-        );
-      }
-
-      const data = master as HierarchyCategory[];
-      const categoryIndex = data.findIndex(
-        (c) => c["Kategória"] === product["Kategória"]
+    if (existingError) {
+      return NextResponse.json(
+        { ok: false, error: existingError.message },
+        { status: 500 }
       );
-      if (categoryIndex === -1) {
-        return NextResponse.json(
-          { ok: false, error: "Category not found.", path: storagePath },
-          { status: 400 }
-        );
-      }
+    }
 
-      const subIndex = (data[categoryIndex]["Podkategórie"] ?? []).findIndex(
-        (s) => s["Podkategória"] === product["Podkategória"]
+    const existingShops = new Set((existing || []).map((row) => row.shop));
+    const added = shops.some((shop) => !existingShops.has(shop));
+
+    const records = shops.map((shop) => ({ ...baseRecord, shop }));
+    const { error: insertError } = await supabase
+      .from("master_products_v2")
+      .upsert(records, { onConflict: "country,shop,name_key" });
+
+    if (insertError) {
+      return NextResponse.json(
+        { ok: false, error: insertError.message },
+        { status: 500 }
       );
-      if (subIndex === -1) {
-        return NextResponse.json(
-          { ok: false, error: "Subcategory not found.", path: storagePath },
-          { status: 400 }
-        );
-      }
+    }
 
-      const placementIndex = (
-        data[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"] ?? []
-      ).findIndex((p) => p["Zaradenie"] === product["Zaradenie"]);
-      if (placementIndex === -1) {
-        return NextResponse.json(
-          { ok: false, error: "Placement not found.", path: storagePath },
-          { status: 400 }
-        );
-      }
-
-      const placement =
-        data[categoryIndex]["Podkategórie"][subIndex]["Zaradenia"][
-          placementIndex
-        ];
-      if (!placement["Produkty"]) placement["Produkty"] = [];
-
-      const exists = productExistsInPlacement(placement, product);
-      if (!exists) {
-        placement["Produkty"].push(product);
-      }
-
-      const payload = JSON.stringify(data, null, 2);
-      const up = await supabase.storage
-        .from("cap-data")
-        .upload(storagePath, payload, {
-          contentType: "application/json",
-          cacheControl: "0",
-          upsert: true,
-        });
-
-      if (up.error) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: `Upload failed for ${storagePath}`,
-            detail: up.error.message,
-          },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        ok: true,
-        path: storagePath,
-        added: !exists,
-      });
-    });
+    return NextResponse.json({ ok: true, added });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message || "Unknown error" },

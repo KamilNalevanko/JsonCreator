@@ -121,7 +121,6 @@ const normalizeKeyTight = (value: string) =>
 const GLOBAL_SHOP_TOKEN = "global";
 const SHOP_ALIASES: Record<string, string> = {
   billa: "billa",
-  coop: "potraviny",
   coopjednota: "potraviny",
   coopjednotasupermarket: "supermarket",
   cooptempo: "tempo",
@@ -862,6 +861,16 @@ export default function Home() {
         item.product["Zaradenie"] === product["Zaradenie"]
     );
 
+  const findLoadedEntryForProduct = (product: FlyerProduct) =>
+    loadedProductsList.find(
+      (item) =>
+        normalizeKey(item.product["Názov"]) ===
+          normalizeKey(product["Názov"]) &&
+        item.product["Kategória"] === product["Kategória"] &&
+        item.product["Podkategória"] === product["Podkategória"] &&
+        item.product["Zaradenie"] === product["Zaradenie"]
+    ) ?? null;
+
   const isProductInLoadedFlyerExact = (product: FlyerProduct) =>
     loadedProductsList.some(
       (item) =>
@@ -1432,8 +1441,14 @@ export default function Home() {
   const startEdit = (entry: ProductEntry) => {
     setError("");
     setStatus("");
-    setEditingId(entry.id);
-    setEditingLoadedRef(null);
+    const loadedEntry = findLoadedEntryForProduct(entry.product);
+    if (loadedEntry) {
+      setEditingLoadedRef(loadedEntry.ref);
+      setEditingId(null);
+    } else {
+      setEditingId(entry.id);
+      setEditingLoadedRef(null);
+    }
     setCategoryKey(entry.product["Kategória"] ?? "");
     setSubcategoryKey(entry.product["Podkategória"] ?? "");
     setPlacementKey(entry.product["Zaradenie"] ?? "");
@@ -1462,69 +1477,19 @@ export default function Home() {
     resetFormFields();
   };
 
-  const loadShopJson = async (shopKey: string, forceRefresh = false) => {
+  const loadShopJson = async (shopKey: string) => {
     try {
       setError("");
       setStatus("");
-      const safeFolder = (bucketPath || "sk").toLowerCase().trim();
-      const fileBase = (countryFileByFolder[safeFolder] || safeFolder)
-        .toLowerCase()
-        .trim();
-      if (!fileBase || !safeFolder) return;
-      const storagePath = `databazy/${safeFolder}/${fileBase}.json`;
-      const publicUrl = supabase
-        ? supabase.storage.from("cap-data").getPublicUrl(storagePath).data?.publicUrl
-        : supabaseUrl
-          ? `${supabaseUrl}/storage/v1/object/public/cap-data/${storagePath}`
-          : "";
-      const cacheBust = forceRefresh ? `v=${Date.now()}` : "";
-      const publicUrlWithCache = publicUrl
-        ? publicUrl + (publicUrl.includes("?") ? "&" : "?") + cacheBust
-        : "";
+      if (!bucketPath) return;
+      const response = await fetch(
+        `/api/master-products/list?country=${encodeURIComponent(bucketPath)}`,
+        { cache: "no-store" }
+      );
 
-      if (publicUrlWithCache) {
-        const resp = await fetch(publicUrlWithCache, { cache: "no-store" });
-        if (!resp.ok) {
-          setLoadedFlyer(null);
-          setError(`${t("error_load_json")} (${storagePath})`);
-          return;
-        }
-
-        const data = await resp.json();
-        const normalized = normalizeLoadedFlyer(data);
-        if (!normalized) {
-          setLoadedFlyer(null);
-          setError(`${t("error_load_json")} (unexpected JSON shape: ${storagePath})`);
-          return;
-        }
-        setLoadedFlyer(normalized);
-        setStatus(t("status_loaded_file"));
-        return;
-      }
-
-      const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
-      const candidates = [
-        `${base}/data/${safeFolder}/${fileBase}.json`,
-        `${base}/data/${safeFolder}/${fileBase}/${fileBase}.json`,
-      ];
-
-      // ak nechces env, staci aj cisto relativne:
-      // const candidates = [`data/${safeFolder}/${fileBase}.json`, `data/${safeFolder}/${fileBase}/${fileBase}.json`];
-
-      let response: Response | null = null;
-      let lastUrl = "";
-      for (const candidate of candidates) {
-        lastUrl = candidate;
-        const attempt = await fetch(candidate, { cache: "no-store" });
-        if (attempt.ok) {
-          response = attempt;
-          break;
-        }
-      }
-
-      if (!response) {
+      if (!response.ok) {
         setLoadedFlyer(null);
-        setError(`${t("error_load_json")} (${lastUrl})`);
+        setError(t("error_load_json"));
         return;
       }
 
@@ -1532,9 +1497,10 @@ export default function Home() {
       const normalized = normalizeLoadedFlyer(data);
       if (!normalized) {
         setLoadedFlyer(null);
-        setError(`${t("error_load_json")} (unexpected JSON shape: ${lastUrl})`);
+        setError(t("error_load_json"));
         return;
       }
+
       setLoadedFlyer(normalized);
       setStatus(t("status_loaded_file"));
     } catch (err) {
