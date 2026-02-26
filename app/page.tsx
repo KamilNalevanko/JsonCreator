@@ -267,6 +267,8 @@ export default function Home() {
   const suggestionsBoxRef = useRef<HTMLDivElement | null>(null);
   const infoInputRef = useRef<HTMLInputElement | null>(null);
   const infoSuggestionsBoxRef = useRef<HTMLDivElement | null>(null);
+  const dateFromInputRef = useRef<HTMLInputElement | null>(null);
+  const dateToInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
   const suggestionItemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
@@ -2071,39 +2073,6 @@ const deleteDebugFile = async () => {
 
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                  {t("label_regular_price")}
-                  <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                    value={form.priceRegular || ""}
-                    onChange={(event) => {
-                      const newPrice = normalizePrice(event.target.value);
-                      setForm((prev) => ({
-                        ...prev,
-                        priceRegular: newPrice,
-                        priceRegularUnit: calculateUnitPrice(newPrice, prev.amount, prev.unit),
-                      }));
-                    }}
-                  />
-                </label>
-                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
-                  {t("label_regular_unit_price")}
-                  <input
-                    tabIndex={-1}
-                    readOnly
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                    value={form.priceRegularUnit}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev, 
-                        priceRegularUnit: normalizePrice(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_price")}
                   <input
                     className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
@@ -2138,46 +2107,84 @@ const deleteDebugFile = async () => {
               <div className="grid gap-3 grid-cols-[1fr_1fr_1.5fr]">
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_date_from")}
-                  <input
-                    type="date"
-                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                    value={form.dateFrom ? form.dateFrom.split(".").reverse().join("-") : ""}
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        const [year, month, day] = event.target.value.split("-");
-                        if (year.length === 4) {
-                          const newFromDate = `${day}.${month}.${year}`;
-                          setForm((prev) => ({ ...prev, dateFrom: newFromDate }));
+                  <div className="relative">
+                    <input
+                      ref={dateFromInputRef}
+                      type="date"
+                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      value={form.dateFrom ? form.dateFrom.split(".").reverse().join("-") : ""}
+                      onChange={(event) => {
+                        if (event.target.value) {
+                          const [year, month, day] = event.target.value.split("-");
+                          if (year.length === 4) {
+                            const newFromDate = `${day}.${month}.${year}`;
+                            setForm((prev) => ({ ...prev, dateFrom: newFromDate }));
+                          }
+                        } else {
+                          setForm((prev) => ({ ...prev, dateFrom: "" }));
                         }
-                      } else {
-                        setForm((prev) => ({ ...prev, dateFrom: "" }));
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        dateFromInputRef.current?.showPicker?.();
+                        dateFromInputRef.current?.focus();
+                      }}
+                      aria-label="Otvoriť kalendár"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                    </button>
+                  </div>
                 </label>
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_date_to")}
-                  <input
-                    type="date"
-                    className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
-                    value={form.dateTo ? form.dateTo.split(".").reverse().join("-") : ""}
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        const [year, month, day] = event.target.value.split("-");
-                        if (year.length === 4) {
+                  <div className="relative">
+                    <input
+                      ref={dateToInputRef}
+                      type="date"
+                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      value={form.dateTo ? form.dateTo.split(".").reverse().join("-") : ""}
+                      onChange={(event) => {
+                        if (event.target.value) {
+                          const [year, month, day] = event.target.value.split("-");
+                          if (year.length === 4) {
+                            setForm((prev) => ({
+                              ...prev,
+                              dateTo: `${day}.${month}.${year}`,
+                            }));
+                          }
+                        } else {
                           setForm((prev) => ({
                             ...prev,
-                            dateTo: `${day}.${month}.${year}`,
+                            dateTo: "",
                           }));
                         }
-                      } else {
-                        setForm((prev) => ({
-                          ...prev,
-                          dateTo: "",
-                        }));
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        dateToInputRef.current?.showPicker?.();
+                        dateToInputRef.current?.focus();
+                      }}
+                      aria-label="Otvoriť kalendár"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                    </button>
+                  </div>
                 </label>
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_extra_info")}
