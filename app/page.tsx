@@ -132,6 +132,18 @@ const SHOP_ALIASES: Record<string, string> = {
   tescohypermarket: "tescohypermarket",
   tescosupermarket: "tescosupermarket",
   biedronka: "biedronka",
+  auchanhipermarket: "auchanhipermarket",
+  auchansupermarket: "auchansupermarket",
+  aldi: "aldi",
+  dino: "dino",
+  lewiatan: "lewiatan",
+  carrefour: "carrefour",
+  carrefourmarket: "carrefourmarket",
+  carrefourexpress: "carrefourexpress",
+  stokrotkaexpress: "stokrotkaexpress",
+  stokrotkamarket: "stokrotkamarket",
+  stokrotkasupermarket: "stokrotkasupermarket",
+  zabka: "zabka",
   potraviny: "potraviny",
 };
 const normalizeShopToken = (value: string) => {
@@ -154,6 +166,23 @@ const productMatchesShop = (product: FlyerProduct, shopKey: string) => {
   }
   if (target === "tescohypermarket") {
     allowedTargets.add("tescosupermarket");
+  }
+  if (target === "stokrotkamarket") {
+    allowedTargets.add("stokrotkaexpress");
+  }
+  if (target === "stokrotkasupermarket") {
+    allowedTargets.add("stokrotkamarket");
+    allowedTargets.add("stokrotkaexpress");
+  }
+  if (target === "auchansupermarket") {
+    allowedTargets.add("auchanhipermarket");
+  }
+  if (target === "carrefourmarket") {
+    allowedTargets.add("carrefourexpress");
+  }
+  if (target === "carrefour") {
+    allowedTargets.add("carrefourmarket");
+    allowedTargets.add("carrefourexpress");
   }
 
   return tokens.some((token) => allowedTargets.has(token));
@@ -303,17 +332,20 @@ export default function Home() {
     ],
     pl: [
       { value: "biedronka", label: "Biedronka" },
-      { value: "billa", label: "Billa" },
-      { value: "kaufland", label: "Kaufland" },
       { value: "lidl", label: "Lidl" },
-      { value: "tesco", label: "Tesco" },
-      { value: "tesco-hipermarket", label: "Tesco Hipermarket" },
-      { value: "tesco-supermarket", label: "Tesco Supermarket" },
-      { value: "coop", label: "COOP Jednota" },
-      { value: "coop-tempo", label: "COOP Tempo" },
-      { value: "coop-supermarket", label: "COOP Supermarket" },
-      { value: "fresh", label: "Fresh" },
-      { value: "milk-agro", label: "Milk Agro" },
+      { value: "kaufland", label: "Kaufland" },
+      { value: "auchan-hypermarket", label: "Auchan Hipermarket" },
+      { value: "auchan-supermarket", label: "Auchan Supermarket" },
+      { value: "aldi", label: "Aldi" },
+      { value: "dino", label: "Dino" },
+      { value: "stokrotka-express", label: "Stokrotka Express" },
+      { value: "stokrotka-market", label: "Stokrotka Market" },
+      { value: "stokrotka-supermarket", label: "Stokrotka Supermarket" },
+      { value: "lewiatan", label: "Lewiatan" },
+      { value: "carrefour-express", label: "Carrefour Express" },
+      { value: "carrefour-market", label: "Carrefour Market" },
+      { value: "carrefour", label: "Carrefour" },
+      { value: "zabka", label: "Żabka" },
     ],
     cz: [
       { value: "tesco-hypermarket", label: "Tesco Hypermarket" },
@@ -1675,12 +1707,10 @@ const deleteDebugFile = async () => {
     <div className="relative min-h-screen bg-gray-200">
       
 
-      <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-8 pb-16 pt-6">
+      <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-8 pb-16 pt-2">
         <header className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm uppercase tracking-[0.3em] text-[color:var(--muted)]">
-              {t("app_badge")}
-            </span>
+            <span />
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -1700,9 +1730,7 @@ const deleteDebugFile = async () => {
               </select>
             </div>
           </div>
-          <h1 className="font-[var(--font-display)] text-4xl font-semibold text-[color:var(--ink)] md:text-5xl">
-            {t("app_title")}
-          </h1>
+          <h1 className="sr-only">{t("app_title")}</h1>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
