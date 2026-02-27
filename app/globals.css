@@ -1,32 +1,113 @@
 @import "tailwindcss";
 
+
 :root {
-  --paper: #edf1f4;
-  --ink: #0f1b2b;
-  --muted: #6b7280;
-  --accent: #53b175;
-  --accent-2: #6fae79;
-  --accent-strong: #00b36f;
-  --category-green: #4caf50;
-  --category-green-light: #81c784;
-  --category-green-dark: #388e3c;
-  --panel: #e7edf2;
-  --shadow: 0 30px 80px rgba(15, 27, 43, 0.18);
+  /* Plochy */
+  --background: #e3e7ec;         /* pozadie celej stránky */
+  --form: #f0f2f4;               /* hlavný panel formulára */
+  --paper: #f0f2f4;              /* karty / boxy */
+
+  /* Text */
+  --ink: #111827;                /* hlavný text */
+  --muted: #6b7280;              /* vedľajší text */
+
+  /* Akcenty + focus */
+  --accent: #16a34a;             /* hlavný akcent (zelená) */
+  --accent-strong: #15803d;      /* akcent hover */
+  --focus-ring: var(--accent);   /* farba focus rámčeka */
+
+  /* Tlačidlá: uložiť/pridať, neutrálne akcie, mazanie */
+  --btn-primary-bg: var(--accent); /* Uložiť zmeny / Pridať produkt */
+  --btn-primary-shadow: 0 10px 24px rgba(22, 163, 74, 0.35); /* tieň pre Uložiť/Pridať */
+  --btn-neutral-bg: #233246;       /* Stiahnuť súbor / Nahrať na server */
+  --btn-neutral-shadow: 0 10px 24px rgba(15, 27, 43, 0.35); /* tieň pre neutrálne akcie */
+  --btn-neutral-outline-border: rgba(17, 24, 39, 0.12);    /* Zrušiť úpravu (obrys) */
+  --btn-neutral-outline-border-hover: rgba(17, 24, 39, 0.28); /* Zrušiť úpravu hover */
+  --btn-danger-bg: #ef4444;        /* Vymazať všetko / Zmazať produkt */
+  --btn-danger-hover: #dc2626;     /* Vymazať hover */
+  --btn-danger-shadow: 0 10px 24px rgba(220, 38, 38, 0.35); /* tieň pre mazanie */
+  --btn-danger-outline-border: #f87171;       /* Zmazať z DB (obrys) */
+  --btn-danger-outline-border-hover: #ef4444; /* Zmazať z DB hover */
+  --btn-danger-outline-text: #991b1b;         /* text pre Zmazať z DB */
+
+  
+  /* Modály */
+  --modal-bg: #0f1b2b;            /* pozadie modálu */
+  --modal-border: rgba(255, 255, 255, 0.4);  /* rámček modálu */
+  --modal-cancel-hover: rgba(255, 255, 255, 0.1); /* hover pre „Zrušiť” v modále */
+
+  /* Zvýraznenia / dropdown */
+  --box-highlight-bg: #f0f8f4;            /* zelený info box (prázdny stav) */
+  --box-highlight-border: rgba(17, 24, 39, 0.1); /* rámček info boxu */
+  --dropdown-highlight-bg: #eaf7ef;       /* aktívny/hover riadok v dropdown */
+  
+  /* Stavové hlášky (Načítaný súbor / chyba) */
+  --notice-info-bg: #eaf4ff;      /* „Načítaný súbor…” pozadie */
+  --notice-info-border: #cfe8ff;  /* „Načítaný súbor…” rámček */
+  --notice-info-text: #0f335a;    /* „Načítaný súbor…” text */
+  --notice-error-bg: #fff1e6;     /* chybové pozadie */
+  --notice-error-border: #ffd3b6; /* chybový rámček */
+  --notice-error-text: #8a3e00;   /* chybový text */
+
+  /* Inputy / layout */
+  --border: #d8dde3;              /* jemné oddelenia / linky */
+  --input-bg: #f1f3f5;            /* pozadie inputov */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* všeobecný tieň */
 }
 
+
+
 [data-theme="dark"] {
-  --paper: #0d1411;
-  --ink: #e7f2ea;
-  --muted: #a1b2a8;
-  --accent: #53b175;
-  --accent-2: #6fae79;
-  --accent-strong: #00b36f;
-  --category-green: #4caf50;
-  --category-green-light: #2a3c32;
-  --category-green-dark: #a6d3b3;
-  --panel: #141c18;
-  --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  /* Plochy */
+  --background: #0b1116;   /* pozadie celej stránky */
+  --form: #141a20;         /* hlavný panel formulára */
+  --paper: #141a20;        /* karty / boxy */
+
+  /* Text */
+  --ink: #d1d5db;          /* hlavný text */
+  --muted: #8b98a5;        /* vedľajší text */
+
+  /* Akcenty + focus */
+  --accent: #1f9d55;       /* hlavný akcent */
+  --accent-strong: #187c43;/* akcent hover */
+  --focus-ring: #e5e7eb;   /* farba focus rámčeka */
+
+  /* Inputy / layout */
+  --border: #1f2730;       /* jemné oddelenia / linky */
+  --input-bg: #0f151a;     /* pozadie inputov */
+  --shadow: 0 8px 20px rgba(0, 0, 0, 0.5); /* všeobecný tieň */
+  
+  /* Tlačidlá */
+  --btn-primary-bg: #176b3f;       /* Uložiť zmeny / Pridať produkt */
+  --btn-primary-hover: #145c37;     /* Uložiť/Pridať hover */
+  --btn-neutral-bg: #2a333d;        /* Stiahnuť súbor / Nahrať na server */
+  --btn-neutral-hover: #323c47;     /* neutrálne hover */
+  --btn-neutral-outline-border: #4b5563;        /* Zrušiť úpravu (obrys) */
+  --btn-neutral-outline-border-hover: #6b7280;  /* Zrušiť úpravu hover */
+  --btn-danger-bg: #b24a4a;         /* Vymazať všetko / Zmazať produkt */
+  --btn-danger-hover: #9f3f3f;      /* Vymazať hover */
+  --btn-danger-outline-border: #f2a2a2;       /* Zmazať z DB (obrys) */
+  --btn-danger-outline-border-hover: #f6bcbc; /* Zmazať z DB hover */
+  --btn-danger-outline-text: #fca5a5;         /* text pre Zmazať z DB */
+
+  /* Modály */
+  --modal-bg: #141a20;      /* pozadie modálu */
+  --modal-border: #1f2730;  /* rámček modálu */
+
+  /* Zvýraznenia / dropdown */
+  --box-highlight-bg: #0d1318;        /* zelený info box (prázdny stav) */
+  --box-highlight-border: #1f2730;    /* rámček info boxu */
+  --dropdown-highlight-bg: rgba(31, 157, 85, 0.28); /* aktívny/hover riadok */
+
+  /* Stavové hlášky (Načítaný súbor / chyba) */
+  --notice-info-bg: #0f1c2a;      /* „Načítaný súbor…” pozadie */
+  --notice-info-border: #2a4a6f;  /* „Načítaný súbor…” rámček */
+  --notice-info-text: #cfe6ff;    /* „Načítaný súbor…” text */
+  --notice-error-bg: rgba(239, 68, 68, 0.18);  /* chybové pozadie */
+  --notice-error-border: rgba(239, 68, 68, 0.35); /* chybový rámček */
+  --notice-error-text: #ffd6d6;   /* chybový text */
 }
+
 
 @theme inline {
   --color-background: var(--paper);
@@ -39,27 +120,27 @@
   box-sizing: border-box;
 }
 
+/* Override orange focus ring to use green accent */
+.focus-visible\:ring-orange-300:focus-visible,
+.ring-orange-300 {
+  --tw-ring-color: var(--focus-ring) !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #a5b3c2 0%, #8f9fb1 100%);
+  background: var(--background);
   color: var(--ink);
   font-family: var(--font-body), "Segoe UI", sans-serif;
   letter-spacing: 0.01em;
 }
 
-/* Override orange focus ring to use green accent */
-.focus-visible\:ring-orange-300:focus-visible,
-.ring-orange-300 {
-  --tw-ring-color: var(--accent) !important;
-}
-
 [data-theme="dark"] body {
-  background: radial-gradient(circle at top, #2a2a2a 0%, #1a1a1a 52%, #0f0f0f 100%);
+  background: var(--background);
 }
 
 [data-theme="dark"] .bg-white {
-  background-color: var(--panel) !important;
+  background-color: var(--form) !important;
 }
 
 [data-theme="dark"] .border-black\/10 {

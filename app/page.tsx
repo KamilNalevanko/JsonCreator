@@ -1704,23 +1704,26 @@ const deleteDebugFile = async () => {
 
 
   return (
-    <div className="relative min-h-screen bg-gray-200">
+    <div className="relative min-h-screen">
       
 
-      <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-8 pb-16 pt-2">
+      <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-6 pb-12 pt-2">
         <header className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span />
-            <div className="flex items-center gap-3">
+          <h1 className="sr-only">{t("app_title")}</h1>
+        </header>
+
+        <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
+          <div className="relative rounded-3xl bg-[color:var(--form)] p-5 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
+            <div className="absolute top-4 right-6 z-10 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
+                className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
               >
                 {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
               </button>
               <select
-                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] outline-none"
+                className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                 value={language}
                 onChange={(event) => setLanguage(event.target.value)}
               >
@@ -1729,19 +1732,13 @@ const deleteDebugFile = async () => {
                 <option value="pl">🇵🇱 {t("lang_pl")}</option>
               </select>
             </div>
-          </div>
-          <h1 className="sr-only">{t("app_title")}</h1>
-        </header>
-
-        <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
-          <div className="rounded-3xl bg-[color:var(--panel)] p-6 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--ink)]">
                 Počet produktov pre reťazec <span>{loadedProductsList.length}</span>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4">
+            <div className="mt-5 grid gap-3">
               <div className="grid gap-3 md:grid-cols-[0.25fr_0.75fr]">
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_storage_folder")}
@@ -1894,7 +1891,9 @@ const deleteDebugFile = async () => {
                               selectLoadedSuggestion(p);
                             }}
                             className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-auto flex items-center justify-between gap-3 cursor-pointer ${
-                              idx === activeSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
+                              idx === activeSuggestionIndex
+                                ? "bg-[color:var(--dropdown-highlight-bg)]"
+                                : "hover:bg-[color:var(--dropdown-highlight-bg)]"
                             }`}
                           >
                             <span className="flex-1 text-left">{p.name}</span>
@@ -1917,7 +1916,7 @@ const deleteDebugFile = async () => {
                         )
                       }
                       tabIndex={-1}
-                      className="rounded-md border border-red-200 px-5 py-3 text-base font-semibold text-red-700 hover:border-red-300"
+                      className="rounded-md border border-[color:var(--btn-danger-outline-border)] px-5 py-3 text-base font-semibold text-[color:var(--btn-danger-outline-text)] transition hover:border-[color:var(--btn-danger-outline-border-hover)] hover:scale-[1.02] active:scale-[0.99]"
                     >
                       Zmazat z DB
                     </button>
@@ -2360,7 +2359,9 @@ placeholder={t("placeholder_extra_info")}
                             }}
                             onMouseEnter={() => setActiveInfoSuggestionIndex(idx)}
                             className={`w-full px-4 py-3 text-left text-sm text-[color:var(--ink)] transition border-b border-black/5 last:border-b-0 h-[2.75rem] flex items-center ${
-                              idx === activeInfoSuggestionIndex ? "bg-[color:var(--accent)]/10" : "hover:bg-[color:var(--accent)]/10"
+                              idx === activeInfoSuggestionIndex
+                                ? "bg-[color:var(--dropdown-highlight-bg)]"
+                                : "hover:bg-[color:var(--dropdown-highlight-bg)]"
                             }`}
                           >
                             {info}
@@ -2373,12 +2374,12 @@ placeholder={t("placeholder_extra_info")}
               </div>
 
               {error ? (
-                <div className="rounded-xl border border-[#ffd3b6] bg-[#fff1e6] px-4 py-3 text-sm text-[#8a3e00]">
+                <div className="rounded-xl border border-[color:var(--notice-error-border)] bg-[color:var(--notice-error-bg)] px-4 py-3 text-sm text-[color:var(--notice-error-text)]">
                   {error}
                 </div>
               ) : null}
               {status ? (
-                <div className="rounded-xl border border-[#cfe8ff] bg-[#eaf4ff] px-4 py-3 text-sm text-[#0f335a]">
+                <div className="rounded-xl border border-[color:var(--notice-info-border)] bg-[color:var(--notice-info-bg)] px-4 py-3 text-sm text-[color:var(--notice-info-text)]">
                   {status}
                 </div>
               ) : null}
@@ -2387,7 +2388,7 @@ placeholder={t("placeholder_extra_info")}
                 {dbEditRef ? (
                   <>
                     <button
-                      className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95 disabled:opacity-60"
+                      className="rounded-full bg-[color:var(--btn-primary-bg)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--btn-primary-shadow)] transition hover:brightness-95 hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60"
                       onClick={updateProductInDb}
                       type="button"
                       disabled={isDbUpdating}
@@ -2395,14 +2396,14 @@ placeholder={t("placeholder_extra_info")}
                       {isDbUpdating ? "Ukladam..." : "Ulozit zmeny do DB"}
                     </button>
                     <button
-                      className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                      className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30 hover:scale-[1.02] active:scale-[0.99]"
                       onClick={cancelDbEdit}
                       type="button"
                     >
                       Zrusit zmeny DB
                     </button>
                     <button
-                      className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200/60 transition hover:bg-red-700 disabled:opacity-60"
+                      className="rounded-full bg-[color:var(--btn-danger-bg)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--btn-danger-shadow)] transition hover:bg-[color:var(--btn-danger-hover)] hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60"
                       onClick={() => {
                         if (!dbEditRef) return;
                         const name = form.name.trim() || dbEditEntry?.name || "produkt";
@@ -2418,7 +2419,7 @@ placeholder={t("placeholder_extra_info")}
                 ) : (
                   <>
                     <button
-                      className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-green-300/50 transition hover:brightness-95 disabled:opacity-60"
+                      className="rounded-full bg-[color:var(--btn-primary-bg)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--btn-primary-shadow)] transition hover:brightness-95 hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60"
                       onClick={addProduct}
                       type="button"
                       disabled={isAppending}
@@ -2427,7 +2428,7 @@ placeholder={t("placeholder_extra_info")}
                     </button>
                     {editingId || editingLoadedRef ? (
                       <button
-                        className="rounded-full border border-black/10 px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                        className="rounded-full border border-[color:var(--btn-neutral-outline-border)] px-6 py-3 text-sm font-semibold text-[color:var(--ink)] transition hover:border-[color:var(--btn-neutral-outline-border-hover)] hover:scale-[1.02] active:scale-[0.99]"
                         onClick={cancelEdit}
                         type="button"
                       >
@@ -2435,14 +2436,14 @@ placeholder={t("placeholder_extra_info")}
                       </button>
                     ) : null}
                     <button
-                      className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
+                      className="rounded-full bg-[color:var(--btn-neutral-bg)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--btn-neutral-shadow)] transition hover:brightness-110 hover:scale-[1.02] active:scale-[0.99]"
                       onClick={downloadJson}
                       type="button"
                     >
                       {t("btn_download_file")}
                     </button>
                     <button
-                      className="rounded-full bg-[#0f1b2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-black/20 transition hover:brightness-110 disabled:opacity-60"
+                      className="rounded-full bg-[color:var(--btn-neutral-bg)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--btn-neutral-shadow)] transition hover:brightness-110 hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60"
                       onClick={handleUploadClick}
                       type="button"
                       disabled={isUploading}
@@ -2450,7 +2451,7 @@ placeholder={t("placeholder_extra_info")}
                       {isUploading ? "Nahrávam..." : "Nahrať na server"}
                     </button>
                     <button
-                      className="ml-auto rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-200/60 transition hover:bg-red-700"
+                      className="ml-auto rounded-full bg-[color:var(--btn-danger-bg)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--btn-danger-shadow)] transition hover:bg-[color:var(--btn-danger-hover)] hover:scale-[1.02] active:scale-[0.99]"
                       onClick={handleClearAllClick}
                       type="button"
                     >
@@ -2485,11 +2486,11 @@ placeholder={t("placeholder_extra_info")}
               </div>
               <div className="mt-3 grid max-h-[520px] gap-3 overflow-y-auto pr-1">
                 {displayProducts.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-black/10 bg-[#f0f8f4] px-4 py-6 text-sm text-[color:var(--muted)]">
+                  <div className="rounded-2xl border border-dashed border-[color:var(--box-highlight-border)] bg-[color:var(--box-highlight-bg)] px-4 py-6 text-sm text-[color:var(--muted)]">
                     {t("empty_products")}
                   </div>
                 ) : filteredDisplayProducts.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-black/10 bg-[#f0f8f4] px-4 py-6 text-sm text-[color:var(--muted)]">
+                  <div className="rounded-2xl border border-dashed border-[color:var(--box-highlight-border)] bg-[color:var(--box-highlight-bg)] px-4 py-6 text-sm text-[color:var(--muted)]">
                     Žiadne výsledky.
                   </div>
                 ) : (
@@ -2540,7 +2541,7 @@ placeholder={t("placeholder_extra_info")}
       {/* Delete Confirmation Modal */}
       {dbDeleteConfirmRef && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
-          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[#0f1b2b] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[color:var(--modal-bg)] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
             <h3 className="font-[var(--font-display)] text-2xl font-semibold mb-3">
               Zmazať z databázy?
             </h3>
@@ -2551,7 +2552,7 @@ placeholder={t("placeholder_extra_info")}
               <button
                 onClick={() => setDbDeleteConfirmRef(null)}
                 type="button"
-                className="flex-1 rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className="flex-1 rounded-full border-2 border-[color:var(--modal-border)] px-6 py-3 text-sm font-semibold text-white hover:bg-[color:var(--modal-cancel-hover)] transition-colors"
               >
                 {t("btn_cancel")}
               </button>
@@ -2559,7 +2560,7 @@ placeholder={t("placeholder_extra_info")}
                 onClick={confirmDeleteProductFromDb}
                 disabled={isDbUpdating}
                 type="button"
-                className="flex-1 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                className="flex-1 rounded-full bg-[color:var(--btn-danger-bg)] px-6 py-3 text-sm font-semibold text-white hover:bg-[color:var(--btn-danger-hover)] disabled:opacity-50 transition-colors"
               >
                 {isDbUpdating ? "Mažu..." : "Zmazať"}
               </button>
@@ -2571,7 +2572,7 @@ placeholder={t("placeholder_extra_info")}
       {/* Upload Confirmation Modal */}
       {showUploadConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
-          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[#0f1b2b] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[color:var(--modal-bg)] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
             <h3 className="font-[var(--font-display)] text-2xl font-semibold mb-3">
               {t("confirm_upload")}
             </h3>
@@ -2581,13 +2582,13 @@ placeholder={t("placeholder_extra_info")}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowUploadConfirm(false)}
-                className="flex-1 rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className="flex-1 rounded-full border-2 border-[color:var(--modal-border)] px-6 py-3 text-sm font-semibold text-white hover:bg-[color:var(--modal-cancel-hover)] transition-colors"
               >
                 {t("btn_cancel")}
               </button>
               <button
                 onClick={uploadToSupabase}
-                className="flex-1 rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white hover:brightness-90 transition-colors"
+                className="flex-1 rounded-full bg-[color:var(--btn-primary-bg)] px-6 py-3 text-sm font-semibold text-white hover:brightness-90 transition-colors"
               >
                 {t("btn_confirm_upload")}
               </button>
@@ -2599,7 +2600,7 @@ placeholder={t("placeholder_extra_info")}
       {/* Clear All Confirmation Modal */}
       {showClearAllConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
-          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[#0f1b2b] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[color:var(--modal-bg)] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
             <h3 className="font-[var(--font-display)] text-2xl font-semibold mb-3">
               Naozaj chceš vymazať všetko?
             </h3>
@@ -2609,13 +2610,13 @@ placeholder={t("placeholder_extra_info")}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowClearAllConfirm(false)}
-                className="flex-1 rounded-full border-2 border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className="flex-1 rounded-full border-2 border-[color:var(--modal-border)] px-6 py-3 text-sm font-semibold text-white hover:bg-[color:var(--modal-cancel-hover)] transition-colors"
               >
                 {t("btn_cancel")}
               </button>
               <button
                 onClick={confirmClearAll}
-                className="flex-1 rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                className="flex-1 rounded-full bg-[color:var(--btn-danger-bg)] px-6 py-3 text-sm font-semibold text-white hover:bg-[color:var(--btn-danger-hover)] transition-colors"
               >
                 {t("btn_clear_all")}
               </button>
