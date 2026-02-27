@@ -2101,6 +2101,39 @@ const deleteDebugFile = async () => {
 
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
+                  {t("label_regular_price")}
+                  <input
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    value={form.priceRegular || ""}
+                    onChange={(event) => {
+                      const newPrice = normalizePrice(event.target.value);
+                      setForm((prev) => ({
+                        ...prev,
+                        priceRegular: newPrice,
+                        priceRegularUnit: calculateUnitPrice(newPrice, prev.amount, prev.unit),
+                      }));
+                    }}
+                  />
+                </label>
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
+                  {t("label_regular_unit_price")}
+                  <input
+                    tabIndex={-1}
+                    readOnly
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    value={form.priceRegularUnit}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        priceRegularUnit: normalizePrice(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_price")}
                   <input
                     className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
