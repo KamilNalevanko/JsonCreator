@@ -3,9 +3,9 @@
 
 :root {
   /* Plochy */
-  --background: #e3e7ec;         /* pozadie celej stránky */
-  --form: #f0f2f4;               /* hlavný panel formulára */
-  --paper: #f0f2f4;              /* karty / boxy */
+  --background: #adb2b6;         /* pozadie celej stránky */
+  --form: #babec1;               /* hlavný panel formulára */
+  --paper: #babec1;              /* karty / boxy */
 
   /* Text */
   --ink: #111827;                /* hlavný text */
@@ -30,6 +30,8 @@
   --btn-danger-outline-border-hover: #ef4444; /* Zmazať z DB hover */
   --btn-danger-outline-text: #991b1b;         /* text pre Zmazať z DB */
 
+
+  
   
   /* Modály */
   --modal-bg: #0f1b2b;            /* pozadie modálu */
@@ -50,8 +52,8 @@
   --notice-error-text: #8a3e00;   /* chybový text */
 
   /* Inputy / layout */
-  --border: #d8dde3;              /* jemné oddelenia / linky */
-  --input-bg: #f1f3f5;            /* pozadie inputov */
+  --border: #cbd2da;              /* jemné oddelenia / linky */
+  --input-bg: #e8ecf0;            /* pozadie inputov */
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* všeobecný tieň */
 }
 
@@ -60,8 +62,8 @@
 [data-theme="dark"] {
   /* Plochy */
   --background: #0b1116;   /* pozadie celej stránky */
-  --form: #141a20;         /* hlavný panel formulára */
-  --paper: #141a20;        /* karty / boxy */
+  --form: #172029;         /* hlavný panel formulára */
+  --paper: #172029;        /* karty / boxy */
 
   /* Text */
   --ink: #d1d5db;          /* hlavný text */
@@ -74,7 +76,7 @@
 
   /* Inputy / layout */
   --border: #1f2730;       /* jemné oddelenia / linky */
-  --input-bg: #0f151a;     /* pozadie inputov */
+  --input-bg: #141d24;     /* pozadie inputov */
   --shadow: 0 8px 20px rgba(0, 0, 0, 0.5); /* všeobecný tieň */
   
   /* Tlačidlá */
@@ -95,8 +97,8 @@
   --modal-border: #1f2730;  /* rámček modálu */
 
   /* Zvýraznenia / dropdown */
-  --box-highlight-bg: #0d1318;        /* zelený info box (prázdny stav) */
-  --box-highlight-border: #1f2730;    /* rámček info boxu */
+  --box-highlight-bg: #162029;        /* zelený info box (prázdny stav) */
+  --box-highlight-border: #d6dde5;    /* rámček info boxu */
   --dropdown-highlight-bg: rgba(31, 157, 85, 0.28); /* aktívny/hover riadok */
 
   /* Stavové hlášky (Načítaný súbor / chyba) */
@@ -119,6 +121,8 @@
 * {
   box-sizing: border-box;
 }
+
+
 
 /* Override orange focus ring to use green accent */
 .focus-visible\:ring-orange-300:focus-visible,
@@ -144,15 +148,16 @@ body {
 }
 
 [data-theme="dark"] .border-black\/10 {
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
 }
 
+
 [data-theme="dark"] .border-black\/5 {
-  border-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
 [data-theme="dark"] .border-black\/30 {
-  border-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
 }
 
 [data-theme="dark"] .bg-\[\#f0f8f4\] {
