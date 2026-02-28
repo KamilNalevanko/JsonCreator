@@ -3,10 +3,11 @@
 
 :root {
   /* Plochy */
-  --background: #adb2b6;         /* pozadie celej stránky */
+  --background: #eef1f3;         /* pozadie celej stránky */
   --form: #babec1;               /* hlavný panel formulára */
   --paper: #babec1;              /* karty / boxy */
 
+  
   /* Text */
   --ink: #111827;                /* hlavný text */
   --muted: #6b7280;              /* vedľajší text */
@@ -124,6 +125,10 @@
 
 
 
+
+
+
+
 /* Override orange focus ring to use green accent */
 .focus-visible\:ring-orange-300:focus-visible,
 .ring-orange-300 {
@@ -150,7 +155,6 @@ body {
 [data-theme="dark"] .border-black\/10 {
   border-color: rgba(255, 255, 255, 0.7) !important;
 }
-
 
 [data-theme="dark"] .border-black\/5 {
   border-color: rgba(255, 255, 255, 0.6) !important;
