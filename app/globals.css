@@ -3,9 +3,9 @@
 
 :root {
   /* Plochy */
-  --background: #eef1f3;         /* pozadie celej stránky */
-  --form: #babec1;               /* hlavný panel formulára */
-  --paper: #babec1;              /* karty / boxy */
+  --background: #ffffff;         /* pozadie celej stránky */
+  --form: #c2d6f2;               /* hlavný panel formulára */
+  --paper: #c2d6f2;              /* karty / boxy */
 
   
   /* Text */
@@ -54,9 +54,11 @@
 
   /* Inputy / layout */
   --border: #cbd2da;              /* jemné oddelenia / linky */
-  --input-bg: #e8ecf0;            /* pozadie inputov */
+  --input-bg: #d9e7f7;            /* pozadie inputov */
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* všeobecný tieň */
 }
+
+
 
 
 
