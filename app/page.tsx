@@ -1746,20 +1746,22 @@ const deleteDebugFile = async () => {
                 >
                   {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
                 </button>
-                <select
-                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
-                  value={palette}
-                  onChange={(event) => {
-                    const nextPalette = event.target.value;
-                    setPalette(nextPalette);
-                  }}
-                >
-                  <option value="blue">Modrá</option>
-                  <option value="turquoise">Tyrkysová</option>
-                  <option value="green">Zelená</option>
-                  <option value="classic">Svetlá biela</option>
-                  <option value="pink">Ružová</option>
-                </select>
+                {theme === "light" ? (
+                  <select
+                    className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                    value={palette}
+                    onChange={(event) => {
+                      const nextPalette = event.target.value;
+                      setPalette(nextPalette);
+                    }}
+                  >
+                    <option value="blue">Modrá</option>
+                    <option value="turquoise">Tyrkysová</option>
+                    <option value="green">Zelená</option>
+                    <option value="classic">Svetlá biela</option>
+                    <option value="pink">Ružová</option>
+                  </select>
+                ) : null}
                 <select
                   className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                   value={language}
