@@ -132,6 +132,7 @@ const SHOP_ALIASES: Record<string, string> = {
   tescohypermarket: "tescohypermarket",
   tescosupermarket: "tescosupermarket",
   biedronka: "biedronka",
+  auchanhypermarket: "auchanhipermarket",
   auchanhipermarket: "auchanhipermarket",
   auchansupermarket: "auchansupermarket",
   aldi: "aldi",
@@ -174,8 +175,8 @@ const productMatchesShop = (product: FlyerProduct, shopKey: string) => {
     allowedTargets.add("stokrotkamarket");
     allowedTargets.add("stokrotkaexpress");
   }
-  if (target === "auchansupermarket") {
-    allowedTargets.add("auchanhipermarket");
+  if (target === "auchanhipermarket") {
+    allowedTargets.add("auchansupermarket");
   }
   if (target === "carrefourmarket") {
     allowedTargets.add("carrefourexpress");
@@ -244,6 +245,11 @@ const makeId = () =>
 export default function Home() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [palette, setPalette] = useState("blue");
+  const [customPalette, setCustomPalette] = useState({
+    background: "#ffffff",
+    form: "#e9eef2",
+  });
+  const [showCustomPalette, setShowCustomPalette] = useState(false);
   const [language, setLanguage] = useState("sk");
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
@@ -386,9 +392,24 @@ export default function Home() {
       saved === "turquoise" ||
       saved === "green" ||
       saved === "classic" ||
-      saved === "pink"
+      saved === "pink" ||
+      saved === "custom"
     ) {
       setPalette(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("customPalette");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed?.background && parsed?.form) {
+          setCustomPalette(parsed);
+        }
+      } catch {
+        // ignore invalid storage
+      }
     }
   }, []);
 
@@ -402,6 +423,18 @@ export default function Home() {
     localStorage.setItem("palette", palette);
   }, [palette]);
 
+  useEffect(() => {
+    if (palette === "custom" && theme === "light") {
+      document.documentElement.style.setProperty("--background", customPalette.background);
+      document.documentElement.style.setProperty("--form", customPalette.form);
+      document.documentElement.style.setProperty("--paper", customPalette.form);
+    } else {
+      document.documentElement.style.removeProperty("--background");
+      document.documentElement.style.removeProperty("--form");
+      document.documentElement.style.removeProperty("--paper");
+    }
+    localStorage.setItem("customPalette", JSON.stringify(customPalette));
+  }, [palette, theme, customPalette]);
 
 
   useEffect(() => {
@@ -1725,7 +1758,6 @@ const deleteDebugFile = async () => {
 
 
 
-
   return (
     <div className="relative min-h-screen">
       
@@ -1746,22 +1778,29 @@ const deleteDebugFile = async () => {
                 >
                   {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
                 </button>
-                {theme === "light" ? (
-                  <select
-                    className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
-                    value={palette}
-                    onChange={(event) => {
-                      const nextPalette = event.target.value;
-                      setPalette(nextPalette);
-                    }}
-                  >
-                    <option value="blue">Modrá</option>
-                    <option value="turquoise">Tyrkysová</option>
-                    <option value="green">Zelená</option>
-                    <option value="classic">Svetlá biela</option>
-                    <option value="pink">Ružová</option>
-                  </select>
-                ) : null}
+                <select
+                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                  value={palette}
+                  onClick={() => {
+                    if (palette === "custom") {
+                      setShowCustomPalette(true);
+                    }
+                  }}
+                  onChange={(event) => {
+                    const nextPalette = event.target.value;
+                    setPalette(nextPalette);
+                    if (nextPalette === "custom") {
+                      setShowCustomPalette(true);
+                    }
+                  }}
+                >
+                  <option value="blue">Modrá</option>
+                  <option value="turquoise">Tyrkysová</option>
+                  <option value="green">Zelená</option>
+                  <option value="classic">Svetlá biela</option>
+                  <option value="pink">Ružová</option>
+                  <option value="custom">Vlastná</option>
+                </select>
                 <select
                   className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                   value={language}
@@ -2669,4 +2708,53 @@ placeholder={t("placeholder_extra_info")}
     </div>
   );
 
+      {/* Custom Palette Modal */}
+      {showCustomPalette && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
+          <div className="relative mx-4 w-full max-w-md rounded-3xl bg-[color:var(--modal-bg)] p-8 text-white shadow-2xl animate-[float-in_0.3s_ease-out]">
+            <h3 className="font-[var(--font-display)] text-2xl font-semibold mb-3">
+              Vlastna paleta
+            </h3>
+            <div className="grid gap-4">
+              <label className="flex items-center justify-between gap-3 text-sm font-semibold text-white/80">
+                Pozadie
+                <input
+                  type="color"
+                  value={customPalette.background}
+                  onChange={(event) =>
+                    setCustomPalette((prev) => ({
+                      ...prev,
+                      background: event.target.value,
+                    }))
+                  }
+                  className="h-8 w-12 cursor-pointer"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 text-sm font-semibold text-white/80">
+                Form
+                <input
+                  type="color"
+                  value={customPalette.form}
+                  onChange={(event) =>
+                    setCustomPalette((prev) => ({
+                      ...prev,
+                      form: event.target.value,
+                    }))
+                  }
+                  className="h-8 w-12 cursor-pointer"
+                />
+              </label>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowCustomPalette(false)}
+                type="button"
+                className="flex-1 rounded-full border-2 border-[color:var(--modal-border)] px-6 py-3 text-sm font-semibold text-white hover:bg-[color:var(--modal-cancel-hover)] transition-colors"
+              >
+                Zavriet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 }
