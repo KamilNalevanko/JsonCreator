@@ -243,6 +243,7 @@ const makeId = () =>
 
 export default function Home() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [palette, setPalette] = useState("blue");
   const [language, setLanguage] = useState("sk");
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
@@ -379,9 +380,29 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const saved = localStorage.getItem("palette");
+    if (
+      saved === "blue" ||
+      saved === "turquoise" ||
+      saved === "green" ||
+      saved === "classic" ||
+      saved === "pink"
+    ) {
+      setPalette(saved);
+    }
+  }, []);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.palette = palette;
+    localStorage.setItem("palette", palette);
+  }, [palette]);
+
+
 
   useEffect(() => {
     const available = shopOptionsByFolder[bucketPath] ?? [];
@@ -1703,6 +1724,8 @@ const deleteDebugFile = async () => {
 };
 
 
+
+
   return (
     <div className="relative min-h-screen">
       
@@ -1714,23 +1737,39 @@ const deleteDebugFile = async () => {
 
         <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
           <div className="relative rounded-3xl bg-[color:var(--form)] p-5 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
-            <div className="absolute top-4 right-6 z-10 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
-              >
-                {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
-              </button>
-              <select
-                className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
-                value={language}
-                onChange={(event) => setLanguage(event.target.value)}
-              >
-                <option value="sk">🇸🇰 {t("lang_sk")}</option>
-                <option value="cz">🇨🇿 {t("lang_cz")}</option>
-                <option value="pl">🇵🇱 {t("lang_pl")}</option>
-              </select>
+            <div className="absolute top-4 right-6 z-10 flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
+                >
+                  {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
+                </button>
+                <select
+                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                  value={palette}
+                  onChange={(event) => {
+                    const nextPalette = event.target.value;
+                    setPalette(nextPalette);
+                  }}
+                >
+                  <option value="blue">Modrá</option>
+                  <option value="turquoise">Tyrkysová</option>
+                  <option value="green">Zelená</option>
+                  <option value="classic">Svetlá biela</option>
+                  <option value="pink">Ružová</option>
+                </select>
+                <select
+                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                >
+                  <option value="sk">🇸🇰 {t("lang_sk")}</option>
+                  <option value="cz">🇨🇿 {t("lang_cz")}</option>
+                  <option value="pl">🇵🇱 {t("lang_pl")}</option>
+                </select>
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--ink)]">
@@ -2624,6 +2663,8 @@ placeholder={t("placeholder_extra_info")}
           </div>
         </div>
       )}
+
     </div>
   );
+
 }

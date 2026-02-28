@@ -32,8 +32,9 @@
   --btn-danger-outline-text: #991b1b;         /* text pre Zmazať z DB */
 
 
+
   
-  
+
   /* Modály */
   --modal-bg: #0f1b2b;            /* pozadie modálu */
   --modal-border: rgba(255, 255, 255, 0.4);  /* rámček modálu */
@@ -50,12 +51,47 @@
   --notice-info-text: #0f335a;    /* „Načítaný súbor…” text */
   --notice-error-bg: #fff1e6;     /* chybové pozadie */
   --notice-error-border: #ffd3b6; /* chybový rámček */
+  
   --notice-error-text: #8a3e00;   /* chybový text */
 
   /* Inputy / layout */
   --border: #cbd2da;              /* jemné oddelenia / linky */
-  --input-bg: #d9e7f7;            /* pozadie inputov */
+  --input-bg: #f1f3f5;            /* pozadie inputov */
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* všeobecný tieň */
+}
+
+[data-theme="light"][data-palette="blue"] {
+  --background: #ffffff;
+  --form: #c2d6f2;
+  --paper: #c2d6f2;
+}
+
+
+
+
+[data-theme="light"][data-palette="turquoise"] {
+  --background: #ffffff;
+  --form: #b7ddd6;
+  --paper: #b7ddd6;
+}
+
+
+[data-theme="light"][data-palette="green"] {
+  --background: #ffffff;
+  --form: #b7deb4;
+  --paper: #b7deb4;
+}
+
+[data-theme="light"][data-palette="classic"] {
+  --background: #ffffff;
+  --form: #e9eef2;
+  --paper: #e9eef2;
+}
+
+[data-theme="light"][data-palette="pink"] {
+  --background: #ffffff;
+  --form: #f1d6e9;
+  --paper: #f1d6e9;
 }
 
 
