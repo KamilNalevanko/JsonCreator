@@ -61,6 +61,25 @@ type LoadedProductEntry = {
   ref: LoadedProductRef;
 };
 
+type AiExtractItem = {
+  name: string;
+  amount?: string;
+  unit?: string;
+  price_sale?: string;
+  price_regular?: string;
+  note?: string;
+  date_from?: string;
+  date_to?: string;
+  product?: FlyerProduct;
+  match?: null;
+  suggestions?: [];
+};
+
+type AiExtractMeta = {
+  date_from?: string;
+  date_to?: string;
+};
+
 const hierarchy = hierarchyData as HierarchyCategory[];
 const languageMap = {
   sk: skLabels,
@@ -237,6 +256,16 @@ const getTodayDate = (): string => {
   return formatDateToSk(today);
 };
 
+const formatDateRange = (dateFrom?: string, dateTo?: string) => {
+  if (dateFrom && dateTo) {
+    if (dateFrom === dateTo) return dateFrom;
+    return `${dateFrom} – ${dateTo}`;
+  }
+  if (dateFrom) return `od ${dateFrom}`;
+  if (dateTo) return `do ${dateTo}`;
+  return "";
+};
+
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -251,6 +280,12 @@ export default function Home() {
   });
   const [showCustomPalette, setShowCustomPalette] = useState(false);
   const [language, setLanguage] = useState("sk");
+  const [aiPdfFile, setAiPdfFile] = useState<File | null>(null);
+  const [aiExtracted, setAiExtracted] = useState<AiExtractItem[]>([]);
+  const [aiExtractMeta, setAiExtractMeta] = useState<AiExtractMeta>({});
+  const [aiExtractStatus, setAiExtractStatus] = useState("");
+  const [aiExtractError, setAiExtractError] = useState("");
+  const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
     hierarchy[0]?.["Kategória"] ?? ""
@@ -467,6 +502,80 @@ export default function Home() {
         acc.replace(new RegExp(`\\{${varKey}\\}`, "g"), value),
       template
     );
+  };
+
+  const handleAiExtract = async () => {
+    setAiExtractError("");
+    setAiExtractStatus("");
+    if (!aiPdfFile) {
+      setAiExtractError("Najprv vyber PDF súbor.");
+      return;
+    }
+    try {
+      setIsAiExtracting(true);
+      const formData = new FormData();
+      formData.append("file", aiPdfFile);
+      formData.append("country", bucketPath);
+      formData.append("shop", shop);
+      const response = await fetch("/api/ai/parse-flyer", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setAiExtractError(payload?.error || "Extrakcia zlyhala.");
+        return;
+      }
+      const meta =
+        payload?.meta && typeof payload.meta === "object" ? payload.meta : {};
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setAiExtractMeta(meta);
+      setAiExtracted(items);
+
+      const nextDateFrom = typeof meta?.date_from === "string" ? meta.date_from : "";
+      const nextDateTo = typeof meta?.date_to === "string" ? meta.date_to : "";
+
+      if (nextDateFrom || nextDateTo) {
+        setForm((prev) => ({
+          ...prev,
+          dateFrom: nextDateFrom || prev.dateFrom,
+          dateTo: nextDateTo || prev.dateTo,
+        }));
+      }
+
+      const dateLabel = formatDateRange(nextDateFrom, nextDateTo);
+      setAiExtractStatus(
+        `Nájdené položky: ${items.length}${dateLabel ? ` • Leták: ${dateLabel}` : ""}`
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Extrakcia zlyhala.";
+      setAiExtractError(message);
+    } finally {
+      setIsAiExtracting(false);
+    }
+  };
+
+  const useAiItem = (item: AiExtractItem) => {
+    const nextPriceRegular = item.price_regular || "";
+    const nextPriceSale = item.price_sale || "";
+    const nextAmount = item.amount || "";
+    const nextUnit = item.unit || "kg";
+
+    setForm((prev) => ({
+      ...prev,
+      name: item.name || "",
+      amount: nextAmount,
+      unit: nextUnit,
+      priceRegular: nextPriceRegular,
+      priceRegularUnit: calculateUnitPrice(nextPriceRegular, nextAmount, nextUnit),
+      priceSale: nextPriceSale,
+      priceSaleUnit: calculateUnitPrice(nextPriceSale, nextAmount, nextUnit),
+      info: item.note || prev.info,
+date_from: item.date_from || aiExtractMeta.date_from || "",
+date_to: item.date_to || aiExtractMeta.date_to || "",
+    }));
+
+    focusNameInput();
   };
 
   const resolveProductShops = (ref?: LoadedProductRef | null, entryId?: string | null) => {
@@ -1816,6 +1925,97 @@ const deleteDebugFile = async () => {
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--ink)]">
                 Počet produktov pre reťazec <span>{loadedProductsList.length}</span>
               </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-black/10 bg-white/70 px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                AI import PDF (test)
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setAiPdfFile(file);
+                    setAiExtracted([]);
+                    setAiExtractMeta({});
+                    setAiExtractStatus("");
+                    setAiExtractError("");
+                  }}
+                  className="text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleAiExtract}
+                  disabled={isAiExtracting}
+                  className="rounded-full bg-[color:var(--btn-neutral-bg)] px-4 py-2 text-xs font-semibold text-white shadow-[var(--btn-neutral-shadow)] transition hover:brightness-110 disabled:opacity-60"
+                >
+                  {isAiExtracting ? "Spracúvam..." : "Analyzovať PDF"}
+                </button>
+                {aiExtractStatus ? (
+                  <span className="text-xs text-[color:var(--muted)]">{aiExtractStatus}</span>
+                ) : null}
+              </div>
+              {aiExtractError ? (
+                <div className="mt-2 text-xs text-red-600">{aiExtractError}</div>
+              ) : null}
+              {aiExtractMeta.date_from || aiExtractMeta.date_to ? (
+                <div className="mt-2 text-xs font-medium text-[color:var(--ink)]">
+                  Leták: {formatDateRange(aiExtractMeta.date_from, aiExtractMeta.date_to)}
+                </div>
+              ) : null}
+              {aiExtracted.length > 0 ? (
+                <div className="mt-3 grid max-h-[360px] gap-2 overflow-y-auto pr-1">
+                  {aiExtracted.map((item, idx) => (
+                    (() => {
+                      const displayName =
+                        item?.name || item?.product?.["Názov"] || "";
+                      const itemDateLabel = formatDateRange(item.date_from, item.date_to);
+                      return (
+                    <div
+                      key={`${displayName || "item"}-${idx}`}
+                      onClick={() => useAiItem(item)}
+                      className="flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs transition hover:border-black/25 hover:bg-black/[0.02]"
+                    >
+                      <div className="flex min-w-[220px] flex-1 flex-col gap-1">
+                        <span className="font-semibold text-[color:var(--ink)]">{displayName}</span>
+                        {item.note ? (
+                          <span className="text-[color:var(--muted)]">{item.note}</span>
+                        ) : (
+                          <span className="text-[color:var(--muted)]">Bez poznámky</span>
+                        )}
+                        {itemDateLabel ? (
+                          <span className="pt-1 text-[11px] font-medium text-[color:var(--accent)]">
+                            Akcia: {itemDateLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex min-w-[150px] flex-col items-end gap-1 text-right">
+                        <span className="text-xs text-[color:var(--muted)]">
+                          {item.amount && item.unit
+                            ? `${item.amount} ${item.unit}`
+                            : item.unit
+                              ? item.unit
+                              : ""}
+                        </span>
+                        {item.price_sale ? (
+                          <span className="text-sm font-semibold text-[color:var(--ink)]">
+                            Akcia: {item.price_sale}
+                          </span>
+                        ) : null}
+                        {item.price_regular ? (
+                          <span className={`text-xs ${item.price_sale ? "line-through text-[color:var(--muted)]" : "font-medium text-[color:var(--muted)]"}`}>
+                            Bežná: {item.price_regular}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                      );
+                    })()
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-5 grid gap-3">
