@@ -285,6 +285,7 @@ export default function Home() {
   const [aiExtractMeta, setAiExtractMeta] = useState<AiExtractMeta>({});
   const [aiExtractStatus, setAiExtractStatus] = useState("");
   const [aiExtractError, setAiExtractError] = useState("");
+  const [aiDebugText, setAiDebugText] = useState("");
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
@@ -340,6 +341,7 @@ export default function Home() {
   const infoSuggestionsBoxRef = useRef<HTMLDivElement | null>(null);
   const dateFromInputRef = useRef<HTMLInputElement | null>(null);
   const dateToInputRef = useRef<HTMLInputElement | null>(null);
+  const aiFileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
   const suggestionItemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [productListQuery, setProductListQuery] = useState("");
@@ -517,6 +519,7 @@ export default function Home() {
       formData.append("file", aiPdfFile);
       formData.append("country", bucketPath);
       formData.append("shop", shop);
+      formData.append("debug", "1");
       const response = await fetch("/api/ai/parse-flyer", {
         method: "POST",
         body: formData,
@@ -531,6 +534,7 @@ export default function Home() {
       const items = Array.isArray(payload?.items) ? payload.items : [];
       setAiExtractMeta(meta);
       setAiExtracted(items);
+      setAiDebugText(typeof payload?.debugText === "string" ? payload.debugText : "");
 
       const nextDateFrom = typeof meta?.date_from === "string" ? meta.date_from : "";
       const nextDateTo = typeof meta?.date_to === "string" ? meta.date_to : "";
@@ -571,8 +575,8 @@ export default function Home() {
       priceSale: nextPriceSale,
       priceSaleUnit: calculateUnitPrice(nextPriceSale, nextAmount, nextUnit),
       info: item.note || prev.info,
-date_from: item.date_from || aiExtractMeta.date_from || "",
-date_to: item.date_to || aiExtractMeta.date_to || "",
+      dateFrom: item.date_from || aiExtractMeta.date_from || "",
+      dateTo: item.date_to || aiExtractMeta.date_to || "",
     }));
 
     focusNameInput();
@@ -1933,6 +1937,7 @@ const deleteDebugFile = async () => {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <input
+                  ref={aiFileInputRef}
                   type="file"
                   accept="application/pdf"
                   onChange={(event) => {
@@ -1940,11 +1945,22 @@ const deleteDebugFile = async () => {
                     setAiPdfFile(file);
                     setAiExtracted([]);
                     setAiExtractMeta({});
+                    setAiDebugText("");
                     setAiExtractStatus("");
                     setAiExtractError("");
                   }}
-                  className="text-sm"
+                  className="hidden"
                 />
+                <button
+                  type="button"
+                  onClick={() => aiFileInputRef.current?.click()}
+                  className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25"
+                >
+                  Vybrať PDF
+                </button>
+                <span className="text-xs text-[color:var(--muted)]">
+                  {aiPdfFile?.name ? aiPdfFile.name : "Ziadny subor"}
+                </span>
                 <button
                   type="button"
                   onClick={handleAiExtract}
@@ -2015,6 +2031,16 @@ const deleteDebugFile = async () => {
                     })()
                   ))}
                 </div>
+              ) : null}
+              {aiDebugText ? (
+                <details className="mt-3 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">
+                  <summary className="cursor-pointer font-semibold text-[color:var(--ink)]">
+                    Textova vrstva PDF (debug)
+                  </summary>
+                  <pre className="mt-2 max-h-[220px] overflow-y-auto whitespace-pre-wrap text-[11px] leading-4">
+                    {aiDebugText}
+                  </pre>
+                </details>
               ) : null}
             </div>
 

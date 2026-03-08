@@ -4,230 +4,155 @@ import { pathToFileURL } from "url";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_PAGES = 80;
+const MAX_PAGES = 3;
 const buildPrompt = () => {
   return `
-Si extraktor produktov z obrázkov reklamných letákov supermarketov.
+Si extraktor produktov z reklamných letákov supermarketov.
 
 Na obrázkoch sú strany reklamného letáku supermarketu.
-Produkty sú zvyčajne zobrazené ako bloky s obrázkom produktu, názvom, množstvom a cenou.
-Každý produktový blok analyzuj samostatne.
+Produkty sú zvyčajne zobrazené ako bloky obsahujúce:
+- obrázok produktu
+- názov
+- množstvo
+- cenu
+
+TVOJ CIEĽ
+Vráť čo najviac produktov z letáku, ale iba ak ide o produkty určené na konzumáciu ľuďmi.
+
+Je lepšie vrátiť produkt s neúplným názvom než produkt nevrátiť vôbec.
+Ak si však nie si istý, či ide o potravinu alebo nápoj, radšej ho nevráť.
 
 EXTRAHUJ IBA:
 - potraviny
 - nápoje
+- všetko určené na konzumáciu ľuďmi
 
-IGNORUJ:
-- drogéria
+NIKDY NEEXTRAHUJ:
+- kvety
+- kytice
+- dekorácie
+- drogériu
 - čistiace prostriedky
 - papierové výrobky
 - potreby pre zvieratá
-- oblečenie
 - kuchynské potreby
+- oblečenie
 - elektroniku
 - domáce potreby
 
-AK NIE SI ISTÝ, ŽE IDE O POTRAVINU ALEBO NÁPOJ → položku vynechaj.
-
 ------------------------------------------------
 
-DÔLEŽITÉ PRAVIDLÁ PRE DÁTUM LETÁKU
+DÁTUM LETÁKU
 
-Dátum platnosti letáku musí byť zistený LEN z obrázku letáku.
+Dátum platnosti musí byť zistený iba z letáku.
 
 Ignoruj:
 - názov súboru
-- URL stránky
-- text mimo letáku
+- URL
+- HTML
 - metadata
-- HTML text
-- alt text
+- text mimo letáku
 
-Použi iba dátum, ktorý je viditeľný priamo na letáku.
+Ak existuje viac dátumov, vyber dátum platnosti celej akcie.
 
-Ak existuje viac dátumov:
-vyber ten, ktorý označuje platnosť celej akcie alebo celého letáku.
+meta.date_from = začiatok
+meta.date_to = koniec
 
-meta.date_from = začiatok platnosti letáku
-meta.date_to = koniec platnosti letáku
-
-Formát dátumu vždy:
+Formát:
 DD.MM.YYYY
 
-Ak rok nie je uvedený:
-použi rok z iného jasne viditeľného dátumu na letáku.
-
-Ak dátum nie je jasný:
-nechaj null.
+Ak dátum nie je jasný → null.
 
 ------------------------------------------------
 
-PRAVIDLÁ PRE NAME
+TVORBA NAME
 
-1. Použi názov z obalu produktu, ak je čitateľný.
-2. Ak existuje značka, zahrň ju do názvu.
-3. Do názvu zahrň hlavnú identitu produktu:
-   - značka
-   - obchodný názov
-   - typ produktu
-   - hlavný variant, ak je nevyhnutný na rozlíšenie produktu
-4. Zachovaj percentá, obsah tuku, kvalitu alebo podobné špecifikácie, ak sú prirodzenou súčasťou názvu.
-5. Ak je uvedené "rôzne druhy", pridaj na koniec názvu text "rôzne druhy".
-6. Odstráň marketingové texty ako:
-   - akcia
-   - super cena
-   - kupón
-   - zľava
-   - top ponuka
-   - výhodne
-   - ušetríte
-   - len teraz
-7. Nevymýšľaj názvy, ktoré nie sú jasne viditeľné na obrázku.
-8. Ak je názov príliš všeobecný, ale na obale je čitateľný konkrétnejší názov, použi konkrétnejší názov.
-9. Ak názov produktu nie je dostatočne jasný, položku vynechaj.
+NAME musí identifikovať produkt čo najpresnejšie.
+
+PRAVIDLÁ PRI TVORBE NAME:
+
+1. Textová vrstva PDF je iba pomocný zdroj pre názov produktu.
+2. Vždy over názov podľa vizuálneho obsahu produktu na obrázku.
+3. Obrázok produktu má prednosť pri určovaní značky a overení typu produktu.
+4. Značku doplň z obalu produktu, ak je čitateľná.
+5. Ak je značka jasne čitateľná na obale, MUSÍ byť v name.
+6. Ak značka nie je jednoznačne čitateľná, nepridávaj ju.
+7. Ak má produkt jasný názov obsahujúci variant alebo typ, použi ho.
+8. Neber textovú vrstvu ako absolútne správnu, ak je v rozpore s obrázkom.
+
+DO NAME NEPATRÍ:
+- množstvo
+- cena
+- percento zľavy
+- marketingové slogany
+- doplnkové informácie, ktoré nie sú súčasťou názvu produktu
+
+------------------------------------------------
+CENY
+
+price_sale = hlavná akciová cena.
+
+price_regular použi iba ak ide o pôvodnú alebo preškrtnutú cenu.
+
+Ak je len jedna cena:
+price_sale = táto cena
+price_regular = null
+
+Percento zľavy (napr. -10 %, -20 %, -42 %):
+- nie je cena
+- nie je name
+- nie je note
+
+Ak cena nie je jasná:
+price_sale = null
+price_regular = null
+
+Produkt kvôli tomu nevynechávaj.
 
 ------------------------------------------------
 
-PRAVIDLÁ PRE CENY
+MNOŽSTVO
 
-Všetky produkty v letáku považuj za akciové.
+Ak je jasné množstvo, vyplň:
 
-price_sale = hlavná akciová cena produktu
+amount
+unit
 
-price_regular = pôvodná bežná cena produktu IBA AK je jasne uvedená ako druhá cena
-a zjavne predstavuje pôvodnú alebo preškrtnutú cenu.
+Príklady:
+200 g
+500 ml
+1 kg
+0,75 l
 
-Ak je pri produkte len jedna cena:
-- price_sale = táto cena
-- price_regular = null
+Multipack zapisuj napr:
+6x0,5 l
 
-Ak sú pri produkte dve ceny:
-- väčšia, výraznejšia alebo hlavná cena = price_sale
-- druhá cena = price_regular LEN AK zjavne ide o pôvodnú / preškrtnutú / bežnú cenu
+Ak množstvo nie je jasné → null.
 
-VEĽMI DÔLEŽITÉ:
-Ak druhá cena znamená niečo iné než bežnú cenu, napríklad:
-- cena pri kúpe 1 kusa
-- cena pri kúpe viacerých kusov
-- cena v promo mechanike 2+1
-- cena za 3 kusy
+------------------------------------------------
+
+NOTE
+
+note obsahuje krátku dôležitú doplnkovú informáciu.
+
+Do note patrí:
+- vlastnosť produktu
+- typ suroviny
+- kvalita produktu
+- chuťový variant
+- promo mechanika, ak je priamo relevantná k produktu
+
+Do note NEPATRÍ:
+- percento zľavy
+- reklamné slogany
 - jednotková cena
-- cena s kartou alebo bez karty
-
-tak túto cenu NEDÁVAJ do price_regular.
-
-Takéto doplňujúce cenové informácie zvyčajne NEZAPISUJ do note, pokiaľ nie sú nevyhnutné na pochopenie hlavnej promo mechaniky.
-
-Zachovaj presný formát ceny:
-napr.
-0,49
-1,19
-2,99
-
-Nezapisuj symbol meny.
-
-Ak cena nie je jasná, nechaj null.
-
-------------------------------------------------
-
-PRAVIDLÁ PRE MNOŽSTVO
-
-Ak je jasné množstvo, vyplň amount a unit.
-
-Príklady:
-- 200 g
-- 1 kg
-- 500 ml
-- 0,75 l
-- 6×0,5 l
-- 3×25 g
-
-Ak je množstvo zapísané ako multipack, zachovaj ho čo najvernejšie v poli amount.
-Príklady:
-- amount = "6x0,5", unit = "l"
-- amount = "3x25", unit = "g"
-
-Ak množstvo nie je jasné:
-- amount = null
-- unit = null
-
-------------------------------------------------
-
-PRAVIDLÁ PRE NOTE
-
-Pole note používaj len na KRÁTKU a DÔLEŽITÚ doplnkovú informáciu ku produktu.
-
-Do note zapisuj iba:
-1. hlavnú promo mechaniku
-2. krátku vecnú špecifikáciu produktu, ak je dôležitá
-3. krátke obmedzenie akcie, ak je dôležité
-
-Preferuj čo najkratší výsledok.
-
-Do note zapisuj napríklad:
-- 2+1 ZADARMO
-- 3 ZA CENU 2
-- DRUHÝ KUS ZA POLOVICU
-- LEN S KARTOU
-- LIMIT 6 KS
-- 8-vaječné
-- biele, suché
-- z tvrdej pšenice
-
-NEZAPISUJ do note:
-- cenu za 3 kusy
-- cenu za kus pri kúpe 1 kusa
-- jednotkovú cenu
-- dlhé vysvetľujúce vety
-- nepodstatné drobné texty
-
-Ak je pri produkte viac informácií, vyber iba NAJDÔLEŽITEJŠIU alebo maximálne 2 krátke informácie.
-
-Príklady správne:
-- "2+1 ZADARMO"
-- "8-vaječné"
-- "biele, suché"
-- "2+1 ZADARMO; biele, suché"
-
-Príklady nesprávne:
-- "2+1 ZADARMO; cena za kus pri kúpe 3 kusov: 2,89; cena za kus pri kúpe 1 kusa: 4,33; cena za 3 kusy: 8,66"
-
-Ak produkt nemá žiadnu stručnú doplnkovú informáciu:
-note = null
-
-------------------------------------------------
-
-DÁTUM PRODUKTU
-
-item.date_from a item.date_to vyplň iba ak má konkrétny produkt vlastný dátum
-alebo patrí do sekcie so špeciálnou platnosťou.
-
-Ak produkt nemá vlastný dátum:
-- item.date_from = null
-- item.date_to = null
-
-Ak je uvedené iba:
-- "od X" → item.date_from = X, item.date_to = null
-- "len X" → item.date_from = X, item.date_to = X
-
-Ak si nie si istý, nechaj null.
-
-------------------------------------------------
-
-NEISTOTA
-
-Ak názov produktu nie je jasný → položku vynechaj.
-Ak si nie si istý cenou → cenu nechaj null.
-Ak si nie si istý dátumom → dátum nechaj null.
-Ak si nie si istý doplnkovou informáciou → note nechaj null.
-
-Nevymýšľaj chýbajúce údaje.
+- dlhé vety
 
 ------------------------------------------------
 
 VÝSTUP
 
-Vráť iba validný JSON bez akéhokoľvek textu mimo JSON.
+Vráť iba JSON.
 
 {
   "meta": {
@@ -248,6 +173,11 @@ Vráť iba validný JSON bez akéhokoľvek textu mimo JSON.
   ]
 }
 `.trim();
+};
+
+const buildTextHint = (text: string) => {
+  if (!text.trim()) return "";
+  return `\n\nTEXTOVA VRSTVA Z PDF (iba pomocny zdroj, obrazok ma prednost):\n${text}\n`;
 };
 const normalizeKey = (value: string) =>
   (value || "")
@@ -306,8 +236,47 @@ const normalizeDate = (value: string) => {
 const isWeakName = (name: string) => {
   const tokens = normalizeTokens(name);
   if (tokens.length >= 2) return false;
-  const weakSingles = new Set(["syr", "maslo", "dezert", "muka", "pivo", "mlieko", "jogurt"]);
+  const weakSingles = new Set([
+    "syr",
+    "maslo",
+    "dezert",
+    "muka",
+    "pivo",
+    "mlieko",
+    "jogurt",
+    "spagety",
+    "kolienka",
+    "penne",
+    "cestoviny",
+  ]);
   return tokens.length === 1 && weakSingles.has(tokens[0]);
+};
+
+const NON_FOOD_HINTS = [
+  "kytica",
+  "kvety",
+  "ruza",
+  "ruze",
+  "tulipany",
+  "orchidea",
+  "dekoracia",
+  "dekoracie",
+  "sviecka",
+  "sviecky",
+  "sampon",
+  "toaletny papier",
+  "avivaz",
+  "granule",
+  "krmivo",
+  "miskas",
+  "misky",
+  "hračka",
+  "hracka",
+];
+
+const looksNonFood = (name: string, note: string) => {
+  const hay = normalizeKey(`${name} ${note}`);
+  return NON_FOOD_HINTS.some((token) => hay.includes(normalizeKey(token)));
 };
 
 const sanitizeExtractedItems = (items: unknown[]) => {
@@ -327,6 +296,7 @@ const sanitizeExtractedItems = (items: unknown[]) => {
 
       if (!name) return null;
       if (isWeakName(name)) return null;
+      if (looksNonFood(name, note)) return null;
 
       return {
         name,
@@ -391,6 +361,7 @@ export async function POST(req: Request) {
 
     const form = await req.formData();
     const file = form.get("file");
+    const debug = (form.get("debug") || "").toString() === "1";
     if (!file || !(file instanceof File)) {
       return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
     }
@@ -415,26 +386,47 @@ export async function POST(req: Request) {
     const pages = Math.min(doc.numPages, MAX_PAGES);
 
     const images: string[] = [];
+    const pageTexts: string[] = [];
     for (let i = 1; i <= pages; i += 1) {
       const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: 3.5 });
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const ctx = canvas.getContext("2d");
-      await page.render({ canvasContext: ctx as any, viewport }).promise;
-      const pngBuffer = canvas.toBuffer("image/png");
-      const base64 = pngBuffer.toString("base64");
-      images.push(`data:image/png;base64,${base64}`);
+      try {
+        const textContent = await page.getTextContent();
+        const textItems = (textContent?.items || []) as Array<{ str?: string }>;
+        const text = textItems
+          .map((item) => (item?.str || "").toString().trim())
+          .filter(Boolean)
+          .join(" ");
+        pageTexts.push(text);
+      } catch {
+        pageTexts.push("");
+      }
+    }
+
+    const combinedText = pageTexts.filter(Boolean).join("\n\n");
+    const useImages = combinedText.trim().length < 200;
+
+    if (useImages) {
+      for (let i = 1; i <= pages; i += 1) {
+        const page = await doc.getPage(i);
+        const viewport = page.getViewport({ scale: 4 });
+        const canvas = createCanvas(viewport.width, viewport.height);
+        const ctx = canvas.getContext("2d");
+        await page.render({ canvasContext: ctx as any, viewport }).promise;
+        const pngBuffer = canvas.toBuffer("image/png");
+        const base64 = pngBuffer.toString("base64");
+        images.push(`data:image/png;base64,${base64}`);
+      }
     }
 
     const client = new OpenAI({ apiKey });
     const response = await client.chat.completions.create({
-      model: "gpt-4.1-mini", 
+      model: "gpt-4.1", 
       response_format: { type: "json_object" },
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: buildPrompt() },
+            { type: "text", text: buildPrompt() + buildTextHint(combinedText) },
             ...images.map((url) => ({
               type: "image_url",
               image_url: { url },
@@ -478,7 +470,7 @@ export async function POST(req: Request) {
       date_to: item.date_to || meta.date_to || "",
     }));
 
-    return Response.json({ meta, items, pages });
+    return Response.json({ meta, items, pages, debugText: debug ? combinedText : undefined });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Neznáma chyba";
     return Response.json({ error: message }, { status: 500 });
