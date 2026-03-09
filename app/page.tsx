@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import hierarchyData from "../assets/hierarchia.json";
 import skLabels from "../assets/langs/sk.json";
@@ -70,6 +70,7 @@ type AiExtractItem = {
   note?: string;
   date_from?: string;
   date_to?: string;
+  page?: number | null;
   product?: FlyerProduct;
   match?: null;
   suggestions?: [];
@@ -1931,9 +1932,22 @@ const deleteDebugFile = async () => {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-black/10 bg-white/70 px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                AI import PDF (test)
+            <div className="mt-16 rounded-2xl border border-black/10 bg-white/70 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  AI import PDF (test)
+                </div>
+                {aiExtracted.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(aiExtracted, null, 2));
+                    }}
+                    className="rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 active:scale-95"
+                  >
+                    Kopírovať JSON ({aiExtracted.length})
+                  </button>
+                ) : null}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <input
@@ -1988,7 +2002,16 @@ const deleteDebugFile = async () => {
                       const displayName =
                         item?.name || item?.product?.["Názov"] || "";
                       const itemDateLabel = formatDateRange(item.date_from, item.date_to);
+                      const showPageDivider = item.page != null && item.page !== aiExtracted[idx - 1]?.page;
                       return (
+                    <React.Fragment key={idx}>
+                    {showPageDivider && (
+                      <div className="flex items-center gap-3 px-1 pt-3 pb-1">
+                        <div className="h-px w-4 bg-black/30" />
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--ink)]">Strana {item.page}</span>
+                        <div className="h-px flex-1 bg-black/30" />
+                      </div>
+                    )}
                     <div
                       key={`${displayName || "item"}-${idx}`}
                       onClick={() => useAiItem(item)}
@@ -2027,6 +2050,7 @@ const deleteDebugFile = async () => {
                         ) : null}
                       </div>
                     </div>
+                    </React.Fragment>
                       );
                     })()
                   ))}
