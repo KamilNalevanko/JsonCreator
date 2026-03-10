@@ -27,6 +27,56 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const SHOP_PATTERNS: Array<{ pattern: RegExp; shop: string; country?: string }> = [
+  { pattern: /\bkaufland\b/i, shop: "kaufland" },
+  { pattern: /\blidl\b/i, shop: "lidl" },
+  { pattern: /\bbilla\b/i, shop: "billa" },
+  { pattern: /\btesco\b/i, shop: "tesco-hypermarket" },
+  { pattern: /\bcoop\s*jednota\b/i, shop: "coop-jednota" },
+  { pattern: /\balbert\b/i, shop: "albert-hypermarket" },
+  { pattern: /\bglobus\b/i, shop: "globus" },
+  { pattern: /\bpenny\b/i, shop: "peny" },
+  { pattern: /\baldi\b/i, shop: "aldi" },
+  { pattern: /\bbiedronka\b/i, shop: "biedronka", country: "pl" },
+  { pattern: /\bauchan\b/i, shop: "auchan-hypermarket" },
+  { pattern: /\bcarrefour\b/i, shop: "carrefour" },
+  { pattern: /\b[zż]abka\b/i, shop: "zabka", country: "pl" },
+  { pattern: /\blewiatan\b/i, shop: "lewiatan", country: "pl" },
+  { pattern: /\bdino\b/i, shop: "dino", country: "pl" },
+];
+
+const COUNTRY_PATTERNS: Array<{ pattern: RegExp; country: string }> = [
+  { pattern: /\b(slovakia|slovensko|slovenská republika)\b/i, country: "sk" },
+  { pattern: /\b(czech|česká republika|czechia)\b/i, country: "cz" },
+  { pattern: /\b(poland|polska|rzeczpospolita)\b/i, country: "pl" },
+  // price format hints
+  { pattern: /\b\d+[,.]\d+\s*€/i, country: "sk" },
+  { pattern: /\b\d+[,.]\d+\s*Kč/i, country: "cz" },
+  { pattern: /\b\d+[,.]\d+\s*zł/i, country: "pl" },
+];
+
+function detectShopAndCountry(text: string): { shop: string | null; country: string | null } {
+  let shop: string | null = null;
+  let country: string | null = null;
+
+  for (const { pattern, shop: s, country: c } of SHOP_PATTERNS) {
+    if (pattern.test(text)) {
+      shop = s;
+      if (c) country = c;
+      break;
+    }
+  }
+  if (!country) {
+    for (const { pattern, country: c } of COUNTRY_PATTERNS) {
+      if (pattern.test(text)) {
+        country = c;
+        break;
+      }
+    }
+  }
+  return { shop, country };
+}
+
 /** Remove internal PDF print/layout identifiers and other noise from extracted text */
 function cleanPageText(text: string): string {
   return text
@@ -132,6 +182,10 @@ export async function POST(req: Request) {
     const combinedText = allPageTexts.map((p) => `=== STRANA ${p.pageNum} ===\n${p.text}`).join("\n\n---\n\n");
     console.log(`Spracovávam ${pages} strán v dávkach...`);
 
+    // Detect shop and country from first few pages
+    const sampleText = allPageTexts.slice(0, 5).map((p) => p.text).join(" ");
+    const { shop: detectedShop, country: detectedCountry } = detectShopAndCountry(sampleText);
+
     // Split pages into batches of 10 to avoid output token limits
     const BATCH_SIZE = 10;
     const batches: { text: string; pageNum: number }[][] = [];
@@ -236,6 +290,8 @@ ${batchText}`,
     const result: Record<string, unknown> = {
       meta,
       items,
+      detectedShop: detectedShop ?? null,
+      detectedCountry: detectedCountry ?? null,
     };
 
     // Add debug text if requested

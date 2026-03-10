@@ -16,7 +16,8 @@ create table if not exists public.master_products_v2 (
   info text,
   date_from text,
   date_to text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  autoscrap bool not null default false
 );
 
 create unique index if not exists master_products_v2_unique

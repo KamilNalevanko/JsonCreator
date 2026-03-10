@@ -287,6 +287,14 @@ export default function Home() {
   const [aiExtractStatus, setAiExtractStatus] = useState("");
   const [aiExtractError, setAiExtractError] = useState("");
   const [aiDebugText, setAiDebugText] = useState("");
+  const [aiEditingIdx, setAiEditingIdx] = useState<number | null>(null);
+  const [aiDetectedShop, setAiDetectedShop] = useState("");
+  const [aiDetectedCountry, setAiDetectedCountry] = useState("");
+  const [aiSaveModal, setAiSaveModal] = useState(false);
+  const [aiSaveShop, setAiSaveShop] = useState("");
+  const [aiSaveCountry, setAiSaveCountry] = useState("sk");
+  const [aiSaveStatus, setAiSaveStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
@@ -536,6 +544,9 @@ export default function Home() {
       setAiExtractMeta(meta);
       setAiExtracted(items);
       setAiDebugText(typeof payload?.debugText === "string" ? payload.debugText : "");
+      setAiDetectedShop(typeof payload?.detectedShop === "string" ? payload.detectedShop : "");
+      setAiDetectedCountry(typeof payload?.detectedCountry === "string" ? payload.detectedCountry : "");
+      setAiSaveStatus(null);
 
       const nextDateFrom = typeof meta?.date_from === "string" ? meta.date_from : "";
       const nextDateTo = typeof meta?.date_to === "string" ? meta.date_to : "";
@@ -560,7 +571,7 @@ export default function Home() {
     }
   };
 
-  const useAiItem = (item: AiExtractItem) => {
+  const applyAiItem = (item: AiExtractItem) => {
     const nextPriceRegular = item.price_regular || "";
     const nextPriceSale = item.price_sale || "";
     const nextAmount = item.amount || "";
@@ -1996,13 +2007,12 @@ const deleteDebugFile = async () => {
                 </div>
               ) : null}
               {aiExtracted.length > 0 ? (
-                <div className="mt-3 grid max-h-[360px] gap-2 overflow-y-auto pr-1">
-                  {aiExtracted.map((item, idx) => (
-                    (() => {
-                      const displayName =
-                        item?.name || item?.product?.["Názov"] || "";
-                      const itemDateLabel = formatDateRange(item.date_from, item.date_to);
+                <div className="mt-3 grid max-h-[360px] gap-1.5 overflow-y-auto pr-1">
+                  {aiExtracted.map((item, idx) => {
                       const showPageDivider = item.page != null && item.page !== aiExtracted[idx - 1]?.page;
+                      const upd = (field: keyof AiExtractItem, value: string) =>
+                        setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+                      const inp = "rounded-md border border-black/10 bg-transparent px-1.5 py-0.5 text-xs text-[color:var(--ink)] focus:border-black/30 focus:outline-none w-full";
                       return (
                     <React.Fragment key={idx}>
                     {showPageDivider && (
@@ -2012,50 +2022,147 @@ const deleteDebugFile = async () => {
                         <div className="h-px flex-1 bg-black/30" />
                       </div>
                     )}
-                    <div
-                      key={`${displayName || "item"}-${idx}`}
-                      onClick={() => useAiItem(item)}
-                      className="flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs transition hover:border-black/25 hover:bg-black/[0.02]"
-                    >
-                      <div className="flex min-w-[220px] flex-1 flex-col gap-1">
-                        <span className="font-semibold text-[color:var(--ink)]">{displayName}</span>
-                        {item.note ? (
-                          <span className="text-[color:var(--muted)]">{item.note}</span>
-                        ) : (
-                          <span className="text-[color:var(--muted)]">Bez poznámky</span>
-                        )}
-                        {itemDateLabel ? (
-                          <span className="pt-1 text-[11px] font-medium text-[color:var(--accent)]">
-                            Akcia: {itemDateLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="flex min-w-[150px] flex-col items-end gap-1 text-right">
-                        <span className="text-xs text-[color:var(--muted)]">
-                          {item.amount && item.unit
-                            ? `${item.amount} ${item.unit}`
-                            : item.unit
-                              ? item.unit
-                              : ""}
-                        </span>
-                        {item.price_sale ? (
-                          <span className="text-sm font-semibold text-[color:var(--ink)]">
-                            Akcia: {item.price_sale}
-                          </span>
-                        ) : null}
-                        {item.price_regular ? (
-                          <span className={`text-xs ${item.price_sale ? "line-through text-[color:var(--muted)]" : "font-medium text-[color:var(--muted)]"}`}>
-                            Bežná: {item.price_regular}
-                          </span>
-                        ) : null}
-                      </div>
+                    <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs">
+                      {/* každé pole: label naľavo, input napravo */}
+                      {([
+                        { label: "Názov",             field: "name",          cls: "font-semibold", extra: null },
+                        { label: "Doplnková info",    field: "note",          cls: "text-[color:var(--muted)]", extra: null },
+                        { label: "Gramáž",            field: "__amount_unit", cls: "", extra: null },
+                        { label: "Akciová cena",      field: "price_sale",    cls: "font-semibold", extra: null },
+                        { label: "Bežná cena",        field: "price_regular", cls: "", extra: null },
+                        { label: "Dátum akcie od",    field: "date_from",     cls: "", extra: null },
+                        { label: "Dátum akcie do",    field: "date_to",       cls: "", extra: null },
+                      ] as { label: string; field: string; cls: string; extra: null }[]).map(({ label, field, cls }) => (
+                        <div key={field} className="flex items-center gap-2 border-b border-black/[0.05] py-1 last:border-0">
+                          <span className="w-32 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--muted)]">{label}</span>
+                          {field === "__amount_unit" ? (
+                            <div className="flex flex-1 gap-1">
+                              <input className={`${inp} w-16`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
+                              <input className={`${inp} w-12`} value={item.unit || ""} placeholder="jed." onChange={e => upd("unit", e.target.value)} />
+                            </div>
+                          ) : (
+                            <input
+                              className={`${inp} flex-1 ${cls}`}
+                              value={(item[field as keyof AiExtractItem] as string) || ""}
+                              placeholder={label}
+                              onChange={e => upd(field as keyof AiExtractItem, e.target.value)}
+                            />
+                          )}
+                          {field === "name" && (
+                            <button
+                              tabIndex={-1}
+                              onClick={() => {
+                                if (window.confirm(`Zmazať „${item.name || "produkt"}"?`)) {
+                                  setAiExtracted(prev => prev.filter((_, i) => i !== idx));
+                                }
+                              }}
+                              className="shrink-0 rounded-md bg-red-50 px-2 py-1 font-bold text-red-600 hover:bg-red-100 transition"
+                              title="Zmazať"
+                            >🗑</button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                     </React.Fragment>
                       );
-                    })()
-                  ))}
+                    })}
                 </div>
               ) : null}
+              {aiExtracted.length > 0 ? (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setAiSaveShop(aiDetectedShop || "");
+                      setAiSaveCountry(aiDetectedCountry || "sk");
+                      setAiSaveStatus(null);
+                      setAiSaveModal(true);
+                    }}
+                    className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75"
+                  >
+                    💾 Uložiť do databázy ({aiExtracted.length})
+                  </button>
+                </div>
+              ) : null}
+
+              {aiSaveModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+                    <h3 className="mb-4 text-base font-bold text-[color:var(--ink)]">Uložiť do databázy</h3>
+                    <div className="grid gap-3">
+                      <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
+                        Krajina
+                        <select
+                          className="rounded-xl border border-black/15 bg-black/[0.02] px-3 py-2 text-sm text-[color:var(--ink)] focus:outline-none focus:ring-1 focus:ring-black/20"
+                          value={aiSaveCountry}
+                          onChange={e => { setAiSaveCountry(e.target.value); setAiSaveShop(""); }}
+                        >
+                          <option value="sk">🇸🇰 Slovensko</option>
+                          <option value="cz">🇨🇿 Česko</option>
+                          <option value="pl">🇵🇱 Poľsko</option>
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
+                        Obchod
+                        {aiDetectedShop ? (
+                          <span className="mb-0.5 text-[11px] font-normal normal-case text-[color:var(--accent)]">
+                            ✓ Detekovaný: {shopOptionsByFolder[aiSaveCountry]?.find(s => s.value === aiDetectedShop)?.label ?? aiDetectedShop}
+                          </span>
+                        ) : null}
+                        <select
+                          className="rounded-xl border border-black/15 bg-black/[0.02] px-3 py-2 text-sm text-[color:var(--ink)] focus:outline-none focus:ring-1 focus:ring-black/20"
+                          value={aiSaveShop}
+                          onChange={e => setAiSaveShop(e.target.value)}
+                        >
+                          <option value="">— vyber obchod —</option>
+                          {(shopOptionsByFolder[aiSaveCountry] ?? []).map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      {aiSaveStatus && (
+                        <p className={`rounded-lg px-3 py-2 text-xs font-medium ${aiSaveStatus.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                          {aiSaveStatus.msg}
+                        </p>
+                      )}
+                    </div>
+                    <div className="mt-5 flex justify-end gap-2">
+                      <button
+                        onClick={() => setAiSaveModal(false)}
+                        className="rounded-xl px-4 py-2 text-xs font-semibold text-[color:var(--muted)] hover:bg-black/[0.05] transition"
+                      >Zrušiť</button>
+                      <button
+                        disabled={!aiSaveShop || isAiSaving}
+                        onClick={async () => {
+                          if (!aiSaveShop) return;
+                          setIsAiSaving(true);
+                          setAiSaveStatus(null);
+                          try {
+                            const res = await fetch("/api/ai/bulk-save", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ country: aiSaveCountry, shop: aiSaveShop, items: aiExtracted }),
+                            });
+                            const json = await res.json();
+                            if (json.ok) {
+                              setAiSaveStatus({ ok: true, msg: `✓ Uložených ${json.saved} položiek do databázy.` });
+                            } else {
+                              setAiSaveStatus({ ok: false, msg: json.error || "Chyba pri ukladaní." });
+                            }
+                          } catch {
+                            setAiSaveStatus({ ok: false, msg: "Sieťová chyba." });
+                          } finally {
+                            setIsAiSaving(false);
+                          }
+                        }}
+                        className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
+                      >
+                        {isAiSaving ? "Ukladám…" : `Uložiť ${aiExtracted.length} položiek`}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {aiDebugText ? (
                 <details className="mt-3 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">
                   <summary className="cursor-pointer font-semibold text-[color:var(--ink)]">
