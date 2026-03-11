@@ -135,33 +135,23 @@ export async function POST(req: Request) {
         const page = await doc.getPage(i);
         const textContent = await page.getTextContent();
 
-        // Each item has a `transform` matrix: [scaleX, skewX, skewY, scaleY, tx, ty]
-        // tx = X position, ty = Y position in PDF units (Y increases upward)
-        const LINE_TOLERANCE = 5; // px tolerance to group items into the same line
-
         interface PdfTextItem {
           str?: string;
-          transform?: number[];
         }
 
-        const positioned = (textContent?.items || [] as PdfTextItem[])
-          .map((item) => {
-            const it = item as PdfTextItem;
-            const str = (it?.str || "").toString().trim();
-            const tx = it.transform?.[4] ?? 0;
-            const ty = it.transform?.[5] ?? 0;
-            return { str, tx, ty };
-          })
-          .filter((it) => it.str.length > 0);
+        const items = (textContent?.items || [] as PdfTextItem[])
+          .map((item) => ((item as PdfTextItem)?.str || "").toString().trim())
+          .filter((str) => str.length > 0);
 
-        // Sort: descending Y (top of page first), then ascending X (left to right)
-        positioned.sort((a, b) => {
-          const yDiff = b.ty - a.ty;
-          if (Math.abs(yDiff) > LINE_TOLERANCE) return yDiff;
-          return a.tx - b.tx;
-        });
+        if (items.length === 0) {
+          pageTexts.push({ text: "", pageNum: i });
+          continue;
+        }
 
-        const raw = positioned.map((it) => it.str).join(" ");
+        // Use raw pdfjs order — content stream order matches visual block order
+        // in professionally-made PDFs (InDesign/Illustrator)
+        const raw = items.join(" ");
+
         const text = cleanPageText(raw);
         pageTexts.push({ text, pageNum: i });
       } catch (error) {
@@ -193,33 +183,56 @@ export async function POST(req: Request) {
       batches.push(allPageTexts.slice(i, i + BATCH_SIZE));
     }
 
-    const meta = { date_from: "", date_to: "" };
-    const allProducts: Product[] = [];
-
     const PRODUCT_SCHEMA = `{
   "meta": { "date_from": "DD.MM.YYYY alebo null", "date_to": "DD.MM.YYYY alebo null" },
   "products": [{ "name": "...", "amount": "...", "unit": "g/kg/ml/l/ks/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N }]
 }`;
 
     const PRODUCT_RULES = `PRAVIDLÁ:
-- Extrahovať IBA potraviny a nápoje
-- Ignorovať: kvety, dekorácie, čistiace prostriedky, papier, oblečenie, elektroniku, krmivo pre zvieratá, parkside náradie
-- name musí byť jasný a konkrétny
+
+ČO EXTRAHOVAŤ:
+- IBA potraviny, nápoje a alkohol
+- Ignorovať: kvety, dekorácie, čistiace prostriedky, toaletný papier, oblečenie, elektroniku, krmivo pre zvieratá, náradie, kozmetiku
+
+POLE "name":
+- Len čistý názov produktu (napr. "Bravčová krkovička", "Tavený syr", "Jablko červené")
+- NEPATRÍ sem: hmotnosť, objem, % alkoholu, počet kusov, "rôzne druhy" (ak nie je súčasťou názvu)
+- "rôzne druhy" môže ostať ak nie je spresňujúci popis dostupný
+- Špecifikácie typu "bez kosti, v celku", "pultový predaj" patria do "note"
+
+POLE "amount" a "unit":
+- amount: len číslo (napr. "200", "1", "0.5")
+- unit: g / kg / ml / l / ks / zväzok / balenie / null
+
+POLE "price_sale" a "price_regular":
+- price_regular = PÔVODNÁ (prečiarknutá / väčšia) cena, napr. "4,99"
+- price_sale = AKCIOVÁ (zvýraznená veľká) cena, napr. "3,49"
+- DÔLEŽITÉ: price_sale musí byť NIŽŠIA ako price_regular (ak máš len jednu cenu, daj ju do price_sale)
+- "Card" cena (vernostná karta) = price_sale
+- Ceny v zátvorkách ako "(=1 kg KC: 3,61 / BC: 6,80)" alebo "(=1 kus 0,27)" SÚ CENY ZA KG/KUS, NIE skutočné ceny balenia — IGNORUJ ICH
+- Ak cenu nevidíš alebo si nie si istý, nechaj pole prázdne — NEVYMÝŠĽAJ
+
+POLE "note":
+- Sem patria: "pultový predaj", "bez kosti", "v celku", "pevný podiel 120g", "+ záloh za obaly 1,04", zľavové percentá
+
+OSTATNÉ:
 - Dátumy v tvare DD.MM.YYYY alebo null
 - page: číslo strany z === STRANA N === hlavičky kde bol produkt nájdený`;
 
-    for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
-      const batchText = batches[batchIdx].map((p) => `=== STRANA ${p.pageNum} ===\n${p.text}`).join("\n\n---\n\n");
-      const isFirst = batchIdx === 0;
+    // Run all batches in parallel for ~8x speedup
+    const batchResults = await Promise.all(
+      batches.map(async (batch, batchIdx) => {
+        const batchText = batch.map((p) => `=== STRANA ${p.pageNum} ===\n${p.text}`).join("\n\n---\n\n");
+        const isFirst = batchIdx === 0;
 
-      const response = await client.chat.completions.create({
-        model: "gpt-4.1-mini",
-        response_format: { type: "json_object" },
-        max_tokens: 16000,
-        messages: [
-          {
-            role: "user",
-            content: `Analyzuj text z PDF letáčka supermarketu (dávka ${batchIdx + 1}/${batches.length}) a extrahuj všetky potraviny a nápoje.
+        const response = await client.chat.completions.create({
+          model: "gpt-4.1-mini",
+          response_format: { type: "json_object" },
+          max_tokens: 16000,
+          messages: [
+            {
+              role: "user",
+              content: `Analyzuj text z PDF letáčka supermarketu (dávka ${batchIdx + 1}/${batches.length}) a extrahuj všetky potraviny a nápoje.
 
 VÝSTUP v JSON:
 ${PRODUCT_SCHEMA}
@@ -229,40 +242,38 @@ ${!isFirst ? '- meta.date_from a meta.date_to môžeš nastaviť na null ak dát
 
 TEXT:
 ${batchText}`,
-          },
-        ],
-      });
+            },
+          ],
+        });
 
-      const responseText = response.choices?.[0]?.message?.content?.trim() ?? "";
-      if (!responseText) continue;
+        const responseText = response.choices?.[0]?.message?.content?.trim() ?? "";
+        if (!responseText) return null;
 
-      let parsed: ParsedResponse = {};
-      try {
-        parsed = JSON.parse(responseText) as ParsedResponse;
-      } catch {
-        const start = responseText.indexOf("{");
-        const end = responseText.lastIndexOf("}");
-        if (start !== -1 && end !== -1 && end > start) {
-          try {
-            parsed = JSON.parse(responseText.slice(start, end + 1)) as ParsedResponse;
-          } catch {
-            console.error(`Dávka ${batchIdx + 1}: neplatný JSON, preskakujem`);
-            continue;
+        try {
+          return JSON.parse(responseText) as ParsedResponse;
+        } catch {
+          const start = responseText.indexOf("{");
+          const end = responseText.lastIndexOf("}");
+          if (start !== -1 && end !== -1 && end > start) {
+            try {
+              return JSON.parse(responseText.slice(start, end + 1)) as ParsedResponse;
+            } catch {
+              console.error(`Dávka ${batchIdx + 1}: neplatný JSON, preskakujem`);
+            }
           }
+          return null;
         }
-      }
+      })
+    );
 
-      // Pick up meta from first batch that has dates
-      if (!meta.date_from && parsed.meta?.date_from) {
-        meta.date_from = parsed.meta.date_from;
-      }
-      if (!meta.date_to && parsed.meta?.date_to) {
-        meta.date_to = parsed.meta.date_to;
-      }
+    const meta = { date_from: "", date_to: "" };
+    const allProducts: Product[] = [];
 
-      if (Array.isArray(parsed.products)) {
-        allProducts.push(...parsed.products);
-      }
+    for (const parsed of batchResults) {
+      if (!parsed) continue;
+      if (!meta.date_from && parsed.meta?.date_from) meta.date_from = parsed.meta.date_from;
+      if (!meta.date_to && parsed.meta?.date_to) meta.date_to = parsed.meta.date_to;
+      if (Array.isArray(parsed.products)) allProducts.push(...parsed.products);
     }
 
     // Deduplicate by name (keep first occurrence)
