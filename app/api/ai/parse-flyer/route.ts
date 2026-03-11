@@ -77,17 +77,6 @@ function detectShopAndCountry(text: string): { shop: string | null; country: str
   return { shop, country };
 }
 
-/** Remove internal PDF print/layout identifiers and other noise from extracted text */
-function cleanPageText(text: string): string {
-  return text
-    // Kaufland internal page IDs: e.g. S1-SK-KW10-LFT-TITULKA-1020-11
-    .replace(/\bS\d+-SK-[A-Z]{2}\d+-LFT-[A-Z0-9_]+-\d+-\d+\b/g, "")
-    // Generic fallback: ALL-CAPS token with 3+ dashes (internal layout codes)
-    .replace(/\b[A-Z0-9]{2,}-[A-Z0-9]{2,}-[A-Z0-9]{2,}-[A-Z0-9_]{3,}(?:-[A-Z0-9_]+){2,}\b/g, "")
-    // Collapse multiple spaces left by removed tokens
-    .replace(/ {2,}/g, " ")
-    .trim();
-}
 
 export async function POST(req: Request) {
   try {
@@ -122,65 +111,70 @@ export async function POST(req: Request) {
       pdfjs.GlobalWorkerOptions.workerPort = null;
     }
 
+    const { createCanvas } = await import("@napi-rs/canvas");
+
+    // pdfjs v5.5 in Node.js auto-uses its built-in NodeCanvasFactory with @napi-rs/canvas
     const doc = await pdfjs.getDocument({
       data: buffer,
     }).promise;
 
     const pages = Math.min(doc.numPages, MAX_PAGES);
-    const pageTexts: { text: string; pageNum: number }[] = [];
 
-    // Extract text from each page, sorted by visual reading order (top→bottom, left→right)
-    for (let i = 1; i <= pages; i++) {
+    // Quick text extraction from first few pages for shop/country detection
+    interface PdfTextItem { str?: string; }
+    const textSamplePages: string[] = [];
+    for (let i = 1; i <= Math.min(3, pages); i++) {
       try {
         const page = await doc.getPage(i);
         const textContent = await page.getTextContent();
+        const text = (textContent?.items ?? [])
+          .map((it) => ((it as PdfTextItem)?.str ?? "").trim())
+          .filter(Boolean)
+          .join(" ");
+        textSamplePages.push(text);
+      } catch { /* skip */ }
+    }
+    const { shop: detectedShop, country: detectedCountry } = detectShopAndCountry(textSamplePages.join(" "));
 
-        interface PdfTextItem {
-          str?: string;
-        }
+    // Render all pages to JPEG images (serially to keep memory usage stable)
+    const RENDER_SCALE = 1.5;
+    const pageImages: { pageNum: number; imageData: string }[] = [];
 
-        const items = (textContent?.items || [] as PdfTextItem[])
-          .map((item) => ((item as PdfTextItem)?.str || "").toString().trim())
-          .filter((str) => str.length > 0);
+    for (let i = 1; i <= pages; i++) {
+      try {
+        const page = await doc.getPage(i);
+        const viewport = page.getViewport({ scale: RENDER_SCALE });
+        const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
+        const ctx = canvas.getContext("2d");
 
-        if (items.length === 0) {
-          pageTexts.push({ text: "", pageNum: i });
-          continue;
-        }
+        await page.render({
+          canvasContext: ctx as unknown as CanvasRenderingContext2D,
+          canvas: canvas as unknown as HTMLCanvasElement,
+          viewport,
+        }).promise;
 
-        // Use raw pdfjs order — content stream order matches visual block order
-        // in professionally-made PDFs (InDesign/Illustrator)
-        const raw = items.join(" ");
-
-        const text = cleanPageText(raw);
-        pageTexts.push({ text, pageNum: i });
-      } catch (error) {
-        console.error(`Chyba pri extrakcii textu zo strany ${i}:`, error);
-        pageTexts.push({ text: "", pageNum: i });
+        const jpegBuffer = await canvas.encode("jpeg", 85);
+        const imageData = Buffer.from(jpegBuffer).toString("base64");
+        pageImages.push({ pageNum: i, imageData });
+      } catch (e) {
+        console.error(`Chyba pri renderovaní strany ${i}:`, e);
       }
     }
 
-    const allPageTexts = pageTexts.filter((p) => p.text.length > 0);
-
-    if (allPageTexts.length === 0) {
+    if (pageImages.length === 0) {
       return Response.json(
-        { error: "PDF neobsahuje žiadny čitateľný text." },
+        { error: "Nepodarilo sa vyrenderovať žiadnu stranu PDF." },
         { status: 400 }
       );
     }
 
-    const combinedText = allPageTexts.map((p) => `=== STRANA ${p.pageNum} ===\n${p.text}`).join("\n\n---\n\n");
-    console.log(`Spracovávam ${pages} strán v dávkach...`);
+    console.log(`Vyrenderovaných ${pageImages.length} strán, spracovávam cez Vision AI...`);
 
-    // Detect shop and country from first few pages
-    const sampleText = allPageTexts.slice(0, 5).map((p) => p.text).join(" ");
-    const { shop: detectedShop, country: detectedCountry } = detectShopAndCountry(sampleText);
-
-    // Split pages into batches of 10 to avoid output token limits
-    const BATCH_SIZE = 10;
-    const batches: { text: string; pageNum: number }[][] = [];
-    for (let i = 0; i < allPageTexts.length; i += BATCH_SIZE) {
-      batches.push(allPageTexts.slice(i, i + BATCH_SIZE));
+    // Batch pages for vision API (2 pages per call for better accuracy)
+    const VISION_BATCH_SIZE = 2;
+    const batches: { pageNum: number; imageData: string }[][] = [];
+    for (let i = 0; i < pageImages.length; i += VISION_BATCH_SIZE) {
+      batches.push(pageImages.slice(i, i + VISION_BATCH_SIZE));
     }
 
     const PRODUCT_SCHEMA = `{
@@ -191,59 +185,87 @@ export async function POST(req: Request) {
     const PRODUCT_RULES = `PRAVIDLÁ:
 
 ČO EXTRAHOVAŤ:
-- IBA potraviny, nápoje a alkohol
+- IBA potraviny, nápoje a alkohol (vrátane piva, vína, destilátov, múky, cukru, atď.)
+- KAŽDÝ produkt na strane — aj malé, aj v rohoch, aj čiastočne orezané
 - Ignorovať: kvety, dekorácie, čistiace prostriedky, toaletný papier, oblečenie, elektroniku, krmivo pre zvieratá, náradie, kozmetiku
+- JEDEN produkt = JEDEN záznam. Ak obrázok a text vedľa patria k tomu istému produktu, je to JEDEN produkt
 
 POLE "name":
-- Len čistý názov produktu (napr. "Bravčová krkovička", "Tavený syr", "Jablko červené")
-- NEPATRÍ sem: hmotnosť, objem, % alkoholu, počet kusov, "rôzne druhy" (ak nie je súčasťou názvu)
-- "rôzne druhy" môže ostať ak nie je spresňujúci popis dostupný
-- Špecifikácie typu "bez kosti, v celku", "pultový predaj" patria do "note"
+- Skombinuj popis produktu z textu letáka + značku/názov produktu
+- Príklady správnych názvov:
+  • "Tavený syr syrokrém" (text letáka "Tavený syr" + značka "syrokrém")
+  • "Sladené kondenzované mlieko Salko" (popis + značka)
+  • "Dezert Toffifee" (kategória + značka)
+  • "Svetlý ležiak Pilsner Urquell" (typ + značka)
+  • "Maslo 82%" (produkt + špecifikácia)
+  • "Jablko červené" (produkt + farba/druh)
+- NEPATRÍ sem: hmotnosť v gramoch, objem v ml/l, počet kusov v balení
+
+POLE "note" (doplnková informácia):
+- LEN popisný text menším písmom pod názvom produktu: "rôzne druhy", "bez kosti", "pevný podiel 120 g"
+- Pri multipackoch: "8x0.5l", "5 kusov"
+- NEPATRÍ sem: percentá zľavy (-43%, -50%, Card -45%), ceny, hmotnosť ak je v "amount", "pultový predaj"
+- Ak produkt nemá žiadny popis pod názvom, nechaj prázdne ""
 
 POLE "amount" a "unit":
 - amount: len číslo (napr. "200", "1", "0.5")
-- unit: g / kg / ml / l / ks / zväzok / balenie / null
+- unit: g / kg / ml / l / ks / zväzok / null
+- Pri multipackoch: amount = veľkosť jedného kusu, multipack info do "note"
 
 POLE "price_sale" a "price_regular":
-- price_regular = PÔVODNÁ (prečiarknutá / väčšia) cena, napr. "4,99"
-- price_sale = AKCIOVÁ (zvýraznená veľká) cena, napr. "3,49"
-- DÔLEŽITÉ: price_sale musí byť NIŽŠIA ako price_regular (ak máš len jednu cenu, daj ju do price_sale)
-- "Card" cena (vernostná karta) = price_sale
-- Ceny v zátvorkách ako "(=1 kg KC: 3,61 / BC: 6,80)" alebo "(=1 kus 0,27)" SÚ CENY ZA KG/KUS, NIE skutočné ceny balenia — IGNORUJ ICH
-- Ak cenu nevidíš alebo si nie si istý, nechaj pole prázdne — NEVYMÝŠĽAJ
+- price_sale = NAJVÄČŠIA, NAJZVÝRAZNENEJŠIA cena pri produkte = akciová/Card cena (vždy najnižšia)
+- price_regular = PREČIARKNUTÁ pôvodná cena
+- Ak sú 3 ceny: price_sale = Card cena (najnižšia), price_regular = prečiarknutá (najvyššia)
+- price_sale MUSÍ BYŤ NIŽŠIA ako price_regular
+- IGNORUJ: ceny v zátvorkách "(=1 kg ...)", "(=1 l ...)", riadky "A: X,XX", "KC: X,XX"
+- Ak cenu nevidíš, nechaj pole prázdne — NEVYMÝŠĽAJ
 
-POLE "note":
-- Sem patria: "pultový predaj", "bez kosti", "v celku", "pevný podiel 120g", "+ záloh za obaly 1,04", zľavové percentá
+PRÍKLAD výstupu pre jednu stranu:
+[
+  {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"0,69","price_regular":"1,29","note":"","page":1},
+  {"name":"Tavený syr syrokrém","amount":"200","unit":"g","price_sale":"1,59","price_regular":"3,49","note":"","page":1},
+  {"name":"Tuniak","amount":"170","unit":"g","price_sale":"1,39","price_regular":"2,49","note":"rôzne druhy","page":1},
+  {"name":"Dezert Toffifee","amount":"125","unit":"g","price_sale":"1,35","price_regular":"2,65","note":"rôzne druhy","page":1},
+  {"name":"Svetlý ležiak Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"6,99","price_regular":"7,89","note":"8x0.5l","page":1}
+]
 
 OSTATNÉ:
 - Dátumy v tvare DD.MM.YYYY alebo null
-- page: číslo strany z === STRANA N === hlavičky kde bol produkt nájdený`;
+- "page": číslo strany z textu === STRANA N === nad obrázkom
+- Radšej extrahuj produkt s neúplnými údajmi ako ho vynechať`;
 
-    // Run all batches in parallel for ~8x speedup
+    type VisionContentPart =
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "high" | "low" | "auto" } };
+
+    // Run all vision batches in parallel
     const batchResults = await Promise.all(
       batches.map(async (batch, batchIdx) => {
-        const batchText = batch.map((p) => `=== STRANA ${p.pageNum} ===\n${p.text}`).join("\n\n---\n\n");
         const isFirst = batchIdx === 0;
 
-        const response = await client.chat.completions.create({
-          model: "gpt-4.1-mini",
-          response_format: { type: "json_object" },
-          max_tokens: 16000,
-          messages: [
-            {
-              role: "user",
-              content: `Analyzuj text z PDF letáčka supermarketu (dávka ${batchIdx + 1}/${batches.length}) a extrahuj všetky potraviny a nápoje.
+        const content: VisionContentPart[] = [
+          {
+            type: "text",
+            text: `Analyzuj obrázky strán z letáka supermarketu (dávka ${batchIdx + 1}/${batches.length}) a extrahuj všetky potraviny a nápoje.\n\nVÝSTUP v JSON:\n${PRODUCT_SCHEMA}\n\n${PRODUCT_RULES}${!isFirst ? "\n- meta dátumy môžeš nastaviť na null ak nie sú na týchto stranách viditeľné" : ""}`,
+          },
+        ];
 
-VÝSTUP v JSON:
-${PRODUCT_SCHEMA}
-
-${PRODUCT_RULES}
-${!isFirst ? '- meta.date_from a meta.date_to môžeš nastaviť na null ak dátumy nie sú v tejto dávke viditeľné' : ''}
-
-TEXT:
-${batchText}`,
+        for (const pg of batch) {
+          content.push({ type: "text", text: `=== STRANA ${pg.pageNum} ===` });
+          content.push({
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${pg.imageData}`,
+              detail: "high",
             },
-          ],
+          });
+        }
+
+        const response = await client.chat.completions.create({
+          model: "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          max_tokens: 8000,
+          messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
         });
 
         const responseText = response.choices?.[0]?.message?.content?.trim() ?? "";
@@ -297,18 +319,12 @@ ${batchText}`,
       page: item.page ?? null,
     }));
 
-    // Return format expected by handleAiExtract
     const result: Record<string, unknown> = {
       meta,
       items,
       detectedShop: detectedShop ?? null,
       detectedCountry: detectedCountry ?? null,
     };
-
-    // Add debug text if requested
-    if (form.get("debug") === "1") {
-      result.debugText = combinedText;
-    }
 
     return Response.json(result);
   } catch (err) {
