@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import { pathToFileURL } from "url";
 import hierarchyData from "../../../../assets/hierarchia.json";
+import skLabels from "../../../../assets/langs/sk.json";
+import czLabels from "../../../../assets/langs/cs.json";
+import plLabels from "../../../../assets/langs/pl.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +18,6 @@ interface Product {
   price_regular: string;
   note: string;
   page?: number;
-  categoryKey?: string;
-  subcategoryKey?: string;
   placementKey?: string;
 }
 
@@ -188,19 +189,29 @@ export async function POST(req: Request) {
 
     const PRODUCT_SCHEMA = `{
   "meta": { "date_from": "DD.MM.YYYY or null", "date_to": "DD.MM.YYYY or null" },
-  "products": [{ "name": "...", "amount": "...", "unit": "g/kg/ml/l/ks/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N, "categoryKey": "...", "subcategoryKey": "...", "placementKey": "..." }]
+  "products": [{ "name": "...", "amount": "...", "unit": "g/kg/ml/l/ks/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N, "placementKey": "..." }]
 }`;
 
-    // Build compact hierarchy tree for the AI prompt (category → subcategory → placement keys only)
+    // Build placement lookup + translated list for AI
     type HierarchyItem = { "Kategória": string; "Podkategórie": { "Podkategória": string; "Zaradenia": { "Zaradenie": string }[] }[] };
-    const hierarchyTree = (hierarchyData as HierarchyItem[]).map(c => ({
-      c: c["Kategória"],
-      s: c["Podkategórie"].map(s => ({
-        s: s["Podkategória"],
-        z: s["Zaradenia"].map(z => z["Zaradenie"]),
-      })),
-    }));
-    const HIERARCHY_PROMPT = JSON.stringify(hierarchyTree);
+    const labelsMap: Record<string, Record<string, string>> = { sk: skLabels, cz: czLabels, pl: plLabels };
+    const labels = labelsMap[lang] || skLabels;
+    const placementLookup: Record<string, { categoryKey: string; subcategoryKey: string }> = {};
+    const placementPairs: string[] = [];
+    for (const cat of hierarchyData as HierarchyItem[]) {
+      for (const sub of cat["Podkategórie"]) {
+        for (const z of sub["Zaradenia"]) {
+          const key = z["Zaradenie"];
+          placementLookup[key] = {
+            categoryKey: cat["Kategória"],
+            subcategoryKey: sub["Podkategória"],
+          };
+          const label = (labels as Record<string, string>)[key] || key;
+          placementPairs.push(`${key}:${label}`);
+        }
+      }
+    }
+    const PLACEMENTS_PROMPT = placementPairs.join(", ");
 
     // Language-specific prompt parts
     const LANG_CONFIG = {
@@ -285,14 +296,11 @@ FIELD "price_sale" and "price_regular":
 EXAMPLE output:
 ${lc.examples}
 
-CLASSIFICATION — assign each product to the best matching category from this hierarchy:
-Format: [{c:"categoryKey", s:[{s:"subcategoryKey", z:["placementKey1","placementKey2",...]}]}]
-${HIERARCHY_PROMPT}
-- "categoryKey": the "c" value of the best matching category
-- "subcategoryKey": the "s" value of the best matching subcategory within that category  
-- "placementKey": the "z" value of the best matching placement within that subcategory
-- If no good match exists, use empty strings ""
-- Example: apple → categoryKey:"ovocie_a_zelenina", subcategoryKey:"ovocie", placementKey:"jablk"
+CLASSIFICATION — assign "placementKey" from this list (key:label format):
+${PLACEMENTS_PROMPT}
+- Use ONLY the key part (before colon), the label is just a hint for you
+- Pick the single best matching placement key for each product
+- If no good match, use ""
 
 OTHER:
 - Dates as DD.MM.YYYY or null
@@ -406,20 +414,24 @@ OTHER:
       return true;
     });
 
-    const items = deduped.map((item: Product) => ({
-      name: item.name || "",
-      amount: item.amount || "",
-      unit: item.unit || "",
-      price_sale: item.price_sale || "",
-      price_regular: item.price_regular || "",
-      note: item.note || "",
-      date_from: meta.date_from,
-      date_to: meta.date_to,
-      page: item.page ?? null,
-      categoryKey: item.categoryKey || "",
-      subcategoryKey: item.subcategoryKey || "",
-      placementKey: item.placementKey || "",
-    }));
+    const items = deduped.map((item: Product) => {
+      const pk = item.placementKey || "";
+      const parent = pk ? placementLookup[pk] : undefined;
+      return {
+        name: item.name || "",
+        amount: item.amount || "",
+        unit: item.unit || "",
+        price_sale: item.price_sale || "",
+        price_regular: item.price_regular || "",
+        note: item.note || "",
+        date_from: meta.date_from,
+        date_to: meta.date_to,
+        page: item.page ?? null,
+        categoryKey: parent?.categoryKey || "",
+        subcategoryKey: parent?.subcategoryKey || "",
+        placementKey: pk,
+      };
+    });
 
     const result: Record<string, unknown> = {
       meta,

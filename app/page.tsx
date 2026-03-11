@@ -2059,6 +2059,10 @@ const deleteDebugFile = async () => {
                           <input className={`${inp} w-16 font-semibold`} value={item.price_sale || ""} placeholder="0,00" onChange={e => upd("price_sale", e.target.value)} />
                         </div>
                         <div className="flex items-center gap-1">
+                          <span className={lbl}>Jed.</span>
+                          <input tabIndex={-1} readOnly className={`${inp} w-16 bg-black/[0.03] text-[color:var(--muted)]`} value={calculateUnitPrice(item.price_sale || "", item.amount || "", item.unit || "")} placeholder="—" />
+                        </div>
+                        <div className="flex items-center gap-1">
                           <span className={lbl}>Bežná</span>
                           <input className={`${inp} w-16`} value={item.price_regular || ""} placeholder="0,00" onChange={e => upd("price_regular", e.target.value)} />
                         </div>
