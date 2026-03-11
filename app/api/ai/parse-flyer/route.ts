@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { pathToFileURL } from "url";
+import { createClient } from "@supabase/supabase-js";
 import hierarchyData from "../../../../assets/hierarchia.json";
 import skLabels from "../../../../assets/langs/sk.json";
 import czLabels from "../../../../assets/langs/cs.json";
@@ -8,7 +9,7 @@ import plLabels from "../../../../assets/langs/pl.json";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_PAGES = 30;
+const MAX_PAGES = 78;
 
 interface Product {
   name: string;
@@ -213,6 +214,37 @@ export async function POST(req: Request) {
     }
     const PLACEMENTS_PROMPT = placementPairs.join(", ");
 
+    // Load known products from DB for classification hints
+    let knownProductsPrompt = "";
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+      const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (supabaseUrl && serviceRole) {
+        const supabase = createClient(supabaseUrl, serviceRole);
+        const { data: rows } = await supabase
+          .from("master_products_v2")
+          .select("name, placement")
+          .not("placement", "eq", "")
+          .limit(3000);
+        if (rows && rows.length > 0) {
+          // Deduplicate: unique name→placement pairs
+          const seen = new Set<string>();
+          const pairs: string[] = [];
+          for (const r of rows) {
+            const key = (r.name || "").toLowerCase().trim();
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            pairs.push(`${r.name}→${r.placement}`);
+          }
+          if (pairs.length > 0) {
+            knownProductsPrompt = `\n\nKNOWN PRODUCTS from database (product name → placementKey). Use these as reference when classifying similar products:\n${pairs.join("\n")}`;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load known products from DB:", e);
+    }
+
     // Language-specific prompt parts
     const LANG_CONFIG = {
       sk: {
@@ -306,7 +338,7 @@ ${PLACEMENTS_PROMPT}
 OTHER:
 - Dates as DD.MM.YYYY or null
 - "page": page number from text === STRANA/STRONA N ===
-- Better to extract a product with incomplete data than to skip it`;
+- Better to extract a product with incomplete data than to skip it${knownProductsPrompt}`;
 
     type VisionContentPart =
       | { type: "text"; text: string }
