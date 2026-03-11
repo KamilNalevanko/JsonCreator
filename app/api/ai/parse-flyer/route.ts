@@ -9,7 +9,7 @@ import plLabels from "../../../../assets/langs/pl.json";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_PAGES = 78;
+const MAX_PAGES = 15;
 
 interface Product {
   name: string;
