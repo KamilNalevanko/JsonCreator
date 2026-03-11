@@ -142,8 +142,8 @@ export async function POST(req: Request) {
     }
     const { shop: detectedShop, country: detectedCountry } = detectShopAndCountry(textSamplePages.join(" "));
 
-    // Determine language from form country or detected country
-    const country = formCountry || detectedCountry || "sk";
+    // Determine language: prefer auto-detection from PDF content, fallback to form
+    const country = detectedCountry || formCountry || "sk";
     const lang = country === "pl" ? "pl" : country === "cz" ? "cz" : "sk";
 
     // Render all pages to JPEG images (serially to keep memory usage stable)
@@ -271,6 +271,7 @@ EXTRACT:
 - ONLY food, drinks and alcohol (beer, wine, spirits, flour, sugar, canned food, legumes, nuts, spices, tea, coffee, pasta, rice, oils, sauces, jams, honey, salami, sausages, ham, bacon, smoked meats)
 - EVERY product on the page — small, in corners, partially cropped, private label (K-Classic, Clever, etc.)
 - IGNORE: flowers, decorations, cleaning products, toilet paper, clothing, electronics, pet food, tools, cosmetics
+- IGNORE: baby food, infant formula, baby milk, follow-on milk (Bebilon, Nutrilon, Bobovita baby, HiPP baby, Lupilu baby, Nestlé baby, NAN, Humana, Hami, Kendamil)
 - ONE product = ONE record
 
 ${lc.nameRule}

@@ -522,7 +522,7 @@ export default function Home() {
     setAiExtractError("");
     setAiExtractStatus("");
     if (!aiPdfFile) {
-      setAiExtractError("Najprv vyber PDF súbor.");
+      setAiExtractError(t("ai_extract_error_no_file"));
       return;
     }
     try {
@@ -538,7 +538,7 @@ export default function Home() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setAiExtractError(payload?.error || "Extrakcia zlyhala.");
+        setAiExtractError(payload?.error || t("ai_extract_failed"));
         return;
       }
       const meta =
@@ -564,10 +564,10 @@ export default function Home() {
 
       const dateLabel = formatDateRange(nextDateFrom, nextDateTo);
       setAiExtractStatus(
-        `Nájdené položky: ${items.length}${dateLabel ? ` • Leták: ${dateLabel}` : ""}`
+        `${t("ai_found_items")}: ${items.length}${dateLabel ? ` • Leták: ${dateLabel}` : ""}`
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Extrakcia zlyhala.";
+      const message = err instanceof Error ? err.message : t("ai_extract_failed");
       setAiExtractError(message);
     } finally {
       setIsAiExtracting(false);
@@ -1904,7 +1904,7 @@ const deleteDebugFile = async () => {
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                   className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
                 >
-                  {theme === "dark" ? "Svetlý režim" : "Tmavý režim"}
+                  {theme === "dark" ? t("btn_light_mode") : t("btn_dark_mode")}
                 </button>
                 <select
                   className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
@@ -1959,7 +1959,7 @@ const deleteDebugFile = async () => {
                     }}
                     className="rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 active:scale-95"
                   >
-                    Kopírovať JSON ({aiExtracted.length})
+                    {t("btn_copy_json_count")} ({aiExtracted.length})
                   </button>
                 ) : null}
               </div>
@@ -1984,10 +1984,10 @@ const deleteDebugFile = async () => {
                   onClick={() => aiFileInputRef.current?.click()}
                   className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25"
                 >
-                  Vybrať PDF
+                  {t("btn_select_pdf")}
                 </button>
                 <span className="text-xs text-[color:var(--muted)]">
-                  {aiPdfFile?.name ? aiPdfFile.name : "Ziadny subor"}
+                  {aiPdfFile?.name ? aiPdfFile.name : t("no_file_selected")}
                 </span>
                 <button
                   type="button"
@@ -1995,7 +1995,7 @@ const deleteDebugFile = async () => {
                   disabled={isAiExtracting}
                   className="rounded-full bg-[color:var(--btn-neutral-bg)] px-4 py-2 text-xs font-semibold text-white shadow-[var(--btn-neutral-shadow)] transition hover:brightness-110 disabled:opacity-60"
                 >
-                  {isAiExtracting ? "Spracúvam..." : "Analyzovať PDF"}
+                  {isAiExtracting ? t("btn_processing") : t("btn_analyze_pdf")}
                 </button>
                 {aiExtractStatus ? (
                   <span className="text-xs text-[color:var(--muted)]">{aiExtractStatus}</span>
@@ -2028,26 +2028,26 @@ const deleteDebugFile = async () => {
                     {showPageDivider && (
                       <div className="flex items-center gap-3 px-1 pt-3 pb-1">
                         <div className="h-px w-4 bg-black/30" />
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--ink)]">Strana {item.page}</span>
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--ink)]">{t("ai_page")} {item.page}</span>
                         <div className="h-px flex-1 bg-black/30" />
                       </div>
                     )}
                     <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs space-y-0">
                       {/* R1: Názov + delete */}
                       <div className="flex items-center gap-2 pb-1">
-                        <span className={lbl} style={{width: "3.5rem"}}>Názov</span>
-                        <input className={`${inp} flex-1 font-semibold`} value={item.name || ""} placeholder="Názov" onChange={e => upd("name", e.target.value)} />
+                        <span className={lbl} style={{width: "3.5rem"}}>{t("ai_label_name")}</span>
+                        <input className={`${inp} flex-1 font-semibold`} value={item.name || ""} placeholder={t("ai_label_name")} onChange={e => upd("name", e.target.value)} />
                         <button tabIndex={-1} onClick={() => { if (window.confirm(`Zmazať „${item.name || "produkt"}"?`)) setAiExtracted(prev => prev.filter((_, i) => i !== idx)); }}
                           className="shrink-0 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600 hover:bg-red-100 transition" title="Zmazať">🗑</button>
                       </div>
                       {/* R2: Info + Gramáž na jednom riadku */}
                       <div className="flex items-center gap-3 border-t border-black/[0.05] py-1 flex-wrap">
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Info</span>
-                          <input className={`${inp} w-36`} value={item.note || ""} placeholder="Doplnková info" onChange={e => upd("note", e.target.value)} />
+                          <span className={lbl}>{t("ai_label_info")}</span>
+                          <input className={`${inp} w-36`} value={item.note || ""} placeholder={t("ai_label_info")} onChange={e => upd("note", e.target.value)} />
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Gramáž</span>
+                          <span className={lbl}>{t("ai_label_weight")}</span>
                           <input className={`${inp} w-14`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
                           <input className={`${inp} w-8 text-center`} value={item.unit || ""} placeholder="jed" onChange={e => upd("unit", e.target.value)} />
                         </div>
@@ -2055,48 +2055,48 @@ const deleteDebugFile = async () => {
                       {/* R3: Ceny + Dátumy */}
                       <div className="flex items-center gap-3 border-t border-black/[0.05] py-1 flex-wrap">
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Akcia</span>
+                          <span className={lbl}>{t("ai_label_sale")}</span>
                           <input className={`${inp} w-16 font-semibold`} value={item.price_sale || ""} placeholder="0,00" onChange={e => upd("price_sale", e.target.value)} />
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Jed.</span>
+                          <span className={lbl}>{t("ai_label_unit")}</span>
                           <input tabIndex={-1} readOnly className={`${inp} w-16 bg-black/[0.03] text-[color:var(--muted)]`} value={calculateUnitPrice(item.price_sale || "", item.amount || "", item.unit || "")} placeholder="—" />
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Bežná</span>
+                          <span className={lbl}>{t("ai_label_regular")}</span>
                           <input className={`${inp} w-16`} value={item.price_regular || ""} placeholder="0,00" onChange={e => upd("price_regular", e.target.value)} />
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Od</span>
+                          <span className={lbl}>{t("ai_label_from")}</span>
                           <input className={`${inp} w-[5.5rem]`} value={item.date_from || ""} placeholder="DD.MM.YYYY" onChange={e => upd("date_from", e.target.value)} />
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className={lbl}>Do</span>
+                          <span className={lbl}>{t("ai_label_to")}</span>
                           <input className={`${inp} w-[5.5rem]`} value={item.date_to || ""} placeholder="DD.MM.YYYY" onChange={e => upd("date_to", e.target.value)} />
                         </div>
                       </div>
                       {/* R4: Zaradenie (Kategória / Podkategória / Zaradenie) */}
                       <div className="flex items-center gap-2 border-t border-black/[0.05] py-1 flex-wrap">
-                        <select className={sel} value={aiCat} onChange={e => {
+                        <select className={sel} value={aiCat} onFocus={e => { try { e.currentTarget.showPicker(); } catch {} }} onChange={e => {
                           const nc = e.target.value;
                           const nsubs = hierarchy.find(c => c["Kategória"] === nc)?.["Podkategórie"] || [];
                           const ns = nsubs[0]?.["Podkategória"] || "";
                           const np = nsubs[0]?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
                           setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, categoryKey: nc, subcategoryKey: ns, placementKey: np } : it));
                         }}>
-                          <option value="">— kategória —</option>
+                          <option value="">{t("ai_select_category")}</option>
                           {hierarchy.map(c => <option key={c["Kategória"]} value={c["Kategória"]}>{locLabelFor(c["Kategória"])}</option>)}
                         </select>
-                        <select className={sel} value={aiSubcat} disabled={!aiCat} onChange={e => {
+                        <select className={sel} value={aiSubcat} disabled={!aiCat} onFocus={e => { if (aiCat) try { e.currentTarget.showPicker(); } catch {} }} onChange={e => {
                           const ns = e.target.value;
                           const np = aiSubcats.find(s => s["Podkategória"] === ns)?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
                           setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, subcategoryKey: ns, placementKey: np } : it));
                         }}>
-                          <option value="">— podkategória —</option>
+                          <option value="">{t("ai_select_subcategory")}</option>
                           {aiSubcats.map(s => <option key={s["Podkategória"]} value={s["Podkategória"]}>{locLabelFor(s["Podkategória"])}</option>)}
                         </select>
-                        <select className={sel} value={item.placementKey || ""} disabled={!aiSubcat} onChange={e => upd("placementKey", e.target.value)}>
-                          <option value="">— zaradenie —</option>
+                        <select className={sel} value={item.placementKey || ""} disabled={!aiSubcat} onFocus={e => { if (aiSubcat) try { e.currentTarget.showPicker(); } catch {} }} onChange={e => upd("placementKey", e.target.value)}>
+                          <option value="">{t("ai_select_placement")}</option>
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
                       </div>
@@ -2117,7 +2117,7 @@ const deleteDebugFile = async () => {
                     }}
                     className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75"
                   >
-                    💾 Uložiť do databázy ({aiExtracted.length})
+                    💾 {t("ai_save_to_db")} ({aiExtracted.length})
                   </button>
                 </div>
               ) : null}
@@ -2125,25 +2125,25 @@ const deleteDebugFile = async () => {
               {aiSaveModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                   <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-                    <h3 className="mb-4 text-base font-bold text-[color:var(--ink)]">Uložiť do databázy</h3>
+                    <h3 className="mb-4 text-base font-bold text-[color:var(--ink)]">{t("ai_save_to_db")}</h3>
                     <div className="grid gap-3">
                       <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
-                        Krajina
+                        {t("ai_label_country")}
                         <select
                           className="rounded-xl border border-black/15 bg-black/[0.02] px-3 py-2 text-sm text-[color:var(--ink)] focus:outline-none focus:ring-1 focus:ring-black/20"
                           value={aiSaveCountry}
                           onChange={e => { setAiSaveCountry(e.target.value); setAiSaveShop(""); }}
                         >
-                          <option value="sk">🇸🇰 Slovensko</option>
-                          <option value="cz">🇨🇿 Česko</option>
-                          <option value="pl">🇵🇱 Poľsko</option>
+                          <option value="sk">🇸🇰 {t("storage_sk")}</option>
+                          <option value="cz">🇨🇿 {t("storage_cz")}</option>
+                          <option value="pl">🇵🇱 {t("storage_pl")}</option>
                         </select>
                       </label>
                       <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
-                        Obchod
+                        {t("ai_label_shop")}
                         {aiDetectedShop ? (
                           <span className="mb-0.5 text-[11px] font-normal normal-case text-[color:var(--accent)]">
-                            ✓ Detekovaný: {shopOptionsByFolder[aiSaveCountry]?.find(s => s.value === aiDetectedShop)?.label ?? aiDetectedShop}
+                            ✓ {t("ai_detected")}: {shopOptionsByFolder[aiSaveCountry]?.find(s => s.value === aiDetectedShop)?.label ?? aiDetectedShop}
                           </span>
                         ) : null}
                         <select
@@ -2151,7 +2151,7 @@ const deleteDebugFile = async () => {
                           value={aiSaveShop}
                           onChange={e => setAiSaveShop(e.target.value)}
                         >
-                          <option value="">— vyber obchod —</option>
+                          <option value="">{t("ai_select_shop")}</option>
                           {(shopOptionsByFolder[aiSaveCountry] ?? []).map(s => (
                             <option key={s.value} value={s.value}>{s.label}</option>
                           ))}
@@ -2167,7 +2167,7 @@ const deleteDebugFile = async () => {
                       <button
                         onClick={() => setAiSaveModal(false)}
                         className="rounded-xl px-4 py-2 text-xs font-semibold text-[color:var(--muted)] hover:bg-black/[0.05] transition"
-                      >Zrušiť</button>
+                      >{t("ai_btn_cancel")}</button>
                       <button
                         disabled={!aiSaveShop || isAiSaving}
                         onClick={async () => {
@@ -2182,19 +2182,19 @@ const deleteDebugFile = async () => {
                             });
                             const json = await res.json();
                             if (json.ok) {
-                              setAiSaveStatus({ ok: true, msg: `✓ Uložených ${json.saved} položiek do databázy.` });
+                              setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_save_ok", { count: String(json.saved) })}` });
                             } else {
-                              setAiSaveStatus({ ok: false, msg: json.error || "Chyba pri ukladaní." });
+                              setAiSaveStatus({ ok: false, msg: json.error || t("ai_save_error") });
                             }
                           } catch {
-                            setAiSaveStatus({ ok: false, msg: "Sieťová chyba." });
+                            setAiSaveStatus({ ok: false, msg: t("ai_net_error") });
                           } finally {
                             setIsAiSaving(false);
                           }
                         }}
                         className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
                       >
-                        {isAiSaving ? "Ukladám…" : `Uložiť ${aiExtracted.length} položiek`}
+                        {isAiSaving ? t("ai_saving") : `${t("ai_btn_save_items")} ${aiExtracted.length}`}
                       </button>
                     </div>
                   </div>
