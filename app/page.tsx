@@ -525,6 +525,11 @@ export default function Home() {
       setAiExtractError(t("ai_extract_error_no_file"));
       return;
     }
+    if (!supabase) {
+      setAiExtractError("Supabase nie je nakonfigurovaný (chýba URL/KEY).");
+      return;
+    }
+    let storagePath = "";
     try {
       setIsAiExtracting(true);
 
@@ -537,6 +542,7 @@ export default function Home() {
           .upload(tempName, aiPdfFile, { contentType: "application/pdf", upsert: true });
         if (!upErr) {
           pdfStoragePath = tempName;
+          storagePath = tempName;
         }
       }
 
@@ -600,6 +606,10 @@ export default function Home() {
       const message = err instanceof Error ? err.message : t("ai_extract_failed");
       setAiExtractError(message);
     } finally {
+      // Clean up temp PDF from Supabase Storage
+      if (supabase && storagePath) {
+        supabase.storage.from("cap-data").remove([storagePath]).catch(() => {});
+      }
       setIsAiExtracting(false);
     }
   };

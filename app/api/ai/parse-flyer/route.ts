@@ -249,8 +249,8 @@ export async function POST(req: Request) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
       const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (supabaseUrl && serviceRole) {
-        const supabase = createClient(supabaseUrl, serviceRole);
-        const { data: rows } = await supabase
+        const supabaseDb = createClient(supabaseUrl, serviceRole);
+        const { data: rows } = await supabaseDb
           .from("master_products_v2")
           .select("name, placement")
           .not("placement", "eq", "")
