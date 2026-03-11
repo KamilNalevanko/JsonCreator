@@ -527,15 +527,45 @@ export default function Home() {
     }
     try {
       setIsAiExtracting(true);
-      const formData = new FormData();
-      formData.append("file", aiPdfFile);
-      formData.append("country", bucketPath);
-      formData.append("shop", shop);
-      formData.append("debug", "1");
-      const response = await fetch("/api/ai/parse-flyer", {
-        method: "POST",
-        body: formData,
-      });
+
+      // Upload PDF to Supabase Storage temp folder to avoid Vercel body size limit
+      let pdfStoragePath = "";
+      if (supabase) {
+        const tempName = `temp/ai-pdf-${Date.now()}.pdf`;
+        const { error: upErr } = await supabase.storage
+          .from("cap-data")
+          .upload(tempName, aiPdfFile, { contentType: "application/pdf", upsert: true });
+        if (!upErr) {
+          pdfStoragePath = tempName;
+        }
+      }
+
+      let response: Response;
+      if (pdfStoragePath) {
+        // Send only the storage path (small JSON), API route downloads from Supabase
+        response = await fetch("/api/ai/parse-flyer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storagePath: pdfStoragePath,
+            country: bucketPath,
+            shop: shop,
+            debug: "1",
+          }),
+        });
+      } else {
+        // Fallback: send PDF directly (works locally, may fail on Vercel for large files)
+        const formData = new FormData();
+        formData.append("file", aiPdfFile);
+        formData.append("country", bucketPath);
+        formData.append("shop", shop);
+        formData.append("debug", "1");
+        response = await fetch("/api/ai/parse-flyer", {
+          method: "POST",
+          body: formData,
+        });
+      }
+
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         setAiExtractError(payload?.error || t("ai_extract_failed"));

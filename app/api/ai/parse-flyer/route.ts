@@ -8,6 +8,7 @@ import plLabels from "../../../../assets/langs/pl.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const MAX_PAGES = 15;
 
@@ -94,19 +95,47 @@ export async function POST(req: Request) {
       );
     }
 
-    const form = await req.formData();
-    const file = form.get("file");
-    const formCountry = (form.get("country") as string | null) || "";
+    // Support two modes:
+    // 1) JSON body with storagePath (PDF stored in Supabase) — used on Vercel
+    // 2) FormData with file (direct upload) — fallback / local dev
+    let buffer: Uint8Array;
+    let formCountry = "";
 
-    if (!file || !(file instanceof File)) {
-      return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      formCountry = (body.country as string) || "";
+      const storagePath = (body.storagePath as string) || "";
+      if (!storagePath) {
+        return Response.json({ error: "Chýba PDF (storagePath)." }, { status: 400 });
+      }
+      // Download PDF from Supabase Storage
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+      const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !serviceRole) {
+        return Response.json({ error: "Missing SUPABASE env." }, { status: 500 });
+      }
+      const sb = createClient(supabaseUrl, serviceRole);
+      const { data: blob, error: dlErr } = await sb.storage.from("cap-data").download(storagePath);
+      if (dlErr || !blob) {
+        return Response.json({ error: `PDF download failed: ${dlErr?.message || "no data"}` }, { status: 400 });
+      }
+      buffer = new Uint8Array(await blob.arrayBuffer());
+      // Clean up temp file (fire and forget)
+      sb.storage.from("cap-data").remove([storagePath]).catch(() => {});
+    } else {
+      const form = await req.formData();
+      const file = form.get("file");
+      formCountry = (form.get("country") as string | null) || "";
+      if (!file || !(file instanceof File)) {
+        return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
+      }
+      buffer = new Uint8Array(await file.arrayBuffer());
     }
 
     // Extract text from PDF
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const requireAny = eval("require");
-
-    const buffer = new Uint8Array(await file.arrayBuffer());
 
     if (pdfjs?.GlobalWorkerOptions) {
       try {
@@ -237,7 +266,9 @@ export async function POST(req: Request) {
             pairs.push(`${r.name}→${r.placement}`);
           }
           if (pairs.length > 0) {
-            knownProductsPrompt = `\n\nKNOWN PRODUCTS from database (product name → placementKey). Use these as reference when classifying similar products:\n${pairs.join("\n")}`;
+            // Limit to ~1500 to keep prompt size reasonable
+            const limited = pairs.slice(0, 1500);
+            knownProductsPrompt = `\n\nKNOWN PRODUCTS from database (product name → placementKey). Use these as reference when classifying similar products:\n${limited.join("\n")}`;
           }
         }
       }
