@@ -1,10 +1,11 @@
 import OpenAI from "openai";
 import { pathToFileURL } from "url";
+import hierarchyData from "../../../../assets/hierarchia.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_PAGES = 78;
+const MAX_PAGES = 30;
 
 interface Product {
   name: string;
@@ -14,6 +15,9 @@ interface Product {
   price_regular: string;
   note: string;
   page?: number;
+  categoryKey?: string;
+  subcategoryKey?: string;
+  placementKey?: string;
 }
 
 interface ParsedResponse {
@@ -90,6 +94,7 @@ export async function POST(req: Request) {
 
     const form = await req.formData();
     const file = form.get("file");
+    const formCountry = (form.get("country") as string | null) || "";
 
     if (!file || !(file instanceof File)) {
       return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
@@ -136,6 +141,10 @@ export async function POST(req: Request) {
     }
     const { shop: detectedShop, country: detectedCountry } = detectShopAndCountry(textSamplePages.join(" "));
 
+    // Determine language from form country or detected country
+    const country = formCountry || detectedCountry || "sk";
+    const lang = country === "pl" ? "pl" : country === "cz" ? "cz" : "sk";
+
     // Render all pages to JPEG images (serially to keep memory usage stable)
     const RENDER_SCALE = 1.5;
     const pageImages: { pageNum: number; imageData: string }[] = [];
@@ -170,123 +179,213 @@ export async function POST(req: Request) {
 
     console.log(`Vyrenderovaných ${pageImages.length} strán, spracovávam cez Vision AI...`);
 
-    // Batch pages for vision API (2 pages per call for better accuracy)
-    const VISION_BATCH_SIZE = 2;
+    // Batch pages for vision API (4 pages per call)
+    const VISION_BATCH_SIZE = 4;
     const batches: { pageNum: number; imageData: string }[][] = [];
     for (let i = 0; i < pageImages.length; i += VISION_BATCH_SIZE) {
       batches.push(pageImages.slice(i, i + VISION_BATCH_SIZE));
     }
 
     const PRODUCT_SCHEMA = `{
-  "meta": { "date_from": "DD.MM.YYYY alebo null", "date_to": "DD.MM.YYYY alebo null" },
-  "products": [{ "name": "...", "amount": "...", "unit": "g/kg/ml/l/ks/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N }]
+  "meta": { "date_from": "DD.MM.YYYY or null", "date_to": "DD.MM.YYYY or null" },
+  "products": [{ "name": "...", "amount": "...", "unit": "g/kg/ml/l/ks/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N, "categoryKey": "...", "subcategoryKey": "...", "placementKey": "..." }]
 }`;
 
-    const PRODUCT_RULES = `PRAVIDLÁ:
+    // Build compact hierarchy tree for the AI prompt (category → subcategory → placement keys only)
+    type HierarchyItem = { "Kategória": string; "Podkategórie": { "Podkategória": string; "Zaradenia": { "Zaradenie": string }[] }[] };
+    const hierarchyTree = (hierarchyData as HierarchyItem[]).map(c => ({
+      c: c["Kategória"],
+      s: c["Podkategórie"].map(s => ({
+        s: s["Podkategória"],
+        z: s["Zaradenia"].map(z => z["Zaradenie"]),
+      })),
+    }));
+    const HIERARCHY_PROMPT = JSON.stringify(hierarchyTree);
 
-ČO EXTRAHOVAŤ:
-- IBA potraviny, nápoje a alkohol (vrátane piva, vína, destilátov, múky, cukru, atď.)
-- KAŽDÝ produkt na strane — aj malé, aj v rohoch, aj čiastočne orezané
-- Ignorovať: kvety, dekorácie, čistiace prostriedky, toaletný papier, oblečenie, elektroniku, krmivo pre zvieratá, náradie, kozmetiku
-- JEDEN produkt = JEDEN záznam. Ak obrázok a text vedľa patria k tomu istému produktu, je to JEDEN produkt
-
-POLE "name":
+    // Language-specific prompt parts
+    const LANG_CONFIG = {
+      sk: {
+        intro: "Analyzuj obrázky strán z letáka supermarketu a extrahuj všetky potraviny a nápoje.",
+        nameRule: `POLE "name":
+- Všetky názvy MUSIA byť v SLOVENČINE — presne ako sú napísané v letáku
+- Používaj správnu slovenskú diakritiku: á, é, í, ó, ú, ý, š, č, ž, ť, ď, ň, ľ, ĺ, ŕ, ä, ô
 - Skombinuj popis produktu z textu letáka + značku/názov produktu
-- Príklady správnych názvov:
-  • "Tavený syr syrokrém" (text letáka "Tavený syr" + značka "syrokrém")
-  • "Sladené kondenzované mlieko Salko" (popis + značka)
-  • "Dezert Toffifee" (kategória + značka)
-  • "Svetlý ležiak Pilsner Urquell" (typ + značka)
-  • "Maslo 82%" (produkt + špecifikácia)
-  • "Jablko červené" (produkt + farba/druh)
-- NEPATRÍ sem: hmotnosť v gramoch, objem v ml/l, počet kusov v balení
-
-POLE "note" (doplnková informácia):
-- LEN popisný text menším písmom pod názvom produktu: "rôzne druhy", "bez kosti", "pevný podiel 120 g"
-- Pri multipackoch: "8x0.5l", "5 kusov"
-- NEPATRÍ sem: percentá zľavy (-43%, -50%, Card -45%), ceny, hmotnosť ak je v "amount", "pultový predaj"
-- Ak produkt nemá žiadny popis pod názvom, nechaj prázdne ""
-
-POLE "amount" a "unit":
-- amount: len číslo (napr. "200", "1", "0.5")
-- unit: g / kg / ml / l / ks / zväzok / null
-- Pri multipackoch: amount = veľkosť jedného kusu, multipack info do "note"
-
-POLE "price_sale" a "price_regular":
-- price_sale = NAJVÄČŠIA, NAJZVÝRAZNENEJŠIA cena pri produkte = akciová/Card cena (vždy najnižšia)
-- price_regular = PREČIARKNUTÁ pôvodná cena
-- Ak sú 3 ceny: price_sale = Card cena (najnižšia), price_regular = prečiarknutá (najvyššia)
-- price_sale MUSÍ BYŤ NIŽŠIA ako price_regular
-- IGNORUJ: ceny v zátvorkách "(=1 kg ...)", "(=1 l ...)", riadky "A: X,XX", "KC: X,XX"
-- Ak cenu nevidíš, nechaj pole prázdne — NEVYMÝŠĽAJ
-
-PRÍKLAD výstupu pre jednu stranu:
-[
+- Príklady: "Tavený syr syrokrém", "Sladené kondenzované mlieko Salko", "Dezert Toffifee", "Svetlý ležiak Pilsner Urquell", "Maslo 82%", "Jablko červené"`,
+        noteRule: `POLE "note": LEN popisný text pod názvom: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l"`,
+        examples: `[
   {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"0,69","price_regular":"1,29","note":"","page":1},
   {"name":"Tavený syr syrokrém","amount":"200","unit":"g","price_sale":"1,59","price_regular":"3,49","note":"","page":1},
   {"name":"Tuniak","amount":"170","unit":"g","price_sale":"1,39","price_regular":"2,49","note":"rôzne druhy","page":1},
-  {"name":"Dezert Toffifee","amount":"125","unit":"g","price_sale":"1,35","price_regular":"2,65","note":"rôzne druhy","page":1},
   {"name":"Svetlý ležiak Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"6,99","price_regular":"7,89","note":"8x0.5l","page":1}
-]
+]`,
+        noDateHint: "meta dátumy môžeš nastaviť na null ak nie sú na týchto stranách viditeľné",
+      },
+      pl: {
+        intro: "Przeanalizuj zdjęcia stron z gazetki supermarketu i wyodrębnij wszystkie produkty spożywcze i napoje.",
+        nameRule: `POLE "name":
+- Wszystkie nazwy MUSZĄ być po POLSKU — dokładnie jak są napisane w gazetce
+- Używaj poprawnej polskiej pisowni: ą, ę, ć, ł, ń, ó, ś, ź, ż
+- Połącz opis produktu z tekstu gazetki + markę/nazwę produktu
+- Przykłady: "Masło extra 82%", "Ser żółty Gouda", "Piwo Żywiec", "Jabłko Red Delicious", "Szynka konserwowa"`,
+        noteRule: `POLE "note": TYLKO tekst opisowy pod nazwą: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l"`,
+        examples: `[
+  {"name":"Jabłko czerwone","amount":"1","unit":"kg","price_sale":"3,99","price_regular":"5,99","note":"","page":1},
+  {"name":"Masło extra 82%","amount":"200","unit":"g","price_sale":"4,49","price_regular":"6,99","note":"","page":1},
+  {"name":"Ser żółty Gouda","amount":"300","unit":"g","price_sale":"7,99","price_regular":"10,99","note":"różne rodzaje","page":1}
+]`,
+        noDateHint: "meta daty ustaw na null jeśli nie są widoczne na tych stronach",
+      },
+      cz: {
+        intro: "Analyzuj obrázky stránek z letáku supermarketu a extrahuj všechny potraviny a nápoje.",
+        nameRule: `POLE "name":
+- Všechny názvy MUSÍ být v ČEŠTINĚ — přesně jak jsou napsány v letáku
+- Používej správnou českou diakritiku: á, é, í, ó, ú, ý, š, č, ž, ť, ď, ň, ě, ř, ů
+- Zkombinuj popis produktu z textu letáku + značku/název produktu
+- Příklady: "Tavený sýr", "Slazené kondenzované mléko", "Dezert Toffifee", "Pivo Pilsner Urquell", "Máslo 82%", "Jablko červené"`,
+        noteRule: `POLE "note": JEN popisný text pod názvem: "různé druhy", "bez kosti", "5 kusů", "8x0.5l"`,
+        examples: `[
+  {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"19,90","price_regular":"29,90","note":"","page":1},
+  {"name":"Tavený sýr","amount":"200","unit":"g","price_sale":"34,90","price_regular":"49,90","note":"","page":1},
+  {"name":"Pivo Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"19,90","price_regular":"27,90","note":"různé druhy","page":1}
+]`,
+        noDateHint: "meta data nastav na null pokud nejsou na těchto stránkách viditelná",
+      },
+    };
 
-OSTATNÉ:
-- Dátumy v tvare DD.MM.YYYY alebo null
-- "page": číslo strany z textu === STRANA N === nad obrázkom
-- Radšej extrahuj produkt s neúplnými údajmi ako ho vynechať`;
+    const lc = LANG_CONFIG[lang as keyof typeof LANG_CONFIG] || LANG_CONFIG.sk;
+
+    const PRODUCT_RULES = `RULES:
+
+EXTRACT:
+- ONLY food, drinks and alcohol (beer, wine, spirits, flour, sugar, canned food, legumes, nuts, spices, tea, coffee, pasta, rice, oils, sauces, jams, honey, salami, sausages, ham, bacon, smoked meats)
+- EVERY product on the page — small, in corners, partially cropped, private label (K-Classic, Clever, etc.)
+- IGNORE: flowers, decorations, cleaning products, toilet paper, clothing, electronics, pet food, tools, cosmetics
+- ONE product = ONE record
+
+${lc.nameRule}
+- NOT here: weight in grams, volume in ml/l, number of packs
+
+${lc.noteRule}
+- NOT here: discount percentages (-43%, -50%, Card -45%), prices, weight if already in "amount"
+- If no extra info, use empty ""
+
+FIELD "amount" and "unit":
+- amount: only number (e.g. "200", "1", "0.5")
+- unit: g / kg / ml / l / ks / null
+- Multipacks: amount = single item size, multipack info in "note"
+
+FIELD "price_sale" and "price_regular":
+- price_sale = BIGGEST, MOST PROMINENT price = sale/Card price (always lowest)
+- price_regular = CROSSED OUT original price
+- If 3 prices: price_sale = Card price (lowest), price_regular = crossed out (highest)
+- price_sale MUST BE LOWER than price_regular  
+- IGNORE: prices in brackets "(=1 kg ...)", "(=1 l ...)", lines "A: X,XX", "KC: X,XX"
+- If you can't see a price, leave it empty — DO NOT INVENT
+
+EXAMPLE output:
+${lc.examples}
+
+CLASSIFICATION — assign each product to the best matching category from this hierarchy:
+Format: [{c:"categoryKey", s:[{s:"subcategoryKey", z:["placementKey1","placementKey2",...]}]}]
+${HIERARCHY_PROMPT}
+- "categoryKey": the "c" value of the best matching category
+- "subcategoryKey": the "s" value of the best matching subcategory within that category  
+- "placementKey": the "z" value of the best matching placement within that subcategory
+- If no good match exists, use empty strings ""
+- Example: apple → categoryKey:"ovocie_a_zelenina", subcategoryKey:"ovocie", placementKey:"jablk"
+
+OTHER:
+- Dates as DD.MM.YYYY or null
+- "page": page number from text === STRANA/STRONA N ===
+- Better to extract a product with incomplete data than to skip it`;
 
     type VisionContentPart =
       | { type: "text"; text: string }
       | { type: "image_url"; image_url: { url: string; detail: "high" | "low" | "auto" } };
 
-    // Run all vision batches in parallel
-    const batchResults = await Promise.all(
-      batches.map(async (batch, batchIdx) => {
-        const isFirst = batchIdx === 0;
-
-        const content: VisionContentPart[] = [
-          {
-            type: "text",
-            text: `Analyzuj obrázky strán z letáka supermarketu (dávka ${batchIdx + 1}/${batches.length}) a extrahuj všetky potraviny a nápoje.\n\nVÝSTUP v JSON:\n${PRODUCT_SCHEMA}\n\n${PRODUCT_RULES}${!isFirst ? "\n- meta dátumy môžeš nastaviť na null ak nie sú na týchto stranách viditeľné" : ""}`,
-          },
-        ];
-
-        for (const pg of batch) {
-          content.push({ type: "text", text: `=== STRANA ${pg.pageNum} ===` });
-          content.push({
-            type: "image_url",
-            image_url: {
-              url: `data:image/jpeg;base64,${pg.imageData}`,
-              detail: "high",
-            },
-          });
-        }
-
-        const response = await client.chat.completions.create({
-          model: "gpt-4o-mini",
-          response_format: { type: "json_object" },
-          max_tokens: 8000,
-          messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
-        });
-
-        const responseText = response.choices?.[0]?.message?.content?.trim() ?? "";
-        if (!responseText) return null;
-
+    // Helper: call OpenAI with retry on rate limit (429)
+    async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T | null> {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          return JSON.parse(responseText) as ParsedResponse;
-        } catch {
-          const start = responseText.indexOf("{");
-          const end = responseText.lastIndexOf("}");
-          if (start !== -1 && end !== -1 && end > start) {
-            try {
-              return JSON.parse(responseText.slice(start, end + 1)) as ParsedResponse;
-            } catch {
-              console.error(`Dávka ${batchIdx + 1}: neplatný JSON, preskakujem`);
-            }
+          return await fn();
+        } catch (err: unknown) {
+          const status = (err as { status?: number })?.status;
+          if (status === 429 && attempt < maxRetries) {
+            const waitMs = Math.min(2000 * Math.pow(2, attempt), 15000);
+            console.log(`Rate limit, čakám ${waitMs}ms (pokus ${attempt + 1}/${maxRetries})...`);
+            await new Promise(r => setTimeout(r, waitMs));
+          } else {
+            throw err;
           }
-          return null;
         }
-      })
-    );
+      }
+      return null;
+    }
+
+    // Process batches with limited concurrency (max 4 parallel)
+    const MAX_CONCURRENT = 4;
+    const batchResults: (ParsedResponse | null)[] = new Array(batches.length).fill(null);
+
+    for (let start = 0; start < batches.length; start += MAX_CONCURRENT) {
+      const chunk = batches.slice(start, start + MAX_CONCURRENT);
+      const chunkResults = await Promise.all(
+        chunk.map(async (batch, chunkIdx) => {
+          const batchIdx = start + chunkIdx;
+          const isFirst = batchIdx === 0;
+
+          return callWithRetry(async () => {
+            const content: VisionContentPart[] = [
+              {
+                type: "text",
+                text: `${lc.intro} (dávka ${batchIdx + 1}/${batches.length})\n\nVÝSTUP v JSON:\n${PRODUCT_SCHEMA}\n\n${PRODUCT_RULES}${!isFirst ? `\n- ${lc.noDateHint}` : ""}`,
+              },
+            ];
+
+            for (const pg of batch) {
+              content.push({ type: "text", text: `=== STRANA ${pg.pageNum} ===` });
+              content.push({
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${pg.imageData}`,
+                  detail: "high",
+                },
+              });
+            }
+
+            const response = await client.chat.completions.create({
+              model: "gpt-5.1",
+              response_format: { type: "json_object" },
+              max_completion_tokens: 16000,
+              messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
+            });
+
+            const responseText = response.choices?.[0]?.message?.content?.trim() ?? "";
+            if (!responseText) return null;
+
+            try {
+              return JSON.parse(responseText) as ParsedResponse;
+            } catch {
+              const jsonStart = responseText.indexOf("{");
+              const jsonEnd = responseText.lastIndexOf("}");
+              if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                try {
+                  return JSON.parse(responseText.slice(jsonStart, jsonEnd + 1)) as ParsedResponse;
+                } catch {
+                  console.error(`Dávka ${batchIdx + 1}: neplatný JSON, preskakujem`);
+                }
+              }
+              return null;
+            }
+          });
+        })
+      );
+
+      chunkResults.forEach((result, chunkIdx) => {
+        batchResults[start + chunkIdx] = result;
+      });
+
+      console.log(`Spracované dávky ${start + 1}-${Math.min(start + MAX_CONCURRENT, batches.length)} / ${batches.length}`);
+    }
 
     const meta = { date_from: "", date_to: "" };
     const allProducts: Product[] = [];
@@ -317,6 +416,9 @@ OSTATNÉ:
       date_from: meta.date_from,
       date_to: meta.date_to,
       page: item.page ?? null,
+      categoryKey: item.categoryKey || "",
+      subcategoryKey: item.subcategoryKey || "",
+      placementKey: item.placementKey || "",
     }));
 
     const result: Record<string, unknown> = {

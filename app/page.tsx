@@ -74,6 +74,9 @@ type AiExtractItem = {
   product?: FlyerProduct;
   match?: null;
   suggestions?: [];
+  categoryKey?: string;
+  subcategoryKey?: string;
+  placementKey?: string;
 };
 
 type AiExtractMeta = {
@@ -2007,12 +2010,19 @@ const deleteDebugFile = async () => {
                 </div>
               ) : null}
               {aiExtracted.length > 0 ? (
-                <div className="mt-3 grid max-h-[360px] gap-1.5 overflow-y-auto pr-1">
+                <div className="mt-3 grid max-h-[420px] gap-1.5 overflow-y-auto pr-1">
                   {aiExtracted.map((item, idx) => {
                       const showPageDivider = item.page != null && item.page !== aiExtracted[idx - 1]?.page;
                       const upd = (field: keyof AiExtractItem, value: string) =>
                         setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
-                      const inp = "rounded-md border border-black/10 bg-transparent px-1.5 py-0.5 text-xs text-[color:var(--ink)] focus:border-black/30 focus:outline-none w-full";
+                      const inp = "rounded-md border border-black/10 bg-transparent px-1.5 py-0.5 text-xs text-[color:var(--ink)] focus:border-black/30 focus:outline-none";
+                      const sel = "rounded-md border border-black/10 bg-transparent px-1 py-0.5 text-[10px] text-[color:var(--ink)] focus:border-black/30 focus:outline-none cursor-pointer";
+                      const lbl = "text-[10px] font-semibold uppercase tracking-wide text-[color:var(--muted)] shrink-0";
+                      // hierarchy pre tento item
+                      const aiCat = item.categoryKey || "";
+                      const aiSubcats = aiCat ? (hierarchy.find(c => c["Kategória"] === aiCat)?.["Podkategórie"] || []) : [];
+                      const aiSubcat = item.subcategoryKey || "";
+                      const aiPlacements = aiSubcat ? (aiSubcats.find(s => s["Podkategória"] === aiSubcat)?.["Zaradenia"] || []) : [];
                       return (
                     <React.Fragment key={idx}>
                     {showPageDivider && (
@@ -2022,46 +2032,70 @@ const deleteDebugFile = async () => {
                         <div className="h-px flex-1 bg-black/30" />
                       </div>
                     )}
-                    <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs">
-                      {/* každé pole: label naľavo, input napravo */}
-                      {([
-                        { label: "Názov",             field: "name",          cls: "font-semibold", extra: null },
-                        { label: "Doplnková info",    field: "note",          cls: "text-[color:var(--muted)]", extra: null },
-                        { label: "Gramáž",            field: "__amount_unit", cls: "", extra: null },
-                        { label: "Akciová cena",      field: "price_sale",    cls: "font-semibold", extra: null },
-                        { label: "Bežná cena",        field: "price_regular", cls: "", extra: null },
-                        { label: "Dátum akcie od",    field: "date_from",     cls: "", extra: null },
-                        { label: "Dátum akcie do",    field: "date_to",       cls: "", extra: null },
-                      ] as { label: string; field: string; cls: string; extra: null }[]).map(({ label, field, cls }) => (
-                        <div key={field} className="flex items-center gap-2 border-b border-black/[0.05] py-1 last:border-0">
-                          <span className="w-32 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--muted)]">{label}</span>
-                          {field === "__amount_unit" ? (
-                            <div className="flex flex-1 gap-1">
-                              <input className={`${inp} w-16`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
-                              <input className={`${inp} w-12`} value={item.unit || ""} placeholder="jed." onChange={e => upd("unit", e.target.value)} />
-                            </div>
-                          ) : (
-                            <input
-                              className={`${inp} flex-1 ${cls}`}
-                              value={(item[field as keyof AiExtractItem] as string) || ""}
-                              placeholder={label}
-                              onChange={e => upd(field as keyof AiExtractItem, e.target.value)}
-                            />
-                          )}
-                          {field === "name" && (
-                            <button
-                              tabIndex={-1}
-                              onClick={() => {
-                                if (window.confirm(`Zmazať „${item.name || "produkt"}"?`)) {
-                                  setAiExtracted(prev => prev.filter((_, i) => i !== idx));
-                                }
-                              }}
-                              className="shrink-0 rounded-md bg-red-50 px-2 py-1 font-bold text-red-600 hover:bg-red-100 transition"
-                              title="Zmazať"
-                            >🗑</button>
-                          )}
+                    <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs space-y-0">
+                      {/* R1: Názov + delete */}
+                      <div className="flex items-center gap-2 pb-1">
+                        <span className={lbl} style={{width: "3.5rem"}}>Názov</span>
+                        <input className={`${inp} flex-1 font-semibold`} value={item.name || ""} placeholder="Názov" onChange={e => upd("name", e.target.value)} />
+                        <button tabIndex={-1} onClick={() => { if (window.confirm(`Zmazať „${item.name || "produkt"}"?`)) setAiExtracted(prev => prev.filter((_, i) => i !== idx)); }}
+                          className="shrink-0 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600 hover:bg-red-100 transition" title="Zmazať">🗑</button>
+                      </div>
+                      {/* R2: Info + Gramáž na jednom riadku */}
+                      <div className="flex items-center gap-3 border-t border-black/[0.05] py-1 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <span className={lbl}>Info</span>
+                          <input className={`${inp} w-36`} value={item.note || ""} placeholder="Doplnková info" onChange={e => upd("note", e.target.value)} />
                         </div>
-                      ))}
+                        <div className="flex items-center gap-1">
+                          <span className={lbl}>Gramáž</span>
+                          <input className={`${inp} w-14`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
+                          <input className={`${inp} w-8 text-center`} value={item.unit || ""} placeholder="jed" onChange={e => upd("unit", e.target.value)} />
+                        </div>
+                      </div>
+                      {/* R3: Ceny + Dátumy */}
+                      <div className="flex items-center gap-3 border-t border-black/[0.05] py-1 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <span className={lbl}>Akcia</span>
+                          <input className={`${inp} w-16 font-semibold`} value={item.price_sale || ""} placeholder="0,00" onChange={e => upd("price_sale", e.target.value)} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={lbl}>Bežná</span>
+                          <input className={`${inp} w-16`} value={item.price_regular || ""} placeholder="0,00" onChange={e => upd("price_regular", e.target.value)} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={lbl}>Od</span>
+                          <input className={`${inp} w-[5.5rem]`} value={item.date_from || ""} placeholder="DD.MM.YYYY" onChange={e => upd("date_from", e.target.value)} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={lbl}>Do</span>
+                          <input className={`${inp} w-[5.5rem]`} value={item.date_to || ""} placeholder="DD.MM.YYYY" onChange={e => upd("date_to", e.target.value)} />
+                        </div>
+                      </div>
+                      {/* R4: Zaradenie (Kategória / Podkategória / Zaradenie) */}
+                      <div className="flex items-center gap-2 border-t border-black/[0.05] py-1 flex-wrap">
+                        <select className={sel} value={aiCat} onChange={e => {
+                          const nc = e.target.value;
+                          const nsubs = hierarchy.find(c => c["Kategória"] === nc)?.["Podkategórie"] || [];
+                          const ns = nsubs[0]?.["Podkategória"] || "";
+                          const np = nsubs[0]?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
+                          setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, categoryKey: nc, subcategoryKey: ns, placementKey: np } : it));
+                        }}>
+                          <option value="">— kategória —</option>
+                          {hierarchy.map(c => <option key={c["Kategória"]} value={c["Kategória"]}>{locLabelFor(c["Kategória"])}</option>)}
+                        </select>
+                        <select className={sel} value={aiSubcat} disabled={!aiCat} onChange={e => {
+                          const ns = e.target.value;
+                          const np = aiSubcats.find(s => s["Podkategória"] === ns)?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
+                          setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, subcategoryKey: ns, placementKey: np } : it));
+                        }}>
+                          <option value="">— podkategória —</option>
+                          {aiSubcats.map(s => <option key={s["Podkategória"]} value={s["Podkategória"]}>{locLabelFor(s["Podkategória"])}</option>)}
+                        </select>
+                        <select className={sel} value={item.placementKey || ""} disabled={!aiSubcat} onChange={e => upd("placementKey", e.target.value)}>
+                          <option value="">— zaradenie —</option>
+                          {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
+                        </select>
+                      </div>
                     </div>
                     </React.Fragment>
                       );
