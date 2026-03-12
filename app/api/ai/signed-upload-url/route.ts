@@ -16,6 +16,18 @@ export async function POST(req: Request) {
     }
 
     const sb = createClient(supabaseUrl, serviceRole);
+
+    // Clean up old temp files before uploading new one
+    try {
+      const { data: oldFiles } = await sb.storage.from("cap-data").list("temp", { limit: 200 });
+      if (oldFiles && oldFiles.length > 0) {
+        const paths = oldFiles.map(f => `temp/${f.name}`);
+        await sb.storage.from("cap-data").remove(paths);
+      }
+    } catch (e) {
+      console.error("Failed to clean temp folder:", e);
+    }
+
     const storagePath = `temp/ai-pdf-${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
     const { data, error } = await sb.storage

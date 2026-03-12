@@ -85,6 +85,9 @@ function detectShopAndCountry(text: string): { shop: string | null; country: str
 
 
 export async function POST(req: Request) {
+  let tempStoragePath = "";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let sbClient: any = null;
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -99,9 +102,6 @@ export async function POST(req: Request) {
     // 2) FormData with file (direct upload) — fallback / local dev
     let buffer: Uint8Array;
     let formCountry = "";
-    let tempStoragePath = "";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let sbClient: any = null;
 
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -497,15 +497,23 @@ OTHER:
       detectedCountry: detectedCountry ?? null,
     };
 
-    // Clean up temp PDF from Supabase Storage
+    // Clean up temp PDF from Supabase Storage (must await before returning, Vercel kills process after response)
     if (tempStoragePath && sbClient) {
-      sbClient.storage.from("cap-data").remove([tempStoragePath]).catch((e: unknown) =>
-        console.error("Failed to delete temp PDF:", e)
-      );
+      try {
+        await sbClient.storage.from("cap-data").remove([tempStoragePath]);
+      } catch (e: unknown) {
+        console.error("Failed to delete temp PDF:", e);
+      }
     }
 
     return Response.json(result);
   } catch (err) {
+    // Clean up temp PDF even on error
+    if (tempStoragePath && sbClient) {
+      try {
+        await sbClient.storage.from("cap-data").remove([tempStoragePath]);
+      } catch { /* ignore */ }
+    }
     const message = err instanceof Error ? err.message : "Neznáma chyba";
     console.error("Chyba pri spracovaní PDF:", message);
     return Response.json(
