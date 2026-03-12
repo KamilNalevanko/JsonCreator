@@ -533,44 +533,45 @@ export default function Home() {
     try {
       setIsAiExtracting(true);
 
-      // Upload PDF to Supabase Storage temp folder to avoid Vercel body size limit
+      // Upload PDF to Supabase Storage via signed URL (bypasses RLS)
       let pdfStoragePath = "";
-      if (supabase) {
-        const tempName = `temp/ai-pdf-${Date.now()}.pdf`;
-        const { error: upErr } = await supabase.storage
-          .from("cap-data")
-          .upload(tempName, aiPdfFile, { contentType: "application/pdf", upsert: true });
-        if (!upErr) {
-          pdfStoragePath = tempName;
-          storagePath = tempName;
-        }
-      }
-
-      let response: Response;
-      if (pdfStoragePath) {
-        // Send only the storage path (small JSON), API route downloads from Supabase
-        response = await fetch("/api/ai/parse-flyer", {
+      {
+        // 1) Get a signed upload URL from our API (small JSON, no Vercel limit)
+        const urlRes = await fetch("/api/ai/signed-upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            storagePath: pdfStoragePath,
-            country: bucketPath,
-            shop: shop,
-            debug: "1",
-          }),
+          body: JSON.stringify({ fileName: aiPdfFile.name }),
         });
-      } else {
-        // Fallback: send PDF directly (works locally, may fail on Vercel for large files)
-        const formData = new FormData();
-        formData.append("file", aiPdfFile);
-        formData.append("country", bucketPath);
-        formData.append("shop", shop);
-        formData.append("debug", "1");
-        response = await fetch("/api/ai/parse-flyer", {
-          method: "POST",
-          body: formData,
+        const urlData = await urlRes.json().catch(() => ({}));
+        if (!urlRes.ok || !urlData.signedUrl) {
+          setAiExtractError(`Nepodarilo sa získať upload URL: ${urlData.error || "unknown"}`);
+          return;
+        }
+        // 2) Upload PDF directly to Supabase (bypasses Vercel entirely)
+        const uploadRes = await fetch(urlData.signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/pdf" },
+          body: aiPdfFile,
         });
+        if (!uploadRes.ok) {
+          setAiExtractError(`Upload PDF na Supabase zlyhal: ${uploadRes.status}`);
+          return;
+        }
+        pdfStoragePath = urlData.storagePath;
+        storagePath = urlData.storagePath;
       }
+
+      // 3) Send only the storage path to API (small JSON payload)
+      const response = await fetch("/api/ai/parse-flyer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storagePath: pdfStoragePath,
+          country: bucketPath,
+          shop: shop,
+          debug: "1",
+        }),
+      });
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
