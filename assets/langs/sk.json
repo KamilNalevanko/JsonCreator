@@ -698,6 +698,7 @@
   "ai_select_placement": "— zaradenie —",
   "ai_confirm_delete": "Zmazať",
   "ai_save_to_db": "Uložiť do databázy",
+  "ai_add_product": "Pridať produkt",
   "ai_label_country": "Krajina",
   "ai_label_shop": "Obchod",
   "ai_detected": "Detekovaný",
@@ -707,5 +708,6 @@
   "ai_saving": "Ukladám…",
   "ai_save_ok": "Uložených {count} položiek do databázy.",
   "ai_save_error": "Chyba pri ukladaní.",
-  "ai_net_error": "Sieťová chyba."
+  "ai_net_error": "Sieťová chyba.",
+  "javorov_sirup": "Javorový sirup"
 }

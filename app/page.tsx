@@ -1969,7 +1969,7 @@ const deleteDebugFile = async () => {
                 <select
                   className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                   value={language}
-                  onChange={(event) => setLanguage(event.target.value)}
+                  onChange={(event) => { setLanguage(event.target.value); setBucketPath(event.target.value); }}
                 >
                   <option value="sk">🇸🇰 {t("lang_sk")}</option>
                   <option value="cz">🇨🇿 {t("lang_cz")}</option>
@@ -2086,7 +2086,10 @@ const deleteDebugFile = async () => {
                         <div className="flex items-center gap-1">
                           <span className={lbl}>{t("ai_label_weight")}</span>
                           <input className={`${inp} w-14`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
-                          <input className={`${inp} w-8 text-center`} value={item.unit || ""} placeholder="jed" onChange={e => upd("unit", e.target.value)} />
+                          <select className={`${sel} w-14`} value={item.unit || ""} onChange={e => upd("unit", e.target.value)}>
+                            <option value="">—</option>
+                            {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
                         </div>
                       </div>
                       {/* R3: Ceny + Dátumy */}
@@ -2114,7 +2117,7 @@ const deleteDebugFile = async () => {
                       </div>
                       {/* R4: Zaradenie (Kategória / Podkategória / Zaradenie) */}
                       <div className="flex items-center gap-2 border-t border-black/[0.05] py-1 flex-wrap">
-                        <select className={sel} value={aiCat} onFocus={e => { try { e.currentTarget.showPicker(); } catch {} }} onChange={e => {
+                        <select className={sel} value={aiCat} onChange={e => {
                           const nc = e.target.value;
                           const nsubs = hierarchy.find(c => c["Kategória"] === nc)?.["Podkategórie"] || [];
                           const ns = nsubs[0]?.["Podkategória"] || "";
@@ -2124,7 +2127,7 @@ const deleteDebugFile = async () => {
                           <option value="">{t("ai_select_category")}</option>
                           {hierarchy.map(c => <option key={c["Kategória"]} value={c["Kategória"]}>{locLabelFor(c["Kategória"])}</option>)}
                         </select>
-                        <select className={sel} value={aiSubcat} disabled={!aiCat} onFocus={e => { if (aiCat) try { e.currentTarget.showPicker(); } catch {} }} onChange={e => {
+                        <select className={sel} value={aiSubcat} disabled={!aiCat} onChange={e => {
                           const ns = e.target.value;
                           const np = aiSubcats.find(s => s["Podkategória"] === ns)?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
                           setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, subcategoryKey: ns, placementKey: np } : it));
@@ -2132,12 +2135,30 @@ const deleteDebugFile = async () => {
                           <option value="">{t("ai_select_subcategory")}</option>
                           {aiSubcats.map(s => <option key={s["Podkategória"]} value={s["Podkategória"]}>{locLabelFor(s["Podkategória"])}</option>)}
                         </select>
-                        <select className={sel} value={item.placementKey || ""} disabled={!aiSubcat} onFocus={e => { if (aiSubcat) try { e.currentTarget.showPicker(); } catch {} }} onChange={e => upd("placementKey", e.target.value)}>
+                        <select className={sel} value={item.placementKey || ""} disabled={!aiSubcat} onChange={e => upd("placementKey", e.target.value)}>
                           <option value="">{t("ai_select_placement")}</option>
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
                       </div>
                     </div>
+                    {/* + button at end of each page group */}
+                    {(idx === aiExtracted.length - 1 || aiExtracted[idx + 1]?.page !== item.page) && (
+                      <button
+                        onClick={() => {
+                          const newItem: AiExtractItem = {
+                            name: "",
+                            page: item.page,
+                            date_from: item.date_from || "",
+                            date_to: item.date_to || "",
+                          };
+                          setAiExtracted(prev => [...prev.slice(0, idx + 1), newItem, ...prev.slice(idx + 1)]);
+                        }}
+                        className="mx-auto flex items-center gap-1 rounded-lg border border-dashed border-black/20 px-3 py-1 text-[11px] font-semibold text-[color:var(--muted)] transition hover:border-black/40 hover:text-[color:var(--ink)] hover:bg-black/[0.03]"
+                        title={t("ai_add_product") ?? "Pridať produkt"}
+                      >
+                        <span className="text-sm leading-none">+</span> {t("ai_add_product") ?? "Pridať produkt"}
+                      </button>
+                    )}
                     </React.Fragment>
                       );
                     })}

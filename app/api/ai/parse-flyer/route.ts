@@ -277,8 +277,9 @@ export async function POST(req: Request) {
 - Všetky názvy MUSIA byť v SLOVENČINE — presne ako sú napísané v letáku
 - Používaj správnu slovenskú diakritiku: á, é, í, ó, ú, ý, š, č, ž, ť, ď, ň, ľ, ĺ, ŕ, ä, ô
 - Skombinuj popis produktu z textu letáka + značku/názov produktu
-- Príklady: "Tavený syr syrokrém", "Sladené kondenzované mlieko Salko", "Dezert Toffifee", "Svetlý ležiak Pilsner Urquell", "Maslo 82%", "Jablko červené"`,
-        noteRule: `POLE "note": LEN popisný text pod názvom: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l"`,
+- DO NOT include packaging/state words in name: "chladené", "balené", "mrazené", "sušené", "krájané" → put these in "note"
+- Príklady: "Tavený syr syrokrém", "Sladené kondenzované mlieko Salko", "Dezert Toffifee", "Svetlý ležiak Pilsner Urquell", "Maslo 82%", "Jablko červené", "Bravčové mäso na guláš"`,
+        noteRule: `POLE "note": LEN popisný text pod názvom: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l", "chladené, balené", "krájané"`,
         examples: `[
   {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"0,69","price_regular":"1,29","note":"","page":1},
   {"name":"Tavený syr syrokrém","amount":"200","unit":"g","price_sale":"1,59","price_regular":"3,49","note":"","page":1},
@@ -293,8 +294,9 @@ export async function POST(req: Request) {
 - Wszystkie nazwy MUSZĄ być po POLSKU — dokładnie jak są napisane w gazetce
 - Używaj poprawnej polskiej pisowni: ą, ę, ć, ł, ń, ó, ś, ź, ż
 - Połącz opis produktu z tekstu gazetki + markę/nazwę produktu
-- Przykłady: "Masło extra 82%", "Ser żółty Gouda", "Piwo Żywiec", "Jabłko Red Delicious", "Szynka konserwowa"`,
-        noteRule: `POLE "note": TYLKO tekst opisowy pod nazwą: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l"`,
+- DO NOT include packaging/state words in name: "chłodzone", "pakowane", "mrożone", "suszone", "krojone" → put these in "note"
+- Przykłady: "Masło extra 82%", "Ser żółty Gouda", "Piwo Żywiec", "Jabłko Red Delicious", "Szynka konserwowa", "Wieprzowina na gulasz"`,
+        noteRule: `POLE "note": TYLKO tekst opisowy pod nazwą: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l", "chłodzone, pakowane", "krojone", "1+1 gratis", "2+2 gratis", "3+3 gratis"`,
         examples: `[
   {"name":"Jabłko czerwone","amount":"1","unit":"kg","price_sale":"3,99","price_regular":"5,99","note":"","page":1},
   {"name":"Masło extra 82%","amount":"200","unit":"g","price_sale":"4,49","price_regular":"6,99","note":"","page":1},
@@ -308,8 +310,9 @@ export async function POST(req: Request) {
 - Všechny názvy MUSÍ být v ČEŠTINĚ — přesně jak jsou napsány v letáku
 - Používej správnou českou diakritiku: á, é, í, ó, ú, ý, š, č, ž, ť, ď, ň, ě, ř, ů
 - Zkombinuj popis produktu z textu letáku + značku/název produktu
+- DO NOT include packaging/state words in name: "chlazené", "balené", "mražené", "sušené", "krájené" → put these in "note"
 - Příklady: "Tavený sýr", "Slazené kondenzované mléko", "Dezert Toffifee", "Pivo Pilsner Urquell", "Máslo 82%", "Jablko červené"`,
-        noteRule: `POLE "note": JEN popisný text pod názvem: "různé druhy", "bez kosti", "5 kusů", "8x0.5l"`,
+        noteRule: `POLE "note": JEN popisný text pod názvem: "různé druhy", "bez kosti", "5 kusů", "8x0.5l", "chlazené, balené", "krájené"`,
         examples: `[
   {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"19,90","price_regular":"29,90","note":"","page":1},
   {"name":"Tavený sýr","amount":"200","unit":"g","price_sale":"34,90","price_regular":"49,90","note":"","page":1},
@@ -335,6 +338,8 @@ ${lc.nameRule}
 
 ${lc.noteRule}
 - NOT here: discount percentages (-43%, -50%, Card -45%), prices, weight if already in "amount"
+- Promotions like "1+1 gratis", "2+2 gratis", "3+3 gratis", "1+1 zdarma" → put in "note"
+- Packaging/state words: "chladené", "balené", "mrazené", "chłodzone", "pakowane" → put in "note", NOT in "name"
 - If no extra info, use empty ""
 
 FIELD "amount" and "unit":

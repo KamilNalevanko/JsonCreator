@@ -680,6 +680,7 @@
   "ai_select_subcategory": "— podkategoria —",
   "ai_select_placement": "— umiejscowienie —",
   "ai_confirm_delete": "Usuń",
+  "ai_add_product": "Dodaj produkt",
   "ai_save_to_db": "Zapisz do bazy danych",
   "ai_label_country": "Kraj",
   "ai_label_shop": "Sklep",
@@ -690,5 +691,9 @@
   "ai_saving": "Zapisuję…",
   "ai_save_ok": "Zapisano {count} produktów do bazy danych.",
   "ai_save_error": "Błąd przy zapisywaniu.",
-  "ai_net_error": "Błąd sieci."
+  "ai_net_error": "Błąd sieci.",
+  "majon_zy_om_ky_dresingy": "Majonezy, sosy, dresingi",
+  "al_tov_dresing": "Dressing sałatkowy",
+  "sirupy": "Syropy",
+  "javorov_sirup": "Syrop klonowy"
 }

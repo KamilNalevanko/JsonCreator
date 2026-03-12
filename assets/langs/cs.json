@@ -682,6 +682,7 @@
   "ai_select_subcategory": "— podkategorie —",
   "ai_select_placement": "— zařazení —",
   "ai_confirm_delete": "Smazat",
+  "ai_add_product": "Přidat produkt",
   "ai_save_to_db": "Uložit do databáze",
   "ai_label_country": "Země",
   "ai_label_shop": "Obchod",
@@ -692,5 +693,9 @@
   "ai_saving": "Ukládám…",
   "ai_save_ok": "Uloženo {count} položek do databáze.",
   "ai_save_error": "Chyba při ukládání.",
-  "ai_net_error": "Síťová chyba."
+  "ai_net_error": "Síťová chyba.",
+  "majon_zy_om_ky_dresingy": "Majonézy, omáčky, dresinky",
+  "al_tov_dresing": "Salátový dresink",
+  "sirupy": "Sirupy",
+  "javorov_sirup": "Javorový sirup"
 }
