@@ -607,10 +607,6 @@ export default function Home() {
       const message = err instanceof Error ? err.message : t("ai_extract_failed");
       setAiExtractError(message);
     } finally {
-      // Clean up temp PDF from Supabase Storage
-      if (supabase && storagePath) {
-        supabase.storage.from("cap-data").remove([storagePath]).catch(() => {});
-      }
       setIsAiExtracting(false);
     }
   };

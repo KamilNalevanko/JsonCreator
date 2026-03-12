@@ -99,12 +99,16 @@ export async function POST(req: Request) {
     // 2) FormData with file (direct upload) — fallback / local dev
     let buffer: Uint8Array;
     let formCountry = "";
+    let tempStoragePath = "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let sbClient: any = null;
 
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const body = await req.json();
       formCountry = (body.country as string) || "";
       const storagePath = (body.storagePath as string) || "";
+      tempStoragePath = storagePath;
       if (!storagePath) {
         return Response.json({ error: "Chýba PDF (storagePath)." }, { status: 400 });
       }
@@ -115,13 +119,12 @@ export async function POST(req: Request) {
         return Response.json({ error: "Missing SUPABASE env." }, { status: 500 });
       }
       const sb = createClient(supabaseUrl, serviceRole);
+      sbClient = sb;
       const { data: blob, error: dlErr } = await sb.storage.from("cap-data").download(storagePath);
       if (dlErr || !blob) {
         return Response.json({ error: `PDF download failed: ${dlErr?.message || "no data"}` }, { status: 400 });
       }
       buffer = new Uint8Array(await blob.arrayBuffer());
-      // Clean up temp file (fire and forget)
-      sb.storage.from("cap-data").remove([storagePath]).catch(() => {});
     } else {
       const form = await req.formData();
       const file = form.get("file");
@@ -493,6 +496,13 @@ OTHER:
       detectedShop: detectedShop ?? null,
       detectedCountry: detectedCountry ?? null,
     };
+
+    // Clean up temp PDF from Supabase Storage
+    if (tempStoragePath && sbClient) {
+      sbClient.storage.from("cap-data").remove([tempStoragePath]).catch((e: unknown) =>
+        console.error("Failed to delete temp PDF:", e)
+      );
+    }
 
     return Response.json(result);
   } catch (err) {
