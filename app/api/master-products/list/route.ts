@@ -146,7 +146,15 @@ export async function GET(req: Request) {
         base["Obchody"] = [];
       }
 
-      const placementKey = `${base["Kategória"]}||${base["Podkategória"]}||${base["Zaradenie"]}`;
+      // Ak produkt nemá zaradenie, daj ho do prvej kategórie/podkategórie/zaradenia
+      const cat = base["Kategória"] || hierarchy[0]?.["Kategória"] || "";
+      const sub = base["Podkategória"] || hierarchy[0]?.["Podkategórie"]?.[0]?.["Podkategória"] || "";
+      const plc = base["Zaradenie"] || hierarchy[0]?.["Podkategórie"]?.[0]?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
+      base["Kategória"] = cat;
+      base["Podkategória"] = sub;
+      base["Zaradenie"] = plc;
+
+      const placementKey = `${cat}||${sub}||${plc}`;
       const list = productsByPlacement.get(placementKey) ?? [];
       list.push(base);
       productsByPlacement.set(placementKey, list);

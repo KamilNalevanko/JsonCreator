@@ -293,6 +293,7 @@ export default function Home() {
   const [aiEditingIdx, setAiEditingIdx] = useState<number | null>(null);
   const [aiDetectedShop, setAiDetectedShop] = useState("");
   const [aiDetectedCountry, setAiDetectedCountry] = useState("");
+  const [aiShop, setAiShop] = useState("");
   const [aiSaveModal, setAiSaveModal] = useState(false);
   const [aiSaveShop, setAiSaveShop] = useState("");
   const [aiSaveCountry, setAiSaveCountry] = useState("sk");
@@ -588,6 +589,14 @@ export default function Home() {
       setAiDetectedCountry(typeof payload?.detectedCountry === "string" ? payload.detectedCountry : "");
       setAiSaveStatus(null);
 
+      // Nastav aiShop z detekovaného obchodu ak user ešte nevybral
+      const detShop = typeof payload?.detectedShop === "string" ? payload.detectedShop : "";
+      if (detShop && !aiShop) {
+        setAiShop(detShop);
+      }
+
+      const resolvedShop = aiShop || detShop;
+
       const nextDateFrom = typeof meta?.date_from === "string" ? meta.date_from : "";
       const nextDateTo = typeof meta?.date_to === "string" ? meta.date_to : "";
 
@@ -603,6 +612,47 @@ export default function Home() {
       setAiExtractStatus(
         `${t("ai_found_items")}: ${items.length}${dateLabel ? ` • Leták: ${dateLabel}` : ""}`
       );
+
+      // Auto-save do DB ak máme shop
+      if (resolvedShop && items.length > 0) {
+        try {
+          const saveRes = await fetch("/api/ai/bulk-save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: bucketPath, shop: resolvedShop, items }),
+          });
+          const saveJson = await saveRes.json().catch(() => ({}));
+
+          // Aktualizuj aiExtracted s mergnutými dátami z DB (kategórie, atď.)
+          if (saveJson.ok && Array.isArray(saveJson.merged)) {
+            const mergedMap = new Map<string, typeof saveJson.merged[0]>();
+            for (const rec of saveJson.merged) {
+              mergedMap.set((rec.name_key || "").toLowerCase(), rec);
+            }
+            setAiExtracted((prev) =>
+              prev.map((it) => {
+                const key = (it.name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+                const db = mergedMap.get(key);
+                if (!db) return it;
+                return {
+                  ...it,
+                  categoryKey: it.categoryKey || db.category || "",
+                  subcategoryKey: it.subcategoryKey || db.subcategory || "",
+                  placementKey: it.placementKey || db.placement || "",
+                  amount: it.amount || db.amount || "",
+                  unit: it.unit || db.unit || "",
+                  note: it.note || db.info || "",
+                };
+              })
+            );
+          }
+
+          // Refresh loadedFlyer aby sa produkty objavili dole
+          setShop(resolvedShop);
+          setBucketPath(bucketPath);
+          lastLoadKeyRef.current = "";
+        } catch { /* ignoruj chybu auto-save, user stále vidí produkty */ }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : t("ai_extract_failed");
       setAiExtractError(message);
@@ -2026,10 +2076,20 @@ const deleteDebugFile = async () => {
                 <span className="text-xs text-[color:var(--muted)]">
                   {aiPdfFile?.name ? aiPdfFile.name : t("no_file_selected")}
                 </span>
+                <select
+                  className={`rounded-full border ${aiShop ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-white px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
+                  value={aiShop}
+                  onChange={e => setAiShop(e.target.value)}
+                >
+                  <option value="">— {t("ai_select_shop")} —</option>
+                  {(shopOptionsByFolder[bucketPath] ?? []).map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={handleAiExtract}
-                  disabled={isAiExtracting}
+                  disabled={isAiExtracting || !aiShop}
                   className="rounded-full bg-[color:var(--btn-neutral-bg)] px-4 py-2 text-xs font-semibold text-white shadow-[var(--btn-neutral-shadow)] transition hover:brightness-110 disabled:opacity-60"
                 >
                   {isAiExtracting ? t("btn_processing") : t("btn_analyze_pdf")}
@@ -2168,14 +2228,14 @@ const deleteDebugFile = async () => {
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={() => {
-                      setAiSaveShop(aiDetectedShop || "");
+                      setAiSaveShop(aiShop || aiDetectedShop || "");
                       setAiSaveCountry(bucketPath || aiDetectedCountry || "sk");
                       setAiSaveStatus(null);
                       setAiSaveModal(true);
                     }}
                     className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75"
                   >
-                    💾 {t("ai_save_to_db")} ({aiExtracted.length})
+                    🚀 {t("ai_upload_to_server")} ({aiExtracted.length})
                   </button>
                 </div>
               ) : null}
@@ -2183,7 +2243,7 @@ const deleteDebugFile = async () => {
               {aiSaveModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                   <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-                    <h3 className="mb-4 text-base font-bold text-[color:var(--ink)]">{t("ai_save_to_db")}</h3>
+                    <h3 className="mb-4 text-base font-bold text-[color:var(--ink)]">{t("ai_upload_to_server")}</h3>
                     <div className="grid gap-3">
                       <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
                         {t("ai_label_country")}
@@ -2233,17 +2293,82 @@ const deleteDebugFile = async () => {
                           setIsAiSaving(true);
                           setAiSaveStatus(null);
                           try {
-                            const res = await fetch("/api/ai/bulk-save", {
+                            // 1) Uložiť/aktualizovať produkty v DB
+                            const dbRes = await fetch("/api/ai/bulk-save", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ country: aiSaveCountry, shop: aiSaveShop, items: aiExtracted }),
                             });
-                            const json = await res.json();
-                            if (json.ok) {
-                              setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_save_ok", { count: String(json.saved) })}` });
-                            } else {
-                              setAiSaveStatus({ ok: false, msg: json.error || t("ai_save_error") });
+                            const dbJson = await dbRes.json();
+                            if (!dbJson.ok) {
+                              setAiSaveStatus({ ok: false, msg: dbJson.error || t("ai_save_error") });
+                              return;
                             }
+
+                            // 2) Zostaviť letákový JSON z aiExtracted
+                            const productMap = new Map<string, FlyerProduct[]>();
+                            for (const item of aiExtracted) {
+                              if (!item.name?.trim()) continue;
+                              const cat = item.categoryKey || "";
+                              const sub = item.subcategoryKey || "";
+                              const plc = item.placementKey || "";
+                              const key = `${cat}||${sub}||${plc}`;
+                              const product: FlyerProduct = {
+                                "Názov": item.name.trim(),
+                                "Kategória": cat,
+                                "Podkategória": sub,
+                                "Zaradenie": plc,
+                                "Množstvo": item.amount || "",
+                                "Merná jednotka": item.unit || "",
+                                "Bežná cena za bal.": item.price_regular || "",
+                                "Bežná jednotková cena": "",
+                                "Akciová cena": item.price_sale || "",
+                                "Akciová jednotková cena": calculateUnitPrice(item.price_sale || "", item.amount || "", item.unit || ""),
+                                "Doplnková Informácia": item.note || "",
+                                "Dátum akcie od": item.date_from || "",
+                                "Dátum akcie do": item.date_to || "",
+                                "Obchody": [aiSaveShop],
+                              };
+                              const existing = productMap.get(key) ?? [];
+                              productMap.set(key, [...existing, product]);
+                            }
+
+                            const flyerJson = hierarchy.map((category) => ({
+                              "Kategória": category["Kategória"],
+                              "Podkategórie": category["Podkategórie"].map((subcategory) => ({
+                                "Podkategória": subcategory["Podkategória"],
+                                "Zaradenia": subcategory["Zaradenia"].map((placement) => {
+                                  const key = `${category["Kategória"]}||${subcategory["Podkategória"]}||${placement["Zaradenie"]}`;
+                                  return {
+                                    "Zaradenie": placement["Zaradenie"],
+                                    "Produkty": productMap.get(key) ?? [],
+                                  };
+                                }),
+                              })),
+                            }));
+
+                            // 3) Nahrať leták na server
+                            const uploadRes = await fetch("/api/rotating-upload", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                country: aiSaveCountry,
+                                shop: aiSaveShop,
+                                payload: JSON.stringify(flyerJson, null, 2),
+                              }),
+                            });
+                            const uploadJson = await uploadRes.json();
+                            if (!uploadJson.ok) {
+                              setAiSaveStatus({ ok: false, msg: uploadJson.error || t("ai_save_error") });
+                              return;
+                            }
+
+                            setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
+
+                            // 4) Refresh loadedFlyer
+                            setShop(aiSaveShop);
+                            setBucketPath(aiSaveCountry);
+                            lastLoadKeyRef.current = "";
                           } catch {
                             setAiSaveStatus({ ok: false, msg: t("ai_net_error") });
                           } finally {
@@ -2252,7 +2377,7 @@ const deleteDebugFile = async () => {
                         }}
                         className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
                       >
-                        {isAiSaving ? t("ai_saving") : `${t("ai_btn_save_items")} ${aiExtracted.length}`}
+                        {isAiSaving ? t("ai_saving") : `🚀 ${t("ai_btn_upload")} ${aiExtracted.length}`}
                       </button>
                     </div>
                   </div>
