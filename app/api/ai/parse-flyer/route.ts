@@ -135,19 +135,13 @@ export async function POST(req: Request) {
     // Extract text from PDF
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-    // Disable worker — not available in Vercel serverless environment
-    if (pdfjs?.GlobalWorkerOptions) {
-      pdfjs.GlobalWorkerOptions.workerSrc = "";
-      pdfjs.GlobalWorkerOptions.workerPort = null;
-    }
+    // Point worker to the module specifier so pdfjs can resolve it in Node.js / Vercel
+    pdfjs.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
     const { createCanvas } = await import("@napi-rs/canvas");
 
     const doc = await pdfjs.getDocument({
       data: buffer,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
     }).promise;
 
     const pages = Math.min(doc.numPages, MAX_PAGES);
