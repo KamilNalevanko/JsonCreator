@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { pathToFileURL } from "url";
 import { createClient } from "@supabase/supabase-js";
 import hierarchyData from "../../../../assets/hierarchia.json";
 import skLabels from "../../../../assets/langs/sk.json";
@@ -135,23 +134,20 @@ export async function POST(req: Request) {
 
     // Extract text from PDF
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const requireAny = eval("require");
 
+    // Disable worker — not available in Vercel serverless environment
     if (pdfjs?.GlobalWorkerOptions) {
-      try {
-        const workerPath = requireAny.resolve("pdfjs-dist/build/pdf.worker.mjs");
-        pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).toString();
-      } catch {
-        pdfjs.GlobalWorkerOptions.workerSrc = "";
-      }
+      pdfjs.GlobalWorkerOptions.workerSrc = "";
       pdfjs.GlobalWorkerOptions.workerPort = null;
     }
 
     const { createCanvas } = await import("@napi-rs/canvas");
 
-    // pdfjs v5.5 in Node.js auto-uses its built-in NodeCanvasFactory with @napi-rs/canvas
     const doc = await pdfjs.getDocument({
       data: buffer,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
     }).promise;
 
     const pages = Math.min(doc.numPages, MAX_PAGES);
