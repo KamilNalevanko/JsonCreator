@@ -471,6 +471,9 @@ OTHER:
       if (Array.isArray(parsed.products)) allProducts.push(...parsed.products);
     }
 
+    // Sort by page number numerically before deduplication
+    allProducts.sort((a, b) => (a.page ?? 0) - (b.page ?? 0));
+
     // Deduplicate by name (keep first occurrence)
     const seen = new Set<string>();
     const deduped = allProducts.filter((p) => {
