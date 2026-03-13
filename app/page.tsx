@@ -2190,7 +2190,15 @@ const deleteDebugFile = async () => {
                         <div className="h-px flex-1 bg-black/30" />
                       </div>
                     )}
-                    <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs space-y-0">
+                    <div
+                      className={`rounded-xl border px-3 py-2 text-xs space-y-0 transition-all ${
+                        aiEditingIdx === idx
+                          ? "border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-200"
+                          : "border-black/10 bg-white"
+                      }`}
+                      onFocus={() => setAiEditingIdx(idx)}
+                      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAiEditingIdx(null); }}
+                    >
                       {/* R1: Názov + delete */}
                       <div className="flex items-center gap-2 pb-1">
                         <span className={lbl} style={{width: "3.5rem"}}>{t("ai_label_name")}</span>
