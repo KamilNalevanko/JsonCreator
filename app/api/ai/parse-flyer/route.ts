@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const MAX_PAGES = 15;
+const MAX_PAGES = 0; // 0 = no limit; set e.g. to 15 to limit pages for testing
 
 interface Product {
   name: string;
@@ -147,7 +147,7 @@ export async function POST(req: Request) {
       data: buffer,
     }).promise;
 
-    const pages = Math.min(doc.numPages, MAX_PAGES);
+    const pages = MAX_PAGES > 0 ? Math.min(doc.numPages, MAX_PAGES) : doc.numPages;
 
     // Quick text extraction from first few pages for shop/country detection
     interface PdfTextItem { str?: string; }
@@ -423,7 +423,7 @@ OTHER:
             }
 
             const response = await client.chat.completions.create({
-              model: "gpt-5.1",
+              model: "gpt-5.4",
               response_format: { type: "json_object" },
               max_completion_tokens: 16000,
               messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],

@@ -28,6 +28,18 @@ const normalizeNameKey = (value: string) =>
 const mergeField = (aiValue: string, dbValue: string) =>
   aiValue || dbValue || "";
 
+/* Vypočíta jednotkovú cenu (rovnaká logika ako na frontende) */
+const calculateUnitPrice = (price: string, amount: string, unit: string): string => {
+  if (!price?.trim() || !amount?.trim()) return "";
+  const priceNum = parseFloat(price.replace(",", "."));
+  const amountNum = parseFloat(amount.replace(",", "."));
+  if (isNaN(priceNum) || isNaN(amountNum) || amountNum === 0) return "";
+  let multiplier = 1;
+  if (unit === "g" || unit === "ml") multiplier = 1000;
+  const unitPrice = (priceNum / amountNum) * multiplier;
+  return unitPrice.toFixed(2).replace(".", ",");
+};
+
 export async function POST(req: Request) {
   try {
     const supabaseUrl =
@@ -106,9 +118,17 @@ export async function POST(req: Request) {
         amount: mergeField(item.amount || "", db.amount || ""),
         unit: mergeField(item.unit || "", db.unit || ""),
         price_regular: mergeField(item.price_regular || "", db.price_regular || ""),
-        price_regular_unit: db.price_regular_unit || "",
+        price_regular_unit: calculateUnitPrice(
+          mergeField(item.price_regular || "", db.price_regular || ""),
+          mergeField(item.amount || "", db.amount || ""),
+          mergeField(item.unit || "", db.unit || "")
+        ),
         price_sale: mergeField(item.price_sale || "", db.price_sale || ""),
-        price_sale_unit: db.price_sale_unit || "",
+        price_sale_unit: calculateUnitPrice(
+          mergeField(item.price_sale || "", db.price_sale || ""),
+          mergeField(item.amount || "", db.amount || ""),
+          mergeField(item.unit || "", db.unit || "")
+        ),
         info: mergeField(item.note || "", db.info || ""),
         date_from: mergeField(item.date_from || "", db.date_from || ""),
         date_to: mergeField(item.date_to || "", db.date_to || ""),

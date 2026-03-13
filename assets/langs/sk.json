@@ -712,5 +712,9 @@
   "ai_save_ok": "Uložených {count} položiek do databázy.",
   "ai_save_error": "Chyba pri ukladaní.",
   "ai_net_error": "Sieťová chyba.",
-  "javorov_sirup": "Javorový sirup"
+  "ovocn": "Ovocné",
+  "in_sirup": "Iné",
+  "d_sy_zaradenie": "Džúsy",
+  "adov_aje": "Ľadové čaje",
+  "ry_ov_chlieb_zarad": "Ryžový chlieb"
 }

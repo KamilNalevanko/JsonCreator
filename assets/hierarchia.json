@@ -1202,7 +1202,12 @@
         "Podkategória": "sirupy",
         "Zaradenia": [
           {
-            "Zaradenie": "javorov_sirup",
+            "Zaradenie": "ovocn",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/sirupy/sirupy_result.png"
+          },
+          {
+            "Zaradenie": "in_sirup",
             "Produkty": [],
             "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/sirupy/sirupy_result.png"
           }
@@ -1211,7 +1216,18 @@
       },
       {
         "Podkategória": "d_sy_a_adov_aje",
-        "Zaradenia": [],
+        "Zaradenia": [
+          {
+            "Zaradenie": "d_sy_zaradenie",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/dzusy_a_ladove_caje/dzusy_a_ladove_caje_result.png"
+          },
+          {
+            "Zaradenie": "adov_aje",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/dzusy_a_ladove_caje/dzusy_a_ladove_caje_result.png"
+          }
+        ],
         "image": "assets/images/produkty/sk/nealko,_napoje,_kavy_a_caje/dzusy_a_ladove_caje/dzusy_a_ladove_caje_result.png"
       },
       {
@@ -2632,7 +2648,13 @@
       },
       {
         "Podkategória": "ry_ov_chlieb",
-        "Zaradenia": [],
+        "Zaradenia": [
+          {
+            "Zaradenie": "ry_ov_chlieb_zarad",
+            "Produkty": [],
+            "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
+          }
+        ],
         "image": "assets/images/produkty/sk/zdrava_vyziva/hlavna_result.png"
       },
       {

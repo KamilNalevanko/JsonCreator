@@ -837,6 +837,33 @@ export default function Home() {
       productMap.set(key, [...existing, entry.product]);
     }
 
+    // include AI-extracted products
+    for (const item of aiExtracted) {
+      if (!item.name?.trim()) continue;
+      const cat = item.categoryKey || "";
+      const sub = item.subcategoryKey || "";
+      const plc = item.placementKey || "";
+      const key = `${cat}||${sub}||${plc}`;
+      const product: FlyerProduct = {
+        "Názov": item.name.trim(),
+        "Kategória": cat,
+        "Podkategória": sub,
+        "Zaradenie": plc,
+        "Množstvo": item.amount || "",
+        "Merná jednotka": item.unit || "",
+        "Bežná cena za bal.": item.price_regular || "",
+        "Bežná jednotková cena": calculateUnitPrice(item.price_regular || "", item.amount || "", item.unit || ""),
+        "Akciová cena": item.price_sale || "",
+        "Akciová jednotková cena": calculateUnitPrice(item.price_sale || "", item.amount || "", item.unit || ""),
+        "Doplnková Informácia": item.note || "",
+        "Dátum akcie od": item.date_from || "",
+        "Dátum akcie do": item.date_to || "",
+        "Obchody": shop ? [shop] : [],
+      };
+      const existing = productMap.get(key) ?? [];
+      productMap.set(key, [...existing, product]);
+    }
+
     return hierarchy.map((category) => ({
       "Kategória": category["Kategória"],
       "Podkategórie": category["Podkategórie"].map((subcategory) => ({
@@ -850,7 +877,7 @@ export default function Home() {
         }),
       })),
     }));
-  }, [products, hierarchy]);
+  }, [products, aiExtracted, hierarchy, shop]);
 
   const normalizeLoadedFlyer = (payload: unknown): HierarchyCategory[] | null => {
     if (Array.isArray(payload)) return payload as HierarchyCategory[];
@@ -1136,13 +1163,43 @@ export default function Home() {
   };
 
   const displayProducts = useMemo(() => {
-    return products.map((entry) => ({
+    const manual = products.map((entry) => ({
       type: "new" as const,
       id: entry.id,
       product: entry.product,
       entry,
     }));
-  }, [products]);
+
+    const ai = aiExtracted
+      .filter((item) => !!item.name?.trim())
+      .map((item, idx) => {
+        const product: FlyerProduct = {
+          "Názov": item.name.trim(),
+          "Kategória": item.categoryKey || "",
+          "Podkategória": item.subcategoryKey || "",
+          "Zaradenie": item.placementKey || "",
+          "Množstvo": item.amount || "",
+          "Merná jednotka": item.unit || "",
+          "Bežná cena za bal.": item.price_regular || "",
+          "Bežná jednotková cena": calculateUnitPrice(item.price_regular || "", item.amount || "", item.unit || ""),
+          "Akciová cena": item.price_sale || "",
+          "Akciová jednotková cena": calculateUnitPrice(item.price_sale || "", item.amount || "", item.unit || ""),
+          "Doplnková Informácia": item.note || "",
+          "Dátum akcie od": item.date_from || "",
+          "Dátum akcie do": item.date_to || "",
+          "Obchody": shop ? [shop] : [],
+        };
+        const entry: ProductEntry = { id: `ai-${idx}`, product };
+        return {
+          type: "new" as const,
+          id: entry.id,
+          product,
+          entry,
+        };
+      });
+
+    return [...ai, ...manual];
+  }, [products, aiExtracted, shop]);
 
   const filteredDisplayProducts = useMemo(() => {
     const query = normalizeKey(productListQuery.trim());
@@ -1693,7 +1750,12 @@ export default function Home() {
   };
 
   const removeProduct = (id: string) => {
-    setProducts((prev) => prev.filter((item) => item.id !== id));
+    if (id.startsWith("ai-")) {
+      const aiIdx = parseInt(id.slice(3), 10);
+      setAiExtracted((prev) => prev.filter((_, i) => i !== aiIdx));
+    } else {
+      setProducts((prev) => prev.filter((item) => item.id !== id));
+    }
     if (editingId === id) {
       setEditingId(null);
       resetFormFields();
@@ -2177,25 +2239,30 @@ const deleteDebugFile = async () => {
                       </div>
                       {/* R4: Zaradenie (Kategória / Podkategória / Zaradenie) */}
                       <div className="flex items-center gap-2 border-t border-black/[0.05] py-1 flex-wrap">
-                        <select className={sel} value={aiCat} onChange={e => {
+                        <select className={`${sel} ${!aiCat ? "border-red-400 ring-1 ring-red-300" : ""}`} value={aiCat} onChange={e => {
                           const nc = e.target.value;
                           const nsubs = hierarchy.find(c => c["Kategória"] === nc)?.["Podkategórie"] || [];
                           const ns = nsubs[0]?.["Podkategória"] || "";
                           const np = nsubs[0]?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
-                          setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, categoryKey: nc, subcategoryKey: ns, placementKey: np } : it));
+                          const updated = { ...item, categoryKey: nc, subcategoryKey: ns, placementKey: np };
+                          setAiExtracted(prev => prev.map((it, i) => i === idx ? updated : it));
                         }}>
                           <option value="">{t("ai_select_category")}</option>
                           {hierarchy.map(c => <option key={c["Kategória"]} value={c["Kategória"]}>{locLabelFor(c["Kategória"])}</option>)}
                         </select>
-                        <select className={sel} value={aiSubcat} disabled={!aiCat} onChange={e => {
+                        <select className={`${sel} ${!aiSubcat ? "border-red-400 ring-1 ring-red-300" : ""}`} value={aiSubcat} disabled={!aiCat} onChange={e => {
                           const ns = e.target.value;
                           const np = aiSubcats.find(s => s["Podkategória"] === ns)?.["Zaradenia"]?.[0]?.["Zaradenie"] || "";
-                          setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, subcategoryKey: ns, placementKey: np } : it));
+                          const updated = { ...item, subcategoryKey: ns, placementKey: np };
+                          setAiExtracted(prev => prev.map((it, i) => i === idx ? updated : it));
                         }}>
                           <option value="">{t("ai_select_subcategory")}</option>
                           {aiSubcats.map(s => <option key={s["Podkategória"]} value={s["Podkategória"]}>{locLabelFor(s["Podkategória"])}</option>)}
                         </select>
-                        <select className={sel} value={item.placementKey || ""} disabled={!aiSubcat} onChange={e => upd("placementKey", e.target.value)}>
+                        <select className={`${sel} ${!item.placementKey ? "border-red-400 ring-1 ring-red-300" : ""}`} value={item.placementKey || ""} disabled={!aiSubcat} onChange={e => {
+                          const np = e.target.value;
+                          upd("placementKey", np);
+                        }}>
                           <option value="">{t("ai_select_placement")}</option>
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
@@ -2364,6 +2431,9 @@ const deleteDebugFile = async () => {
                             }
 
                             setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
+
+                            // Auto-close modal after success
+                            setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2000);
 
                             // 4) Refresh loadedFlyer
                             setShop(aiSaveShop);
@@ -3283,9 +3353,6 @@ placeholder={t("placeholder_extra_info")}
         </div>
       )}
 
-    </div>
-  );
-
       {/* Custom Palette Modal */}
       {showCustomPalette && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
@@ -3335,4 +3402,7 @@ placeholder={t("placeholder_extra_info")}
           </div>
         </div>
       )}
+
+    </div>
+  );
 }
