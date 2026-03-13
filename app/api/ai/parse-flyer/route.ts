@@ -328,11 +328,13 @@ export async function POST(req: Request) {
 
 EXTRACT:
 - ONLY food, drinks and alcohol (beer, wine, spirits, flour, sugar, canned food, legumes, nuts, spices, tea, coffee, pasta, rice, oils, sauces, jams, honey, salami, sausages, ham, bacon, smoked meats)
-- EVERY product on the page — small, in corners, partially cropped, private label (K-Classic, Clever, etc.)
-- IGNORE: flowers, decorations, cleaning products, toilet paper, clothing, electronics, tools, cosmetics
-- IGNORE: pet food, pet treats, pet accessories — ALL products for dogs, cats, birds, fish or any animals (Coshida, Rocco, Whiskas, Pedigree, Felix, etc.)
-- IGNORE: oral hygiene, dental care — toothpaste, mouthwash, toothbrushes, dental floss (Colgate, Oral-B, Sensodyne, Listerine, etc.)
-- IGNORE: baby food, infant formula, baby milk, follow-on milk (Bebilon, Nutrilon, Bobovita baby, HiPP baby, Lupilu baby, Nestlé baby, NAN, Humana, Hami, Kendamil)
+- EVERY food/drink product on the page — small, in corners, partially cropped, private label (K-Classic, Clever, etc.)
+
+NEVER EXTRACT — these product types MUST be completely excluded, do NOT create any record for them:
+- NEVER: pet food, pet treats, cat food, dog food, bird food, fish food, ANY product for animals (Coshida, Rocco, Whiskas, Pedigree, Felix, Royal Canin, etc.) — even if the product has a price and dates
+- NEVER: oral hygiene — toothpaste, mouthwash, toothbrushes, dental floss, teeth whitening (Colgate, Oral-B, Sensodyne, Listerine, Signal, etc.)
+- NEVER: flowers, decorations, cleaning products, dishwasher tabs, laundry detergent, toilet paper, tissues, clothing, electronics, tools, cosmetics, shampoo, shower gel, deodorant
+- NEVER: baby food, infant formula, baby milk (Bebilon, Nutrilon, HiPP baby, NAN, Humana, Kendamil, etc.)
 - ONE product = ONE record
 
 ${lc.nameRule}
@@ -425,7 +427,7 @@ OTHER:
             }
 
             const response = await client.chat.completions.create({
-              model: "gpt-4.1-mini",
+              model: "gpt-5-mini",
               response_format: { type: "json_object" },
               max_completion_tokens: 16000,
               messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
