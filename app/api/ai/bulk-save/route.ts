@@ -89,17 +89,20 @@ export async function POST(req: Request) {
       );
     }
 
-    // Načítaj existujúce záznamy z DB pre merge
+    // Načítaj existujúce záznamy z DB pre exact match (country + shop + name_key)
     const nameKeys = validItems.map((item) => normalizeNameKey(item.name));
     const { data: existingRows } = await supabase
       .from("master_products_v2")
-      .select("name_key,category,subcategory,placement,amount,unit,price_regular,price_regular_unit,price_sale,price_sale_unit,info,date_from,date_to")
+      .select("name_key,name,category,subcategory,placement,amount,unit,price_regular,price_regular_unit,price_sale,price_sale_unit,info,date_from,date_to")
       .eq("country", country)
       .eq("shop", shop)
       .in("name_key", nameKeys);
 
+    const allShopRowsList = existingRows || [];
+
+    // Exact match mapa
     const existingMap = new Map(
-      (existingRows || []).map((row) => [row.name_key as string, row])
+      allShopRowsList.map((row) => [row.name_key as string, row])
     );
 
     const records = validItems.map((item) => {
@@ -107,27 +110,38 @@ export async function POST(req: Request) {
       const existing = existingMap.get(nameKey);
       const db = existing || {} as Record<string, string>;
 
+      // Pre existujúce záznamy: zachovaj name/category/subcategory/placement z DB
+      // Pre nové záznamy: použi AI hodnoty
+      const resolvedNameKey = nameKey;
+      const resolvedName = existing ? (db.name || item.name.trim()) : item.name.trim();
+      const resolvedCategory = existing ? (db.category || item.categoryKey || "") : (item.categoryKey || "");
+      const resolvedSubcategory = existing ? (db.subcategory || item.subcategoryKey || "") : (item.subcategoryKey || "");
+      const resolvedPlacement = existing ? (db.placement || item.placementKey || "") : (item.placementKey || "");
+
+      const resolvedAmount = mergeField(item.amount || "", db.amount || "");
+      const resolvedUnit = mergeField(item.unit || "", db.unit || "");
+
       return {
         country,
         shop,
-        name: item.name.trim(),
-        name_key: nameKey,
-        category: mergeField(item.categoryKey || "", db.category || ""),
-        subcategory: mergeField(item.subcategoryKey || "", db.subcategory || ""),
-        placement: mergeField(item.placementKey || "", db.placement || ""),
-        amount: mergeField(item.amount || "", db.amount || ""),
-        unit: mergeField(item.unit || "", db.unit || ""),
+        name: resolvedName,
+        name_key: resolvedNameKey,
+        category: resolvedCategory,
+        subcategory: resolvedSubcategory,
+        placement: resolvedPlacement,
+        amount: resolvedAmount,
+        unit: resolvedUnit,
         price_regular: mergeField(item.price_regular || "", db.price_regular || ""),
         price_regular_unit: calculateUnitPrice(
           mergeField(item.price_regular || "", db.price_regular || ""),
-          mergeField(item.amount || "", db.amount || ""),
-          mergeField(item.unit || "", db.unit || "")
+          resolvedAmount,
+          resolvedUnit
         ),
         price_sale: mergeField(item.price_sale || "", db.price_sale || ""),
         price_sale_unit: calculateUnitPrice(
           mergeField(item.price_sale || "", db.price_sale || ""),
-          mergeField(item.amount || "", db.amount || ""),
-          mergeField(item.unit || "", db.unit || "")
+          resolvedAmount,
+          resolvedUnit
         ),
         info: mergeField(item.note || "", db.info || ""),
         date_from: mergeField(item.date_from || "", db.date_from || ""),

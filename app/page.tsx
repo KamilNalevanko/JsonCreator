@@ -1807,11 +1807,10 @@ export default function Home() {
     setError("");
     setStatus("");
     const loadedEntry = findLoadedEntryForProduct(entry.product);
+    setEditingId(entry.id);
     if (loadedEntry) {
       setEditingLoadedRef(loadedEntry.ref);
-      setEditingId(null);
     } else {
-      setEditingId(entry.id);
       setEditingLoadedRef(null);
     }
     setCategoryKey(entry.product["Kategória"] ?? "");
@@ -3225,7 +3224,11 @@ placeholder={t("placeholder_extra_info")}
                   filteredDisplayProducts.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/5 bg-white px-4 py-4"
+                      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-4 transition-all ${
+                        editingId === item.id
+                          ? "border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-200"
+                          : "border-black/10 bg-white shadow-sm hover:border-black/20"
+                      }`}
                     >
                       <div>
                         <div className="text-sm font-semibold text-[color:var(--ink)]">

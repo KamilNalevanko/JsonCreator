@@ -417,13 +417,13 @@ OTHER:
                 type: "image_url",
                 image_url: {
                   url: `data:image/jpeg;base64,${pg.imageData}`,
-                  detail: "high",
+                  detail: "auto",
                 },
               });
             }
 
             const response = await client.chat.completions.create({
-              model: "gpt-5.4",
+              model: "gpt-4.1-mini",
               response_format: { type: "json_object" },
               max_completion_tokens: 16000,
               messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
