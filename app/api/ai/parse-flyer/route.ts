@@ -220,9 +220,13 @@ export async function POST(req: Request) {
     const labelsMap: Record<string, Record<string, string>> = { sk: skLabels, cz: czLabels, pl: plLabels };
     const labels = labelsMap[lang] || skLabels;
     const placementLookup: Record<string, { categoryKey: string; subcategoryKey: string }> = {};
-    const placementPairs: string[] = [];
+    const placementLines: string[] = [];
     for (const cat of hierarchyData as HierarchyItem[]) {
+      const catLabel = (labels as Record<string, string>)[cat["Kategória"]] || cat["Kategória"];
+      placementLines.push(`\n## ${catLabel}`);
       for (const sub of cat["Podkategórie"]) {
+        const subLabel = (labels as Record<string, string>)[sub["Podkategória"]] || sub["Podkategória"];
+        const keys: string[] = [];
         for (const z of sub["Zaradenia"]) {
           const key = z["Zaradenie"];
           placementLookup[key] = {
@@ -230,11 +234,14 @@ export async function POST(req: Request) {
             subcategoryKey: sub["Podkategória"],
           };
           const label = (labels as Record<string, string>)[key] || key;
-          placementPairs.push(`${key}:${label}`);
+          keys.push(`${key}:${label}`);
+        }
+        if (keys.length > 0) {
+          placementLines.push(`  ${subLabel}: ${keys.join(", ")}`);
         }
       }
     }
-    const PLACEMENTS_PROMPT = placementPairs.join(", ");
+    const PLACEMENTS_PROMPT = placementLines.join("\n");
 
     // Load known products from DB for classification hints
     let knownProductsPrompt = "";
@@ -362,11 +369,12 @@ FIELD "price_sale" and "price_regular":
 EXAMPLE output:
 ${lc.examples}
 
-CLASSIFICATION — assign "placementKey" from this list (key:label format):
+CLASSIFICATION — assign "placementKey" from THIS structured list. The list is organized by category > subcategory > placements (key:label):
 ${PLACEMENTS_PROMPT}
-- Use ONLY the key part (before colon), the label is just a hint for you
-- Pick the single best matching placement key for each product
-- If no good match, use ""
+- Use ONLY the key part (before colon), the label after colon is a hint for you
+- ALWAYS assign a placementKey — pick the CLOSEST matching placement key for each product
+- First find the right category (## heading), then the subcategory line, then pick the best key
+- NEVER leave placementKey empty — if unsure, pick the most reasonable general match from any category
 
 OTHER:
 - Dates as DD.MM.YYYY or null
