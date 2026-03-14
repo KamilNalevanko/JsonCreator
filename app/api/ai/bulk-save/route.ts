@@ -150,9 +150,14 @@ export async function POST(req: Request) {
       };
     });
 
+    // Deduplikácia – PostgreSQL upsert nedokáže aktualizovať rovnaký riadok dvakrát
+    const deduped = [
+      ...new Map(records.map((r) => [r.name_key, r])).values(),
+    ];
+
     const { error } = await supabase
       .from("master_products_v2")
-      .upsert(records, { onConflict: "country,shop,name_key" });
+      .upsert(deduped, { onConflict: "country,shop,name_key" });
 
     if (error) {
       return NextResponse.json(
@@ -161,7 +166,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, saved: records.length, merged: records });
+    return NextResponse.json({ ok: true, saved: deduped.length, merged: deduped });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Neznáma chyba";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

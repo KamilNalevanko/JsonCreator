@@ -612,47 +612,6 @@ export default function Home() {
       setAiExtractStatus(
         `${t("ai_found_items")}: ${items.length}${dateLabel ? ` • Leták: ${dateLabel}` : ""}`
       );
-
-      // Auto-save do DB ak máme shop
-      if (resolvedShop && items.length > 0) {
-        try {
-          const saveRes = await fetch("/api/ai/bulk-save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ country: bucketPath, shop: resolvedShop, items }),
-          });
-          const saveJson = await saveRes.json().catch(() => ({}));
-
-          // Aktualizuj aiExtracted s mergnutými dátami z DB (kategórie, atď.)
-          if (saveJson.ok && Array.isArray(saveJson.merged)) {
-            const mergedMap = new Map<string, typeof saveJson.merged[0]>();
-            for (const rec of saveJson.merged) {
-              mergedMap.set((rec.name_key || "").toLowerCase(), rec);
-            }
-            setAiExtracted((prev) =>
-              prev.map((it) => {
-                const key = (it.name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
-                const db = mergedMap.get(key);
-                if (!db) return it;
-                return {
-                  ...it,
-                  categoryKey: it.categoryKey || db.category || "",
-                  subcategoryKey: it.subcategoryKey || db.subcategory || "",
-                  placementKey: it.placementKey || db.placement || "",
-                  amount: it.amount || db.amount || "",
-                  unit: it.unit || db.unit || "",
-                  note: it.note || db.info || "",
-                };
-              })
-            );
-          }
-
-          // Refresh loadedFlyer aby sa produkty objavili dole
-          setShop(resolvedShop);
-          setBucketPath(bucketPath);
-          lastLoadKeyRef.current = "";
-        } catch { /* ignoruj chybu auto-save, user stále vidí produkty */ }
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : t("ai_extract_failed");
       setAiExtractError(message);
@@ -1549,11 +1508,35 @@ export default function Home() {
       }
       setEditingLoadedRef(null);
     } else if (editingId) {
-      setProducts((prev) =>
-        prev.map((item) =>
-          item.id === editingId ? { id: item.id, product } : item
-        )
-      );
+      if (editingId.startsWith("ai-")) {
+        const aiIdx = parseInt(editingId.slice(3), 10);
+        setAiExtracted((prev) =>
+          prev.map((it, i) =>
+            i === aiIdx
+              ? {
+                  ...it,
+                  name: product["Názov"],
+                  categoryKey: product["Kategória"],
+                  subcategoryKey: product["Podkategória"],
+                  placementKey: product["Zaradenie"],
+                  amount: product["Množstvo"],
+                  unit: product["Merná jednotka"],
+                  price_regular: product["Bežná cena za bal."],
+                  price_sale: product["Akciová cena"],
+                  note: product["Doplnková Informácia"],
+                  date_from: product["Dátum akcie od"],
+                  date_to: product["Dátum akcie do"],
+                }
+              : it
+          )
+        );
+      } else {
+        setProducts((prev) =>
+          prev.map((item) =>
+            item.id === editingId ? { id: item.id, product } : item
+          )
+        );
+      }
       setEditingId(null);
     } else {
       setProducts((prev) => [...prev, { id: makeId(), product }]);
@@ -3209,7 +3192,7 @@ placeholder={t("placeholder_extra_info")}
 
             <div className="mt-8 border-t border-black/5 pt-6">
               <h3 className="font-[var(--font-display)] text-lg text-[color:var(--ink)]">
-                Produkty letáku
+                Produkty letáku {displayProducts.length > 0 && <span className="text-sm font-normal text-[color:var(--muted)]">({displayProducts.length})</span>}
               </h3>
               <div className="mt-4 grid gap-3">
                 <input

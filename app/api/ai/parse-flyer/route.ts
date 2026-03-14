@@ -427,7 +427,7 @@ OTHER:
             }
 
             const response = await client.chat.completions.create({
-              model: "gpt-5-mini",
+              model: "gpt-4.1-mini",
               response_format: { type: "json_object" },
               max_completion_tokens: 16000,
               messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
