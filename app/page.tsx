@@ -284,6 +284,7 @@ export default function Home() {
   });
   const [showCustomPalette, setShowCustomPalette] = useState(false);
   const [language, setLanguage] = useState("sk");
+  const [aiCountry, setAiCountry] = useState("");
   const [aiPdfFile, setAiPdfFile] = useState<File | null>(null);
   const [aiExtracted, setAiExtracted] = useState<AiExtractItem[]>([]);
   const [aiExtractMeta, setAiExtractMeta] = useState<AiExtractMeta>({});
@@ -568,8 +569,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storagePath: pdfStoragePath,
-          country: bucketPath,
-          shop: shop,
+          country: aiCountry,
+          shop: aiShop,
           debug: "1",
         }),
       });
@@ -2063,11 +2064,22 @@ const deleteDebugFile = async () => {
                 <select
                   className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                   value={language}
-                  onChange={(event) => { setLanguage(event.target.value); setBucketPath(event.target.value); }}
+                  onChange={(event) => { setLanguage(event.target.value); }}
                 >
                   <option value="sk">🇸🇰 {t("lang_sk")}</option>
                   <option value="cz">🇨🇿 {t("lang_cz")}</option>
                   <option value="pl">🇵🇱 {t("lang_pl")}</option>
+                </select>
+                <select
+                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                  value={bucketPath}
+                  onChange={(event) => {
+                    setBucketPath(event.target.value);
+                  }}
+                >
+                  <option value="sk">🇸🇰 SK data</option>
+                  <option value="cz">🇨🇿 CZ data</option>
+                  <option value="pl">🇵🇱 PL data</option>
                 </select>
               </div>
             </div>
@@ -2121,19 +2133,30 @@ const deleteDebugFile = async () => {
                   {aiPdfFile?.name ? aiPdfFile.name : t("no_file_selected")}
                 </span>
                 <select
+                  className={`rounded-full border ${aiCountry ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-white px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
+                  value={aiCountry}
+                  onChange={e => { setAiCountry(e.target.value); setAiShop(""); }}
+                >
+                  <option value="">— Vyber krajínu —</option>
+                  <option value="sk">🇸🇰 Slovensko</option>
+                  <option value="cz">🇨🇿 Česko</option>
+                  <option value="pl">🇵🇱 Poľsko</option>
+                </select>
+                <select
                   className={`rounded-full border ${aiShop ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-white px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
                   value={aiShop}
+                  disabled={!aiCountry}
                   onChange={e => setAiShop(e.target.value)}
                 >
                   <option value="">— {t("ai_select_shop")} —</option>
-                  {(shopOptionsByFolder[bucketPath] ?? []).map(s => (
+                  {(shopOptionsByFolder[aiCountry] ?? []).map(s => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
                 <button
                   type="button"
                   onClick={handleAiExtract}
-                  disabled={isAiExtracting || !aiShop}
+                  disabled={isAiExtracting || !aiCountry || !aiShop}
                   className="rounded-full bg-[color:var(--btn-neutral-bg)] px-4 py-2 text-xs font-semibold text-white shadow-[var(--btn-neutral-shadow)] transition hover:brightness-110 disabled:opacity-60"
                 >
                   {isAiExtracting ? t("btn_processing") : t("btn_analyze_pdf")}
