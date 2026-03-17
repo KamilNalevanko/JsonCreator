@@ -291,6 +291,14 @@ export default function Home() {
   const [aiExtractStatus, setAiExtractStatus] = useState("");
   const [aiExtractError, setAiExtractError] = useState("");
   const [aiDebugText, setAiDebugText] = useState("");
+  const [aiTokenStats, setAiTokenStats] = useState<{
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    estimatedCostUsd: number;
+    batches: { batch: number; promptTokens: number; completionTokens: number; promptChars: number }[];
+    knownProductsChars: number;
+  } | null>(null);
   const [aiEditingIdx, setAiEditingIdx] = useState<number | null>(null);
   const [aiDetectedShop, setAiDetectedShop] = useState("");
   const [aiDetectedCountry, setAiDetectedCountry] = useState("");
@@ -586,6 +594,7 @@ export default function Home() {
       setAiExtractMeta(meta);
       setAiExtracted(items);
       setAiDebugText(typeof payload?.debugText === "string" ? payload.debugText : "");
+      setAiTokenStats(payload?.tokenStats && typeof payload.tokenStats === "object" ? payload.tokenStats : null);
       setAiDetectedShop(typeof payload?.detectedShop === "string" ? payload.detectedShop : "");
       setAiDetectedCountry(typeof payload?.detectedCountry === "string" ? payload.detectedCountry : "");
       setAiSaveStatus(null);
@@ -2117,6 +2126,7 @@ const deleteDebugFile = async () => {
                     setAiExtracted([]);
                     setAiExtractMeta({});
                     setAiDebugText("");
+                    setAiTokenStats(null);
                     setAiExtractStatus("");
                     setAiExtractError("");
                   }}
@@ -2466,6 +2476,38 @@ const deleteDebugFile = async () => {
                   </div>
                 </div>
               )}
+
+              {aiTokenStats ? (
+                <details className="mt-2 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">
+                  <summary className="cursor-pointer font-semibold text-[color:var(--ink)]">
+                    📊 Token stats — prompt: {aiTokenStats.promptTokens.toLocaleString()} | completion: {aiTokenStats.completionTokens.toLocaleString()} | total: {aiTokenStats.totalTokens.toLocaleString()} | ~${aiTokenStats.estimatedCostUsd} USD
+                  </summary>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-[11px]">knownProducts block: <strong>{aiTokenStats.knownProductsChars.toLocaleString()} chars</strong> ≈ <strong>{Math.round(aiTokenStats.knownProductsChars / 4).toLocaleString()} est. tokens</strong></div>
+                    <table className="mt-1 w-full border-collapse text-[11px]">
+                      <thead>
+                        <tr className="border-b border-black/10 text-left">
+                          <th className="pr-3 pb-1">Dávka</th>
+                          <th className="pr-3 pb-1">Prompt tokens</th>
+                          <th className="pr-3 pb-1">Completion tokens</th>
+                          <th className="pb-1">Prompt chars</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aiTokenStats.batches.map(b => (
+                          <tr key={b.batch} className="border-b border-black/5">
+                            <td className="pr-3 py-0.5">{b.batch}</td>
+                            <td className="pr-3 py-0.5">{b.promptTokens.toLocaleString()}</td>
+                            <td className="pr-3 py-0.5">{b.completionTokens.toLocaleString()}</td>
+                            <td className="py-0.5">{b.promptChars.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="pt-1 text-[10px] text-[color:var(--muted)]">* Cena je odhad pre text tokeny (gpt-4.1-mini $0.40/1M prompt, $1.60/1M completion). Image tokeny sú ┊čarté zvlášť.</div>
+                  </div>
+                </details>
+              ) : null}
 
               {aiDebugText ? (
                 <details className="mt-3 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">

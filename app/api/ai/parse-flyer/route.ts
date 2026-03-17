@@ -102,11 +102,13 @@ export async function POST(req: Request) {
     // 2) FormData with file (direct upload) — fallback / local dev
     let buffer: Uint8Array;
     let formCountry = "";
+    let formShop = "";
 
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const body = await req.json();
       formCountry = (body.country as string) || "";
+      formShop = (body.shop as string) || "";
       const storagePath = (body.storagePath as string) || "";
       tempStoragePath = storagePath;
       if (!storagePath) {
@@ -129,6 +131,7 @@ export async function POST(req: Request) {
       const form = await req.formData();
       const file = form.get("file");
       formCountry = (form.get("country") as string | null) || "";
+      formShop = (form.get("shop") as string | null) || "";
       if (!file || !(file instanceof File)) {
         return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
       }
@@ -244,32 +247,67 @@ export async function POST(req: Request) {
     const PLACEMENTS_PROMPT = placementLines.join("\n");
 
     // Load known products from DB for classification hints
+    // Strategy: prefer products from the same country+shop (most relevant),
+    // fallback-supplement with other products from the same country if too few.
     let knownProductsPrompt = "";
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
       const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const queryShop = formShop || "";
+      const queryCountry = country; // already resolved (from PDF detect or form)
       if (supabaseUrl && serviceRole) {
         const supabaseDb = createClient(supabaseUrl, serviceRole);
-        const { data: rows } = await supabaseDb
-          .from("master_products_v2")
-          .select("name, placement")
-          .not("placement", "eq", "")
-          .limit(3000);
-        if (rows && rows.length > 0) {
-          // Deduplicate: unique name→placement pairs
+
+        const dedup = (rows: { name: string; placement: string }[]) => {
           const seen = new Set<string>();
           const pairs: string[] = [];
           for (const r of rows) {
             const key = (r.name || "").toLowerCase().trim();
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            pairs.push(`${r.name}→${r.placement}`);
+            pairs.push(`${r.name}\u2192${r.placement}`);
           }
-          if (pairs.length > 0) {
-            // Limit to ~1500 to keep prompt size reasonable
-            const limited = pairs.slice(0, 1500);
-            knownProductsPrompt = `\n\nKNOWN PRODUCTS from database (product name → placementKey). Use these as reference when classifying similar products:\n${limited.join("\n")}`;
+          return pairs;
+        };
+
+        let pairs: string[] = [];
+
+        // 1) Filtered by country + shop — no row limit (shop DB can have 1000+ products)
+        if (queryCountry && queryShop) {
+          const { data: shopRows } = await supabaseDb
+            .from("master_products_v2")
+            .select("name, placement")
+            .eq("country", queryCountry)
+            .eq("shop", queryShop)
+            .not("placement", "eq", "");
+          if (shopRows) pairs = dedup(shopRows);
+        }
+
+        // 2) If fewer than 50 results (new/unknown shop), supplement with the rest of the country
+        if (pairs.length < 50 && queryCountry) {
+          const seenNames = new Set(pairs.map(p => p.split("→")[0].toLowerCase().trim()));
+          let query = supabaseDb
+            .from("master_products_v2")
+            .select("name, placement")
+            .eq("country", queryCountry)
+            .not("placement", "eq", "")
+            .limit(1000);
+          if (queryShop) query = query.neq("shop", queryShop);
+          const { data: countryRows } = await query;
+          if (countryRows) {
+            for (const r of countryRows) {
+              const key = (r.name || "").toLowerCase().trim();
+              if (!key || seenNames.has(key)) continue;
+              seenNames.add(key);
+              pairs.push(`${r.name}→${r.placement}`);
+            }
           }
+        }
+
+        // Final cap to keep prompt size reasonable
+        const limited = pairs.slice(0, 2000);
+        if (limited.length > 0) {
+          knownProductsPrompt = `\n\nKNOWN PRODUCTS from database (product name → placementKey). Use these as reference when classifying similar products:\n${limited.join("\n")}`;
         }
       }
     } catch (e) {
@@ -404,6 +442,19 @@ OTHER:
       return null;
     }
 
+    // Token tracking
+    const tokenStats = {
+      totalPromptTokens: 0,
+      totalCompletionTokens: 0,
+      batches: [] as { batch: number; promptTokens: number; completionTokens: number; promptChars: number }[],
+    };
+    // Log prompt size (chars + rough token estimate: ~1 char ≈ 0.25 tokens for text; images billed separately)
+    const systemPromptChars = PRODUCT_RULES.length;
+    const systemPromptTokenEst = Math.round(systemPromptChars / 4);
+    console.log(`[tokens] System prompt: ${systemPromptChars} chars ≈ ${systemPromptTokenEst} tokens (text only, excl. images)`);
+    console.log(`[tokens] knownProducts block: ${knownProductsPrompt.length} chars ≈ ${Math.round(knownProductsPrompt.length / 4)} tokens`);
+    console.log(`[tokens] Batches: ${batches.length} × up to ${VISION_BATCH_SIZE} pages each`);
+
     // Process batches with limited concurrency (max 4 parallel)
     const MAX_CONCURRENT = 4;
     const batchResults: (ParsedResponse | null)[] = new Array(batches.length).fill(null);
@@ -434,12 +485,27 @@ OTHER:
               });
             }
 
+            const promptChars = content.reduce((sum, p) => sum + (p.type === "text" ? p.text.length : 200), 0);
+
             const response = await client.chat.completions.create({
               model: "gpt-4.1-mini",
               response_format: { type: "json_object" },
               max_completion_tokens: 16000,
               messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
             });
+
+            const usage = response.usage;
+            if (usage) {
+              tokenStats.totalPromptTokens += usage.prompt_tokens;
+              tokenStats.totalCompletionTokens += usage.completion_tokens;
+              tokenStats.batches.push({
+                batch: batchIdx + 1,
+                promptTokens: usage.prompt_tokens,
+                completionTokens: usage.completion_tokens,
+                promptChars,
+              });
+              console.log(`[tokens] Batch ${batchIdx + 1}/${batches.length}: prompt=${usage.prompt_tokens} compl=${usage.completion_tokens} total=${usage.total_tokens} (promptChars=${promptChars})`);
+            }
 
             const responseText = response.choices?.[0]?.message?.content?.trim() ?? "";
             if (!responseText) return null;
@@ -466,7 +532,7 @@ OTHER:
         batchResults[start + chunkIdx] = result;
       });
 
-      console.log(`Spracované dávky ${start + 1}-${Math.min(start + MAX_CONCURRENT, batches.length)} / ${batches.length}`);
+        console.log(`Spracované dávky ${start + 1}-${Math.min(start + MAX_CONCURRENT, batches.length)} / ${batches.length}`);
     }
 
     const meta = { date_from: "", date_to: "" };
@@ -510,11 +576,30 @@ OTHER:
       };
     });
 
+    // Final token summary log
+    const totalTokens = tokenStats.totalPromptTokens + tokenStats.totalCompletionTokens;
+    // gpt-4.1-mini pricing (as of 2025): $0.40/1M prompt, $1.60/1M completion (vision prompt charged separately)
+    const costUsd = (tokenStats.totalPromptTokens / 1_000_000) * 0.40 + (tokenStats.totalCompletionTokens / 1_000_000) * 1.60;
+    console.log(`[tokens] ===== SUMMARY =====`);
+    console.log(`[tokens] Prompt tokens total:     ${tokenStats.totalPromptTokens}`);
+    console.log(`[tokens] Completion tokens total: ${tokenStats.totalCompletionTokens}`);
+    console.log(`[tokens] Grand total:             ${totalTokens}`);
+    console.log(`[tokens] Est. text cost (USD):    $${costUsd.toFixed(4)} (excl. image tokens)`);
+    console.log(`[tokens] knownProducts chars:     ${knownProductsPrompt.length} ≈ ${Math.round(knownProductsPrompt.length / 4)} est. tokens`);
+
     const result: Record<string, unknown> = {
       meta,
       items,
       detectedShop: detectedShop ?? null,
       detectedCountry: detectedCountry ?? null,
+      tokenStats: {
+        promptTokens: tokenStats.totalPromptTokens,
+        completionTokens: tokenStats.totalCompletionTokens,
+        totalTokens,
+        estimatedCostUsd: parseFloat(costUsd.toFixed(4)),
+        batches: tokenStats.batches,
+        knownProductsChars: knownProductsPrompt.length,
+      },
     };
 
     // Clean up temp PDF from Supabase Storage (must await before returning, Vercel kills process after response)
