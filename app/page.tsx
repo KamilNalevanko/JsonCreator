@@ -496,6 +496,10 @@ export default function Home() {
 
 
   useEffect(() => {
+    setBucketPath(language);
+  }, [language]);
+
+  useEffect(() => {
     const available = shopOptionsByFolder[bucketPath] ?? [];
     const hasCurrent = available.some((option) => option.value === shop);
     if (!hasCurrent) {
@@ -2078,17 +2082,6 @@ const deleteDebugFile = async () => {
                   <option value="cz">🇨🇿 {t("lang_cz")}</option>
                   <option value="pl">🇵🇱 {t("lang_pl")}</option>
                 </select>
-                <select
-                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
-                  value={bucketPath}
-                  onChange={(event) => {
-                    setBucketPath(event.target.value);
-                  }}
-                >
-                  <option value="sk">🇸🇰 SK data</option>
-                  <option value="cz">🇨🇿 CZ data</option>
-                  <option value="pl">🇵🇱 PL data</option>
-                </select>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -2495,7 +2488,7 @@ const deleteDebugFile = async () => {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_storage_folder")}
                   <select
-                    className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={bucketPath}
                     onChange={(event) => setBucketPath(event.target.value)}
                   >

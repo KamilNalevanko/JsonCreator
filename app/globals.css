@@ -6,6 +6,7 @@
   --background: #ffffff;         /* pozadie celej stránky */
   --form: #c2d6f2;               /* hlavný panel formulára */
   --paper: #c2d6f2;              /* karty / boxy */
+  --surface: #ffffff;            /* inputy, selecty, karty */
 
   
   /* Text */
@@ -103,6 +104,7 @@
   --background: #0b1116;   /* pozadie celej stránky */
   --form: #172029;         /* hlavný panel formulára */
   --paper: #172029;        /* karty / boxy */
+  --surface: #1c2736;      /* inputy, selecty, karty */
 
   /* Text */
   --ink: #d1d5db;          /* hlavný text */
