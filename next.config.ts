@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
+  serverExternalPackages: ["mupdf"],
   outputFileTracingIncludes: {
     "/api/ai/parse-flyer": [
-      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/mupdf/**/*",
     ],
   },
 };

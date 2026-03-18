@@ -138,31 +138,19 @@ export async function POST(req: Request) {
       buffer = new Uint8Array(await file.arrayBuffer());
     }
 
-    // Extract text from PDF
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    // Parse PDF using MuPDF (WASM — full JPEG2000 / JPX support)
+    const mupdf = (await import("mupdf")).default;
 
-    // Point worker to the module specifier so pdfjs can resolve it in Node.js / Vercel
-    pdfjs.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
-
-    const { createCanvas } = await import("@napi-rs/canvas");
-
-    const doc = await pdfjs.getDocument({
-      data: buffer,
-    }).promise;
-
-    const pages = MAX_PAGES > 0 ? Math.min(doc.numPages, MAX_PAGES) : doc.numPages;
+    const doc = mupdf.Document.openDocument(buffer, "application/pdf");
+    const totalPages = doc.countPages();
+    const pages = MAX_PAGES > 0 ? Math.min(totalPages, MAX_PAGES) : totalPages;
 
     // Quick text extraction from first few pages for shop/country detection
-    interface PdfTextItem { str?: string; }
     const textSamplePages: string[] = [];
-    for (let i = 1; i <= Math.min(3, pages); i++) {
+    for (let i = 0; i < Math.min(3, pages); i++) {
       try {
-        const page = await doc.getPage(i);
-        const textContent = await page.getTextContent();
-        const text = (textContent?.items ?? [])
-          .map((it) => ((it as PdfTextItem)?.str ?? "").trim())
-          .filter(Boolean)
-          .join(" ");
+        const page = doc.loadPage(i);
+        const text = page.toStructuredText().asText();
         textSamplePages.push(text);
       } catch { /* skip */ }
     }
@@ -174,28 +162,38 @@ export async function POST(req: Request) {
 
     // Render all pages to JPEG images (serially to keep memory usage stable)
     const RENDER_SCALE = 1.5;
+    const JPEG_QUALITY = 85;
+    const MAX_BASE64_SIZE = 3_500_000; // ~2.6 MB JPEG — safety cap per image
     const pageImages: { pageNum: number; imageData: string }[] = [];
 
-    for (let i = 1; i <= pages; i++) {
+    for (let i = 0; i < pages; i++) {
       try {
-        const page = await doc.getPage(i);
-        const viewport = page.getViewport({ scale: RENDER_SCALE });
-        const canvas = createCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
-        const ctx = canvas.getContext("2d");
+        const page = doc.loadPage(i);
+        const pixmap = page.toPixmap(
+          mupdf.Matrix.scale(RENDER_SCALE, RENDER_SCALE),
+          mupdf.ColorSpace.DeviceRGB,
+          false, // no alpha (required for JPEG output)
+          true   // render annotations
+        );
+        let jpegData = pixmap.asJPEG(JPEG_QUALITY, false);
+        let imageData = Buffer.from(jpegData).toString("base64");
 
-        await page.render({
-          canvasContext: ctx as unknown as CanvasRenderingContext2D,
-          canvas: canvas as unknown as HTMLCanvasElement,
-          viewport,
-        }).promise;
+        // If image is too large, re-render at lower quality to stay within OpenAI payload limits
+        if (imageData.length > MAX_BASE64_SIZE) {
+          console.log(`[render] Page ${i + 1}: ${(imageData.length / 1024).toFixed(0)} KB base64 — too large, re-compressing at quality 50`);
+          jpegData = pixmap.asJPEG(50, false);
+          imageData = Buffer.from(jpegData).toString("base64");
+        }
 
-        const jpegBuffer = await canvas.encode("jpeg", 85);
-        const imageData = Buffer.from(jpegBuffer).toString("base64");
-        pageImages.push({ pageNum: i, imageData });
+        console.log(`[render] Page ${i + 1}: ${(imageData.length / 1024).toFixed(0)} KB base64`);
+        pixmap.destroy();
+        pageImages.push({ pageNum: i + 1, imageData });
       } catch (e) {
-        console.error(`Chyba pri renderovaní strany ${i}:`, e);
+        console.error(`Chyba pri renderovaní strany ${i + 1}:`, e);
       }
     }
+    // Release the PDF document
+    doc.destroy();
 
     if (pageImages.length === 0) {
       return Response.json(
@@ -324,7 +322,7 @@ export async function POST(req: Request) {
     const LANG_CONFIG = {
       sk: {
         intro: "Analyzuj obrázky strán z letáka supermarketu a extrahuj všetky potraviny a nápoje.",
-        nameRule: `"name": v SLOVENČINE, správna diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ľ,ĺ,ŕ,ä,ô). Spoj popis + značku. Bez hmotnosti/objemu (daj do amount). Príklady: "Tavený syr syrokrém", "Svetlý ležiak Pilsner Urquell", "Maslo 82%", "Bravčové mäso na guláš"`,
+        nameRule: `"name": v SLOVENČINE, správna diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ľ,ĺ,ŕ,ä,ô). VŽDY uveď značku/výrobcu + popis produktu. Značku hľadaj v texte letáka AJ na obale produktu na obrázku (napr. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). Značka VŽDY NA ZAČIATOK názvu ("Pilos Eidam", nie "Eidam Pilos"). Bez hmotnosti/objemu (daj do amount). Príklady: "Pilos Eidam 30%", "Pikok Šunka najvyššej kvality", "Combino Špagety", "Pilsner Urquell svetlý ležiak", "Maslo 82%"`,
         noteRule: `"note": LEN doplňujúci text: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l"`,
         examples: `[
   {"name":"Tavený syr syrokrém","amount":"200","unit":"g","price_sale":"1,59","price_regular":"3,49","note":"","page":1},
@@ -334,7 +332,7 @@ export async function POST(req: Request) {
       },
       pl: {
         intro: "Przeanalizuj zdjęcia stron z gazetki supermarketu i wyodrębnij wszystkie produkty spożywcze i napoje.",
-        nameRule: `"name": po POLSKU, poprawna pisownia (ą,ę,ć,ł,ń,ó,ś,ź,ż). Połącz opis + markę. Bez wagi/objętości (daj do amount). Przykłady: "Masło extra 82%", "Ser żółty Gouda", "Piwo Żywiec", "Szynka konserwowa"`,
+        nameRule: `"name": po POLSKU, poprawna pisownia (ą,ę,ć,ł,ń,ó,ś,ź,ż). ZAWSZE podaj markę/producenta + opis produktu. Markę szukaj w tekście gazetki ORAZ na opakowaniu produktu na zdjęciu (np. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). Marka ZAWSZE NA POCZĄTKU nazwy ("Pilos Gouda", nie "Gouda Pilos"). Bez wagi/objętości (daj do amount). Przykłady: "Pilos Ser żółty Gouda", "Pikok Szynka konserwowa", "Żywiec Piwo jasne", "Masło extra 82%"`,
         noteRule: `"note": TYLKO tekst uzupełniający: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l"`,
         examples: `[
   {"name":"Masło extra 82%","amount":"200","unit":"g","price_sale":"4,49","price_regular":"6,99","note":"","page":1},
@@ -344,7 +342,7 @@ export async function POST(req: Request) {
       },
       cz: {
         intro: "Analyzuj obrázky stránek z letáku supermarketu a extrahuj všechny potraviny a nápoje.",
-        nameRule: `"name": v ČEŠTINĚ, správná diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ě,ř,ů). Zkombinuj popis + značku. Bez hmotnosti/objemu (dej do amount). Příklady: "Tavený sýr", "Pivo Pilsner Urquell", "Máslo 82%", "Jablko červené"`,
+        nameRule: `"name": v ČEŠTINĚ, správná diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ě,ř,ů). VŽDY uveď značku/výrobce + popis produktu. Značku hledej v textu letáku I na obalu produktu na obrázku (např. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). Značka VŽDY NA ZAČÁTEK názvu ("Pilos Eidam", ne "Eidam Pilos"). Bez hmotnosti/objemu (dej do amount). Příklady: "Pilos Eidam 30%", "Pikok Šunka nejvyšší jakosti", "Pilsner Urquell Pivo ležák", "Máslo 82%"`,
         noteRule: `"note": JEN doplňující text: "různé druhy", "bez kosti", "5 kusů", "8x0.5l"`,
         examples: `[
   {"name":"Tavený sýr","amount":"200","unit":"g","price_sale":"34,90","price_regular":"49,90","note":"","page":1},
@@ -357,6 +355,8 @@ export async function POST(req: Request) {
     const lc = LANG_CONFIG[lang as keyof typeof LANG_CONFIG] || LANG_CONFIG.sk;
 
     const PRODUCT_RULES = `EXTRACT ONLY: food, drinks, alcohol. ONE product = ONE record. Include every food/drink on the page — small, in corners, cropped, private label.
+
+BRAND/MANUFACTURER: ALWAYS include the brand in "name". Brand MUST come FIRST in the name (e.g. "Pilos Eidam", NOT "Eidam Pilos"). Read brand from BOTH the text description AND the product packaging/image. Private-label brands (Pilos, Pikok, Combino, Freshona, Dulano, Gelatelli, Harvest Basket, Cien, W5, etc.) are just as important as well-known brands.
 
 ⛔ DO NOT EXTRACT — skip entirely, create NO record for:
 - Pet food/treats (karma dla kota/psa, krmivo, Whiskas, Pedigree, Felix, Sheba, Kitty)
@@ -391,15 +391,20 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
       | { type: "image_url"; image_url: { url: string; detail: "high" | "low" | "auto" } };
 
     // Helper: call OpenAI with retry on rate limit (429)
-    async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T | null> {
+    async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 5): Promise<T | null> {
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
           return await fn();
         } catch (err: unknown) {
           const status = (err as { status?: number })?.status;
           if (status === 429 && attempt < maxRetries) {
-            const waitMs = Math.min(2000 * Math.pow(2, attempt), 15000);
-            console.log(`Rate limit, čakám ${waitMs}ms (pokus ${attempt + 1}/${maxRetries})...`);
+            // Parse "try again in X.XXXs" from error message
+            const msg = (err as { message?: string })?.message ?? "";
+            const retryMatch = msg.match(/try again in ([\d.]+)s/i);
+            const apiWaitMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1]) * 1000) + 500 : 0;
+            const fallbackMs = Math.min(3000 * Math.pow(2, attempt), 30000);
+            const waitMs = Math.max(apiWaitMs, fallbackMs);
+            console.log(`Rate limit, čakám ${(waitMs / 1000).toFixed(1)}s (pokus ${attempt + 1}/${maxRetries})...`);
             await new Promise(r => setTimeout(r, waitMs));
           } else {
             throw err;
@@ -422,8 +427,8 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
     console.log(`[tokens] knownProducts block: ${knownProductsPrompt.length} chars ≈ ${Math.round(knownProductsPrompt.length / 4)} tokens`);
     console.log(`[tokens] Batches: ${batches.length} × up to ${VISION_BATCH_SIZE} pages each`);
 
-    // Process batches with limited concurrency (max 4 parallel)
-    const MAX_CONCURRENT = 4;
+    // Process batches with limited concurrency (max 3 parallel to stay under TPM limits)
+    const MAX_CONCURRENT = 3;
     const batchResults: (ParsedResponse | null)[] = new Array(batches.length).fill(null);
 
     for (let start = 0; start < batches.length; start += MAX_CONCURRENT) {
@@ -433,7 +438,8 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
           const batchIdx = start + chunkIdx;
           const isFirst = batchIdx === 0;
 
-          return callWithRetry(async () => {
+          try {
+          return await callWithRetry(async () => {
             const content: VisionContentPart[] = [
               {
                 type: "text",
@@ -453,6 +459,8 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
             }
 
             const promptChars = content.reduce((sum, p) => sum + (p.type === "text" ? p.text.length : 200), 0);
+            const payloadSizeMB = content.reduce((sum, p) => sum + (p.type === "text" ? p.text.length : (p as { image_url: { url: string } }).image_url.url.length), 0) / (1024 * 1024);
+            console.log(`[payload] Batch ${batchIdx + 1}/${batches.length}: ~${payloadSizeMB.toFixed(1)} MB (${batch.length} pages)`);
 
             const response = await client.chat.completions.create({
               model: "gpt-4.1-mini",
@@ -492,6 +500,10 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
               return null;
             }
           });
+          } catch (err) {
+            console.error(`Dávka ${batchIdx + 1}/${batches.length} zlyhala: ${(err as Error).message}`);
+            return null;
+          }
         })
       );
 
@@ -605,26 +617,33 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
 
     // Post-processing: filter out non-food products that AI failed to skip
     const NON_FOOD_RE = new RegExp([
-      // Candles, grave supplies (PL/SK/CZ)
+      // Candles, grave supplies, LED inserts (PL/SK/CZ)
       'świec[aąy]', 'sviečk', 'svíčk', 'znicz', 'zniczy', 'kahán',
+      'wkład.*(znic|led|olejow)', 'subito',
       // Air fresheners, wardrobe sachets
       'odświeżacz', 'osviežovač', 'osvěžovač', 'saszetk.*szaf',
       // Cleaning & laundry
       'proszek do prania', 'prací práš', 'płyn do prania', 'avivá[zž]',
       'tabletk.*(zmywark|umývačk|myčk)', 'środek czystości', 'čistic.*prostřed',
-      // Toilet/kitchen paper
+      // Toilet/kitchen paper, paper towels
       'papier toaletow', 'toaletn[ýí] papí', 'ręcznik.*papierow', 'papírov.*utěr',
+      'ręcznik.*kuchen', 'utierky kuchyn',
       // Cosmetics & body care
       'szampon', 'šampón', 'šampon',
+      'odżywk.*włos', 'kondicionér.*vlas', 'kondicionér.*vlas',
       'żel pod prysznic', 'sprchov.* g[eé]l',
       'dezodorant', 'antiperspiran',
       'farb.*(włos|vlas)', 'barv.*vlas',
       'lakier do włos', 'lak na vlas',
-      'maszynk.*golen', 'holic[ií]', 'piank.*golen', 'pěn.*holen',
+      'maszyn[eę]k.*golen', 'holic[ií]', 'piank.*golen', 'pěn.*holen',
+      'żel do golen', 'żel po golen',
       'piank.*do twarzy', 'piank.*na tvár', 'pěn.*na obličej',
-      'żel do mycia', 'żel pod prysznic', 'sprchov.* g[eé]l',
+      'żel do mycia', 'sprchov.* g[eé]l',
       'parfém', 'perfum', 'woda toaletow', 'eau de toilette',
       'płatk.*pod oczy', 'balsam do ciała', 'krem do twarzy',
+      'mgiełk.*ciał', 'mleczko do ciał',
+      'woda po golen', 'balsam po golen',
+      'patyczk.*kosmetycz',
       // Oral hygiene
       'pasta do zębów', 'zubn[áí] past',
       'szczoteczk.*zębów', 'zubn[áí] kefk', 'zubn[íi] kartáč',

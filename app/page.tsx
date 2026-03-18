@@ -2318,7 +2318,7 @@ const deleteDebugFile = async () => {
                   <button
                     onClick={() => {
                       setAiSaveShop(aiShop || aiDetectedShop || "");
-                      setAiSaveCountry(bucketPath || aiDetectedCountry || "sk");
+                      setAiSaveCountry(aiCountry || bucketPath || aiDetectedCountry || "sk");
                       setAiSaveStatus(null);
                       setAiSaveModal(true);
                     }}
