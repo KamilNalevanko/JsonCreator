@@ -2046,12 +2046,12 @@ const deleteDebugFile = async () => {
                 <button
                   type="button"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
+                  className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
                 >
                   {theme === "dark" ? t("btn_light_mode") : t("btn_dark_mode")}
                 </button>
                 <select
-                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                  className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                   value={palette}
                   onClick={() => {
                     if (palette === "custom") {
@@ -2074,7 +2074,7 @@ const deleteDebugFile = async () => {
                   <option value="custom">Vlastná</option>
                 </select>
                 <select
-                  className="rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
+                  className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none"
                   value={language}
                   onChange={(event) => { setLanguage(event.target.value); }}
                 >
@@ -2090,7 +2090,7 @@ const deleteDebugFile = async () => {
               </div>
             </div>
 
-            <div className="mt-16 rounded-2xl border border-black/10 bg-white/70 px-4 py-3">
+            <div className="mt-16 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink)]">
                   AI import PDF
@@ -2101,7 +2101,7 @@ const deleteDebugFile = async () => {
                     onClick={() => {
                       navigator.clipboard.writeText(JSON.stringify(aiExtracted, null, 2));
                     }}
-                    className="rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 active:scale-95"
+                    className="rounded-full border border-black/10 bg-[var(--surface)] px-3 py-1 text-[11px] font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 active:scale-95"
                   >
                     {t("btn_copy_json_count")} ({aiExtracted.length})
                   </button>
@@ -2126,7 +2126,7 @@ const deleteDebugFile = async () => {
                 <button
                   type="button"
                   onClick={() => aiFileInputRef.current?.click()}
-                  className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25"
+                  className="rounded-full border border-black/10 bg-[var(--surface)] px-4 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25"
                 >
                   {t("btn_select_pdf")}
                 </button>
@@ -2134,7 +2134,7 @@ const deleteDebugFile = async () => {
                   {aiPdfFile?.name ? (aiPdfFile.name.length > 25 ? aiPdfFile.name.slice(0, 25) + "…" : aiPdfFile.name) : t("no_file_selected")}
                 </span>
                 <select
-                  className={`rounded-full border ${aiCountry ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-white px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
+                  className={`rounded-full border ${aiCountry ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
                   value={aiCountry}
                   onChange={e => { setAiCountry(e.target.value); setAiShop(""); }}
                 >
@@ -2144,7 +2144,7 @@ const deleteDebugFile = async () => {
                   <option value="pl">🇵🇱 Poľsko</option>
                 </select>
                 <select
-                  className={`rounded-full border ${aiShop ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-white px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
+                  className={`rounded-full border ${aiShop ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
                   value={aiShop}
                   disabled={!aiCountry}
                   onChange={e => setAiShop(e.target.value)}
@@ -2202,7 +2202,7 @@ const deleteDebugFile = async () => {
                       className={`rounded-xl border px-3 py-2 text-xs space-y-0 transition-all ${
                         aiEditingIdx === idx
                           ? "border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-200"
-                          : "border-black/10 bg-white"
+                          : "border-black/10 bg-[var(--surface)]"
                       }`}
                       onFocus={() => setAiEditingIdx(idx)}
                       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAiEditingIdx(null); }}
@@ -2324,7 +2324,7 @@ const deleteDebugFile = async () => {
 
               {aiSaveModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                  <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+                  <div className="w-full max-w-sm rounded-2xl bg-[var(--surface)] p-6 shadow-xl">
                     <h3 className="mb-4 text-base font-bold text-[color:var(--ink)]">{t("ai_upload_to_server")}</h3>
                     <div className="grid gap-3">
                       <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
@@ -2472,7 +2472,7 @@ const deleteDebugFile = async () => {
 
 
               {aiDebugText ? (
-                <details className="mt-3 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">
+                <details className="mt-3 rounded-xl border border-black/10 bg-[var(--surface)] px-3 py-2 text-xs text-[color:var(--muted)]">
                   <summary className="cursor-pointer font-semibold text-[color:var(--ink)]">
                     Textova vrstva PDF (debug)
                   </summary>
@@ -2502,7 +2502,7 @@ const deleteDebugFile = async () => {
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)] md:flex-1">
                     {t("label_shop")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-lg md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-lg md:text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={shop}
                       onChange={(event) => {
                         const nextShop = event.target.value;
@@ -2525,7 +2525,7 @@ const deleteDebugFile = async () => {
                   <div className="relative flex-1 max-w-[600px]">
                     <input
                       ref={nameInputRef}
-                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="w-full rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={form.name}
                       onChange={(event) => {
                         const newName = event.target.value;
@@ -2622,7 +2622,7 @@ const deleteDebugFile = async () => {
                     
                     {/* Custom dropdown menu */}
                       {showSuggestions && filteredSuggestions.length > 0 && (
-                      <div ref={suggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
+                      <div ref={suggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-[var(--surface)] shadow-lg z-10">
                         {filteredSuggestions.map((p, idx) => (
                           <div
                             key={p.id ?? idx}
@@ -2758,7 +2758,7 @@ const deleteDebugFile = async () => {
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_category")}
                     <select
-                      className="w-full max-w-[380px] rounded-xl border border-black/10 bg-white px-4 py-3 text-lg text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="w-full max-w-[380px] rounded-xl border border-black/10 bg-[var(--surface)] px-4 py-3 text-lg text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={categoryKey}
                       onChange={(event) => setCategoryKey(event.target.value)}
                     >
@@ -2773,7 +2773,7 @@ const deleteDebugFile = async () => {
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_subcategory")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={subcategoryKey}
                       onChange={(event) => setSubcategoryKey(event.target.value)}
                     >
@@ -2788,7 +2788,7 @@ const deleteDebugFile = async () => {
                   <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                     {t("label_placement")}
                     <select
-                      className="rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={placementKey}
                       onChange={(event) => setPlacementKey(event.target.value)}
                     >
@@ -2806,7 +2806,7 @@ const deleteDebugFile = async () => {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_amount")}
                   <input
-                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.amount || ""}
                     onChange={(event) => {
                       const newAmount = event.target.value;
@@ -2822,7 +2822,7 @@ const deleteDebugFile = async () => {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_unit")}
                   <select
-                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="w-full max-w-[160px] rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.unit}
                     onChange={(event) => {
                       const newUnit = event.target.value;
@@ -2847,7 +2847,7 @@ const deleteDebugFile = async () => {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_regular_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceRegular || ""}
                     onChange={(event) => {
                       const newPrice = normalizePrice(event.target.value);
@@ -2864,7 +2864,7 @@ const deleteDebugFile = async () => {
                   <input
                     tabIndex={-1}
                     readOnly
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceRegularUnit}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -2880,7 +2880,7 @@ const deleteDebugFile = async () => {
                 <label className="grid gap-2 text-xl font-semibold text-[color:var(--ink)]">
                   {t("label_sale_price")}
                   <input
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceSale || ""}
                     onChange={(event) => {
                       const newPrice = normalizePrice(event.target.value);
@@ -2897,7 +2897,7 @@ const deleteDebugFile = async () => {
                   <input
                     tabIndex={-1}
                     readOnly
-                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-white px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                    className="w-full max-w-[200px] rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 text-xl text-[color:var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                     value={form.priceSaleUnit}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -2916,7 +2916,7 @@ const deleteDebugFile = async () => {
                     <input
                       ref={dateFromInputRef}
                       type="date"
-                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="w-full rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={form.dateFrom ? form.dateFrom.split(".").reverse().join("-") : ""}
                       onChange={(event) => {
                         if (event.target.value) {
@@ -2954,7 +2954,7 @@ const deleteDebugFile = async () => {
                     <input
                       ref={dateToInputRef}
                       type="date"
-                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="w-full rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={form.dateTo ? form.dateTo.split(".").reverse().join("-") : ""}
                       onChange={(event) => {
                         if (event.target.value) {
@@ -2995,7 +2995,7 @@ const deleteDebugFile = async () => {
                   {t("label_extra_info")}
                   <div className="relative">
                     <input
-                      className="w-full rounded-xl border border-black/10 bg-white px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
+                      className="w-full rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-4 pr-10 text-xl text-[color:var(--ink)] outline-none transition focus:border-black/30 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:ring-opacity-30 focus-visible:ring-offset-1"
                       value={form.info || ""}
                       onChange={(event) => {
                         const newInfo = event.target.value;
@@ -3087,7 +3087,7 @@ placeholder={t("placeholder_extra_info")}
                     )}
                     
                     {showInfoSuggestions && filteredInfoSuggestions.length > 0 && (
-                      <div ref={infoSuggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-white shadow-lg z-10">
+                      <div ref={infoSuggestionsBoxRef} className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto rounded-xl border border-black/10 bg-[var(--surface)] shadow-lg z-10">
                         {filteredInfoSuggestions.map((info, idx) => (
                           <button
                             key={idx}
@@ -3206,7 +3206,7 @@ placeholder={t("placeholder_extra_info")}
                 )}
                 {/*
                 <button
-                  className="rounded-full border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-60"
+                  className="rounded-full border border-red-200 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-60"
                   onClick={deleteDebugFile}
                   type="button"
                   disabled={isDeleting}
@@ -3223,7 +3223,7 @@ placeholder={t("placeholder_extra_info")}
               </h3>
               <div className="mt-4 grid gap-3">
                 <input
-                  className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                  className="w-full rounded-xl border border-black/10 bg-[var(--surface)] px-4 py-3 text-sm text-[color:var(--ink)] outline-none transition focus:border-black/30"
                   value={productListQuery}
                   onChange={(event) => setProductListQuery(event.target.value)}
                   placeholder="Hľadať produkt v zozname..."
@@ -3245,7 +3245,7 @@ placeholder={t("placeholder_extra_info")}
                       className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-4 transition-all ${
                         editingId === item.id
                           ? "border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-200"
-                          : "border-black/10 bg-white shadow-sm hover:border-black/20"
+                          : "border-black/10 bg-[var(--surface)] shadow-sm hover:border-black/20"
                       }`}
                     >
                       <div>

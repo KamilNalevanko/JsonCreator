@@ -322,17 +322,17 @@ export async function POST(req: Request) {
     const LANG_CONFIG = {
       sk: {
         intro: "Analyzuj obrázky strán z letáka supermarketu a extrahuj všetky potraviny a nápoje.",
-        nameRule: `"name": v SLOVENČINE, správna diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ľ,ĺ,ŕ,ä,ô). VŽDY uveď značku/výrobcu + popis produktu. Značku hľadaj v texte letáka AJ na obale produktu na obrázku (napr. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). Značka VŽDY NA ZAČIATOK názvu ("Pilos Eidam", nie "Eidam Pilos"). Bez hmotnosti/objemu (daj do amount). Príklady: "Pilos Eidam 30%", "Pikok Šunka najvyššej kvality", "Combino Špagety", "Pilsner Urquell svetlý ležiak", "Maslo 82%"`,
+        nameRule: `"name": v SLOVENČINE, správna diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ľ,ĺ,ŕ,ä,ô). VŽDY uveď značku/výrobcu + popis produktu. Značku hľadaj v texte letáka AJ na obale produktu na obrázku (napr. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). ⚠️ Značka (z obalu) VŽDY NA ZAČIATOK názvu, popisný text z letáka za ňou! ✅ "Beli Zvolen Repkový olej" ❌ "Repkový olej Beli Zvolen", ✅ "Podravka Pasírované paradajky" ❌ "Pasírované paradajky Podravka", ✅ "Rajo Kyslá smotana" ❌ "Kyslá smotana Rajo". Bez hmotnosti/objemu (daj do amount). Príklady: "Pilos Eidam 30%", "Pikok Šunka najvyššej kvality", "Combino Špagety", "Pilsner Urquell svetlý ležiak", "Bonduelle Zlatá kukurica", "Maslo 82%"`,
         noteRule: `"note": LEN doplňujúci text: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l"`,
         examples: `[
   {"name":"Tavený syr syrokrém","amount":"200","unit":"g","price_sale":"1,59","price_regular":"3,49","note":"","page":1},
-  {"name":"Svetlý ležiak Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"6,99","price_regular":"7,89","note":"8x0.5l","page":1}
+  {"name":"Pilsner Urquell svetlý ležiak","amount":"0,5","unit":"l","price_sale":"6,99","price_regular":"7,89","note":"8x0.5l","page":1}
 ]`,
         noDateHint: "meta dátumy môžeš nastaviť na null ak nie sú na týchto stranách viditeľné",
       },
       pl: {
         intro: "Przeanalizuj zdjęcia stron z gazetki supermarketu i wyodrębnij wszystkie produkty spożywcze i napoje.",
-        nameRule: `"name": po POLSKU, poprawna pisownia (ą,ę,ć,ł,ń,ó,ś,ź,ż). ZAWSZE podaj markę/producenta + opis produktu. Markę szukaj w tekście gazetki ORAZ na opakowaniu produktu na zdjęciu (np. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). Marka ZAWSZE NA POCZĄTKU nazwy ("Pilos Gouda", nie "Gouda Pilos"). Bez wagi/objętości (daj do amount). Przykłady: "Pilos Ser żółty Gouda", "Pikok Szynka konserwowa", "Żywiec Piwo jasne", "Masło extra 82%"`,
+        nameRule: `"name": po POLSKU, poprawna pisownia (ą,ę,ć,ł,ń,ó,ś,ź,ż). ZAWSZE podaj markę/producenta + opis produktu. Markę szukaj w tekście gazetki ORAZ na opakowaniu produktu na zdjęciu (np. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). ⚠️ Marka (z opakowania) ZAWSZE NA POCZĄTKU nazwy, tekst opisowy z gazetki po niej! ✅ "Podravka Passata pomidorowa" ❌ "Passata pomidorowa Podravka", ✅ "Rajo Śmietana kwaśna" ❌ "Śmietana kwaśna Rajo". Bez wagi/objętości (daj do amount). Przykłady: "Pilos Ser żółty Gouda", "Pikok Szynka konserwowa", "Żywiec Piwo jasne", "Bonduelle Kukurydza złocista", "Masło extra 82%"`,
         noteRule: `"note": TYLKO tekst uzupełniający: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l"`,
         examples: `[
   {"name":"Masło extra 82%","amount":"200","unit":"g","price_sale":"4,49","price_regular":"6,99","note":"","page":1},
@@ -342,11 +342,11 @@ export async function POST(req: Request) {
       },
       cz: {
         intro: "Analyzuj obrázky stránek z letáku supermarketu a extrahuj všechny potraviny a nápoje.",
-        nameRule: `"name": v ČEŠTINĚ, správná diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ě,ř,ů). VŽDY uveď značku/výrobce + popis produktu. Značku hledej v textu letáku I na obalu produktu na obrázku (např. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). Značka VŽDY NA ZAČÁTEK názvu ("Pilos Eidam", ne "Eidam Pilos"). Bez hmotnosti/objemu (dej do amount). Příklady: "Pilos Eidam 30%", "Pikok Šunka nejvyšší jakosti", "Pilsner Urquell Pivo ležák", "Máslo 82%"`,
+        nameRule: `"name": v ČEŠTINĚ, správná diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ě,ř,ů). VŽDY uveď značku/výrobce + popis produktu. Značku hledej v textu letáku I na obalu produktu na obrázku (např. Pilos, Pikok, Combino, Cien, Freshona, Gelatelli, Harvest Basket, Dulano). ⚠️ Značka (z obalu) VŽDY NA ZAČÁTEK názvu, popisný text z letáku za ní! ✅ "Podravka Pasírovaná rajčata" ❌ "Pasírovaná rajčata Podravka", ✅ "Rajo Kyselá smetana" ❌ "Kyselá smetana Rajo". Bez hmotnosti/objemu (dej do amount). Příklady: "Pilos Eidam 30%", "Pikok Šunka nejvyšší jakosti", "Pilsner Urquell Pivo ležák", "Bonduelle Zlatá kukuřice", "Máslo 82%"`,
         noteRule: `"note": JEN doplňující text: "různé druhy", "bez kosti", "5 kusů", "8x0.5l"`,
         examples: `[
   {"name":"Tavený sýr","amount":"200","unit":"g","price_sale":"34,90","price_regular":"49,90","note":"","page":1},
-  {"name":"Pivo Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"19,90","price_regular":"27,90","note":"různé druhy","page":1}
+  {"name":"Pilsner Urquell Pivo ležák","amount":"0,5","unit":"l","price_sale":"19,90","price_regular":"27,90","note":"různé druhy","page":1}
 ]`,
         noDateHint: "meta data nastav na null pokud nejsou na těchto stránkách viditelná",
       },
@@ -356,7 +356,7 @@ export async function POST(req: Request) {
 
     const PRODUCT_RULES = `EXTRACT ONLY: food, drinks, alcohol. ONE product = ONE record. Include every food/drink on the page — small, in corners, cropped, private label.
 
-BRAND/MANUFACTURER: ALWAYS include the brand in "name". Brand MUST come FIRST in the name (e.g. "Pilos Eidam", NOT "Eidam Pilos"). Read brand from BOTH the text description AND the product packaging/image. Private-label brands (Pilos, Pikok, Combino, Freshona, Dulano, Gelatelli, Harvest Basket, Cien, W5, etc.) are just as important as well-known brands.
+BRAND/MANUFACTURER: ALWAYS include the brand in "name". ⚠️ Brand (read from product packaging/image) MUST come FIRST in the name, flyer descriptive text SECOND! ✅ "Beli Zvolen Repkový olej" ❌ "Repkový olej Beli Zvolen", ✅ "Podravka Pasírované paradajky" ❌ "Pasírované paradajky Podravka", ✅ "Rajo Kyslá smotana" ❌ "Kyslá smotana Rajo", ✅ "Alesto Kešu oriešky" ❌ "Kešu oriešky Alesto". Read brand from BOTH the text description AND the product packaging/image. Private-label brands (Pilos, Pikok, Combino, Freshona, Dulano, Gelatelli, Harvest Basket, Cien, W5, etc.) are just as important as well-known brands.
 
 ⛔ DO NOT EXTRACT — skip entirely, create NO record for:
 - Pet food/treats (karma dla kota/psa, krmivo, Whiskas, Pedigree, Felix, Sheba, Kitty)
