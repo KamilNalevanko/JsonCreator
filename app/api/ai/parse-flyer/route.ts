@@ -206,8 +206,8 @@ export async function POST(req: Request) {
 
     console.log(`Vyrenderovaných ${pageImages.length} strán, spracovávam cez Vision AI...`);
 
-    // Batch pages for vision API (4 pages per call)
-    const VISION_BATCH_SIZE = 4;
+    // Batch pages for vision API (6 pages per call)
+    const VISION_BATCH_SIZE = 6;
     const batches: { pageNum: number; imageData: string }[][] = [];
     for (let i = 0; i < pageImages.length; i += VISION_BATCH_SIZE) {
       batches.push(pageImages.slice(i, i + VISION_BATCH_SIZE));
@@ -250,6 +250,7 @@ export async function POST(req: Request) {
     // Strategy: prefer products from the same country+shop (most relevant),
     // fallback-supplement with other products from the same country if too few.
     let knownProductsPrompt = "";
+    const dbKnownMap = new Map<string, string>(); // lowercase name → placementKey (for post-AI reclassification)
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
       const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -265,7 +266,7 @@ export async function POST(req: Request) {
             const key = (r.name || "").toLowerCase().trim();
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            pairs.push(`${r.name}\u2192${r.placement}`);
+            pairs.push(`${r.name}→${r.placement}`);
           }
           return pairs;
         };
@@ -304,10 +305,15 @@ export async function POST(req: Request) {
           }
         }
 
-        // Final cap to keep prompt size reasonable
-        const limited = pairs.slice(0, 2000);
-        if (limited.length > 0) {
-          knownProductsPrompt = `\n\nKNOWN PRODUCTS from database (product name → placementKey). Use these as reference when classifying similar products:\n${limited.join("\n")}`;
+        if (pairs.length > 0) {
+          knownProductsPrompt = `\n\nKNOWN PRODUCTS from this shop (name→placementKey). Use these for correct naming AND classification of similar products:\n${pairs.join("\n")}`;
+          // Populate DB known map for post-AI reclassification
+          for (const p of pairs) {
+            const idx = p.indexOf("→");
+            if (idx > 0) {
+              dbKnownMap.set(p.slice(0, idx).toLowerCase().trim(), p.slice(idx + 1).trim());
+            }
+          }
         }
       }
     } catch (e) {
@@ -318,32 +324,19 @@ export async function POST(req: Request) {
     const LANG_CONFIG = {
       sk: {
         intro: "Analyzuj obrázky strán z letáka supermarketu a extrahuj všetky potraviny a nápoje.",
-        nameRule: `POLE "name":
-- Všetky názvy MUSIA byť v SLOVENČINE — presne ako sú napísané v letáku
-- Používaj správnu slovenskú diakritiku: á, é, í, ó, ú, ý, š, č, ž, ť, ď, ň, ľ, ĺ, ŕ, ä, ô
-- Skombinuj popis produktu z textu letáka + značku/názov produktu
-- DO NOT include packaging/state words in name: "chladené", "balené", "mrazené", "sušené", "krájané" → put these in "note"
-- Príklady: "Tavený syr syrokrém", "Sladené kondenzované mlieko Salko", "Dezert Toffifee", "Svetlý ležiak Pilsner Urquell", "Maslo 82%", "Jablko červené", "Bravčové mäso na guláš"`,
-        noteRule: `POLE "note": LEN popisný text pod názvom: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l", "chladené, balené", "krájané"`,
+        nameRule: `"name": v SLOVENČINE, správna diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ľ,ĺ,ŕ,ä,ô). Spoj popis + značku. Bez hmotnosti/objemu (daj do amount). Príklady: "Tavený syr syrokrém", "Svetlý ležiak Pilsner Urquell", "Maslo 82%", "Bravčové mäso na guláš"`,
+        noteRule: `"note": LEN doplňujúci text: "rôzne druhy", "bez kosti", "pevný podiel 120 g", "8x0.5l"`,
         examples: `[
-  {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"0,69","price_regular":"1,29","note":"","page":1},
   {"name":"Tavený syr syrokrém","amount":"200","unit":"g","price_sale":"1,59","price_regular":"3,49","note":"","page":1},
-  {"name":"Tuniak","amount":"170","unit":"g","price_sale":"1,39","price_regular":"2,49","note":"rôzne druhy","page":1},
   {"name":"Svetlý ležiak Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"6,99","price_regular":"7,89","note":"8x0.5l","page":1}
 ]`,
         noDateHint: "meta dátumy môžeš nastaviť na null ak nie sú na týchto stranách viditeľné",
       },
       pl: {
         intro: "Przeanalizuj zdjęcia stron z gazetki supermarketu i wyodrębnij wszystkie produkty spożywcze i napoje.",
-        nameRule: `POLE "name":
-- Wszystkie nazwy MUSZĄ być po POLSKU — dokładnie jak są napisane w gazetce
-- Używaj poprawnej polskiej pisowni: ą, ę, ć, ł, ń, ó, ś, ź, ż
-- Połącz opis produktu z tekstu gazetki + markę/nazwę produktu
-- DO NOT include packaging/state words in name: "chłodzone", "pakowane", "mrożone", "suszone", "krojone" → put these in "note"
-- Przykłady: "Masło extra 82%", "Ser żółty Gouda", "Piwo Żywiec", "Jabłko Red Delicious", "Szynka konserwowa", "Wieprzowina na gulasz"`,
-        noteRule: `POLE "note": TYLKO tekst opisowy pod nazwą: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l", "chłodzone, pakowane", "krojone", "1+1 gratis", "2+2 gratis", "3+3 gratis"`,
+        nameRule: `"name": po POLSKU, poprawna pisownia (ą,ę,ć,ł,ń,ó,ś,ź,ż). Połącz opis + markę. Bez wagi/objętości (daj do amount). Przykłady: "Masło extra 82%", "Ser żółty Gouda", "Piwo Żywiec", "Szynka konserwowa"`,
+        noteRule: `"note": TYLKO tekst uzupełniający: "różne rodzaje", "bez kości", "5 sztuk", "6x0.33l"`,
         examples: `[
-  {"name":"Jabłko czerwone","amount":"1","unit":"kg","price_sale":"3,99","price_regular":"5,99","note":"","page":1},
   {"name":"Masło extra 82%","amount":"200","unit":"g","price_sale":"4,49","price_regular":"6,99","note":"","page":1},
   {"name":"Ser żółty Gouda","amount":"300","unit":"g","price_sale":"7,99","price_regular":"10,99","note":"różne rodzaje","page":1}
 ]`,
@@ -351,15 +344,9 @@ export async function POST(req: Request) {
       },
       cz: {
         intro: "Analyzuj obrázky stránek z letáku supermarketu a extrahuj všechny potraviny a nápoje.",
-        nameRule: `POLE "name":
-- Všechny názvy MUSÍ být v ČEŠTINĚ — přesně jak jsou napsány v letáku
-- Používej správnou českou diakritiku: á, é, í, ó, ú, ý, š, č, ž, ť, ď, ň, ě, ř, ů
-- Zkombinuj popis produktu z textu letáku + značku/název produktu
-- DO NOT include packaging/state words in name: "chlazené", "balené", "mražené", "sušené", "krájené" → put these in "note"
-- Příklady: "Tavený sýr", "Slazené kondenzované mléko", "Dezert Toffifee", "Pivo Pilsner Urquell", "Máslo 82%", "Jablko červené"`,
-        noteRule: `POLE "note": JEN popisný text pod názvem: "různé druhy", "bez kosti", "5 kusů", "8x0.5l", "chlazené, balené", "krájené"`,
+        nameRule: `"name": v ČEŠTINĚ, správná diakritika (á,é,í,ó,ú,ý,š,č,ž,ť,ď,ň,ě,ř,ů). Zkombinuj popis + značku. Bez hmotnosti/objemu (dej do amount). Příklady: "Tavený sýr", "Pivo Pilsner Urquell", "Máslo 82%", "Jablko červené"`,
+        noteRule: `"note": JEN doplňující text: "různé druhy", "bez kosti", "5 kusů", "8x0.5l"`,
         examples: `[
-  {"name":"Jablko červené","amount":"1","unit":"kg","price_sale":"19,90","price_regular":"29,90","note":"","page":1},
   {"name":"Tavený sýr","amount":"200","unit":"g","price_sale":"34,90","price_regular":"49,90","note":"","page":1},
   {"name":"Pivo Pilsner Urquell","amount":"0,5","unit":"l","price_sale":"19,90","price_regular":"27,90","note":"různé druhy","page":1}
 ]`,
@@ -369,55 +356,35 @@ export async function POST(req: Request) {
 
     const lc = LANG_CONFIG[lang as keyof typeof LANG_CONFIG] || LANG_CONFIG.sk;
 
-    const PRODUCT_RULES = `RULES:
+    const PRODUCT_RULES = `EXTRACT ONLY: food, drinks, alcohol. ONE product = ONE record. Include every food/drink on the page — small, in corners, cropped, private label.
 
-EXTRACT:
-- ONLY food, drinks and alcohol (beer, wine, spirits, flour, sugar, canned food, legumes, nuts, spices, tea, coffee, pasta, rice, oils, sauces, jams, honey, salami, sausages, ham, bacon, smoked meats)
-- EVERY food/drink product on the page — small, in corners, partially cropped, private label (K-Classic, Clever, etc.)
-
-NEVER EXTRACT — these product types MUST be completely excluded, do NOT create any record for them:
-- NEVER: pet food, pet treats, cat food, dog food, bird food, fish food, ANY product for animals (Coshida, Rocco, Whiskas, Pedigree, Felix, Royal Canin, etc.) — even if the product has a price and dates
-- NEVER: oral hygiene — toothpaste, mouthwash, toothbrushes, dental floss, teeth whitening (Colgate, Oral-B, Sensodyne, Listerine, Signal, etc.)
-- NEVER: flowers, decorations, cleaning products, dishwasher tabs, laundry detergent, toilet paper, tissues, clothing, electronics, tools, cosmetics, shampoo, shower gel, deodorant
-- NEVER: baby food, infant formula, baby milk (Bebilon, Nutrilon, HiPP baby, NAN, Humana, Kendamil, etc.)
-- ONE product = ONE record
+⛔ DO NOT EXTRACT — skip entirely, create NO record for:
+- Pet food/treats (karma dla kota/psa, krmivo, Whiskas, Pedigree, Felix, Sheba, Kitty)
+- Oral hygiene (pasta do zębów/zubná pasta, toothpaste, mouthwash, Colgate, elmex, Listerine, Dentix, Sensodyne — these are NOT drinks!)
+- Cosmetics & body care (szampon/šampón, żel pod prysznic/sprchový gél, dezodorant, mydło, krem, farba do włosów, lakier, pianka do golenia, maszynka do golenia, woda perfumowana, płatki pod oczy)
+- Household (proszek do prania, tabletki do zmywarki, papier toaletowy, ręczniki papierowe, środki czystości)
+- Hygiene (wkładki, podpaski, tampony, pieluchy/pieluszki, chusteczki nawilżane)
+- Baby products (Gerber, HiPP baby, Bebilon, Nutrilon, Bobo Frut, Bambino, mleko modyfikowane, dania/zupki dla niemowląt)
+- Non-food (flowers, clothing, electronics, tools, toys, batteries)
+If an ENTIRE page has only non-food products, return empty products array for that page.
 
 ${lc.nameRule}
-- NOT here: weight in grams, volume in ml/l, number of packs
 
 ${lc.noteRule}
-- NOT here: discount percentages (-43%, -50%, Card -45%), prices, weight if already in "amount"
-- Promotions like "1+1 gratis", "2+2 gratis", "3+3 gratis", "1+1 zdarma" → put in "note"
-- Packaging/state words: "chladené", "balené", "mrazené", "chłodzone", "pakowane" → put in "note", NOT in "name"
-- If no extra info, use empty ""
+- NOT in "note": discount %, prices, weight if already in "amount"
+- Promotions "1+1 gratis/zdarma" → "note". Packaging words (chladené/chłodzone, balené/pakowane, mrazené/mrożone) → "note", NOT "name"
 
-FIELD "amount" and "unit":
-- amount: only number (e.g. "200", "1", "0.5")
-- unit: g / kg / ml / l / ks / null
-- Multipacks: amount = single item size, multipack info in "note"
+"amount"/"unit": amount = number only. unit = g/kg/ml/l/ks/null. Multipacks: amount = single item, multipack info in "note".
 
-FIELD "price_sale" and "price_regular":
-- price_sale = BIGGEST, MOST PROMINENT price = sale/Card price (always lowest)
-- price_regular = CROSSED OUT original price
-- If 3 prices: price_sale = Card price (lowest), price_regular = crossed out (highest)
-- price_sale MUST BE LOWER than price_regular  
-- IGNORE: prices in brackets "(=1 kg ...)", "(=1 l ...)", lines "A: X,XX", "KC: X,XX"
-- If you can't see a price, leave it empty — DO NOT INVENT
+"price_sale"/"price_regular": price_sale = biggest prominent price (sale/Card = lowest). price_regular = crossed out original. price_sale < price_regular. IGNORE per-kg/per-l prices in brackets. Empty if not visible — do NOT invent.
 
-EXAMPLE output:
-${lc.examples}
+EXAMPLE: ${lc.examples}
 
-CLASSIFICATION — assign "placementKey" from THIS structured list. The list is organized by category > subcategory > placements (key:label):
+CLASSIFICATION — assign "placementKey" from this list (category > subcategory > key:label):
 ${PLACEMENTS_PROMPT}
-- Use ONLY the key part (before colon), the label after colon is a hint for you
-- ALWAYS assign a placementKey — pick the CLOSEST matching placement key for each product
-- First find the right category (## heading), then the subcategory line, then pick the best key
-- NEVER leave placementKey empty — if unsure, pick the most reasonable general match from any category
+Use ONLY the key (before colon). ALWAYS assign one — pick closest match, never leave empty.
 
-OTHER:
-- Dates as DD.MM.YYYY or null
-- "page": page number from text === STRANA/STRONA N ===
-- Better to extract a product with incomplete data than to skip it${knownProductsPrompt}`;
+Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Better incomplete data than skipping a food product.${knownProductsPrompt}`;
 
     type VisionContentPart =
       | { type: "text"; text: string }
@@ -490,7 +457,7 @@ OTHER:
             const response = await client.chat.completions.create({
               model: "gpt-4.1-mini",
               response_format: { type: "json_object" },
-              max_completion_tokens: 16000,
+              max_completion_tokens: 24000,
               messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
             });
 
@@ -558,7 +525,12 @@ OTHER:
     });
 
     const items = deduped.map((item: Product) => {
-      const pk = item.placementKey || "";
+      let pk = item.placementKey || "";
+      // Validate placementKey — clear invalid ones so reclassification can fix them
+      if (pk && !placementLookup[pk]) {
+        console.log(`[reclass] Invalid placementKey "${pk}" for "${item.name}" — clearing`);
+        pk = "";
+      }
       const parent = pk ? placementLookup[pk] : undefined;
       return {
         name: item.name || "",
@@ -576,6 +548,102 @@ OTHER:
       };
     });
 
+    // ─── Post-AI reclassification: fix empty/invalid placementKey ───
+    // Build a keyword reference from DB known products + correctly classified batch products
+    const refMap = new Map<string, string>(); // lowercase name → placementKey
+    // 1) DB known products (highest priority)
+    for (const [name, pk] of dbKnownMap) refMap.set(name, pk);
+    // 2) Products from this batch that AI classified correctly
+    for (const it of items) {
+      if (it.placementKey && it.categoryKey) {
+        const key = it.name.toLowerCase().trim();
+        if (!refMap.has(key)) refMap.set(key, it.placementKey);
+      }
+    }
+
+    // For unclassified items, try to find best match from reference
+    const needsReclass = items.filter(it => !it.placementKey || !it.categoryKey);
+    if (needsReclass.length > 0 && refMap.size > 0) {
+      // Tokenize reference names for keyword matching
+      const tokenize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, " ").split(/\s+/).filter(w => w.length > 2);
+      const refEntries = Array.from(refMap.entries()).map(([name, pk]) => ({
+        tokens: tokenize(name),
+        placement: pk,
+      }));
+
+      let reclassified = 0;
+      for (const item of needsReclass) {
+        const itemTokens = tokenize(item.name);
+        if (itemTokens.length === 0) continue;
+
+        // Score each reference by shared token count
+        let bestPk = "";
+        let bestScore = 0;
+        for (const ref of refEntries) {
+          const shared = itemTokens.filter(t => ref.tokens.includes(t)).length;
+          // Require at least 2 shared tokens or 50% of item tokens
+          const minRequired = Math.max(2, Math.ceil(itemTokens.length * 0.4));
+          if (shared >= minRequired && shared > bestScore) {
+            bestScore = shared;
+            bestPk = ref.placement;
+          }
+        }
+
+        if (bestPk && placementLookup[bestPk]) {
+          const parent = placementLookup[bestPk];
+          console.log(`[reclass] "${item.name}" → ${bestPk} (score ${bestScore}/${itemTokens.length})`);
+          item.placementKey = bestPk;
+          item.categoryKey = parent.categoryKey;
+          item.subcategoryKey = parent.subcategoryKey;
+          reclassified++;
+        }
+      }
+      if (reclassified > 0) {
+        console.log(`[reclass] Fixed ${reclassified}/${needsReclass.length} unclassified products`);
+      }
+    }
+
+    // Post-processing: filter out non-food products that AI failed to skip
+    const NON_FOOD_RE = new RegExp([
+      // Candles, grave supplies (PL/SK/CZ)
+      'świec[aąy]', 'sviečk', 'svíčk', 'znicz', 'zniczy', 'kahán',
+      // Air fresheners, wardrobe sachets
+      'odświeżacz', 'osviežovač', 'osvěžovač', 'saszetk.*szaf',
+      // Cleaning & laundry
+      'proszek do prania', 'prací práš', 'płyn do prania', 'avivá[zž]',
+      'tabletk.*(zmywark|umývačk|myčk)', 'środek czystości', 'čistic.*prostřed',
+      // Toilet/kitchen paper
+      'papier toaletow', 'toaletn[ýí] papí', 'ręcznik.*papierow', 'papírov.*utěr',
+      // Cosmetics & body care
+      'szampon', 'šampón', 'šampon',
+      'żel pod prysznic', 'sprchov.* g[eé]l',
+      'dezodorant', 'antiperspiran',
+      'farb.*(włos|vlas)', 'barv.*vlas',
+      'lakier do włos', 'lak na vlas',
+      'maszynk.*golen', 'holic[ií]', 'piank.*golen', 'pěn.*holen',
+      'piank.*do twarzy', 'piank.*na tvár', 'pěn.*na obličej',
+      'żel do mycia', 'żel pod prysznic', 'sprchov.* g[eé]l',
+      'parfém', 'perfum', 'woda toaletow', 'eau de toilette',
+      'płatk.*pod oczy', 'balsam do ciała', 'krem do twarzy',
+      // Oral hygiene
+      'pasta do zębów', 'zubn[áí] past',
+      'szczoteczk.*zębów', 'zubn[áí] kefk', 'zubn[íi] kartáč',
+      'ústn[aí] vod', 'płyn do płukania.*ust',
+      // Feminine hygiene & diapers
+      'podpask[iy]', 'tampon[yů]', 'wkładk.*higien',
+      'pieluch[iy]', 'pieluszk', '\\bplienk', '\\bplenk',
+      // Pet food
+      'karma dla', '\\bkrmivo\\b', 'whiskas', 'pedigree', 'sheba',
+      // Misc non-food
+      'żarówk', 'žiarovk', 'žárovk',
+    ].join('|'), 'i');
+
+    const foodItems = items.filter(p => !NON_FOOD_RE.test(p.name));
+    if (foodItems.length < items.length) {
+      const removed = items.filter(p => NON_FOOD_RE.test(p.name));
+      console.log(`[filter] Removed ${removed.length} non-food: ${removed.map(p => p.name).join(', ')}`);
+    }
+
     // Final token summary log
     const totalTokens = tokenStats.totalPromptTokens + tokenStats.totalCompletionTokens;
     // gpt-4.1-mini pricing (as of 2025): $0.40/1M prompt, $1.60/1M completion (vision prompt charged separately)
@@ -589,7 +657,7 @@ OTHER:
 
     const result: Record<string, unknown> = {
       meta,
-      items,
+      items: foodItems,
       detectedShop: detectedShop ?? null,
       detectedCountry: detectedCountry ?? null,
       tokenStats: {

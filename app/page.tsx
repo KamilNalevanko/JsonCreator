@@ -291,14 +291,6 @@ export default function Home() {
   const [aiExtractStatus, setAiExtractStatus] = useState("");
   const [aiExtractError, setAiExtractError] = useState("");
   const [aiDebugText, setAiDebugText] = useState("");
-  const [aiTokenStats, setAiTokenStats] = useState<{
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    estimatedCostUsd: number;
-    batches: { batch: number; promptTokens: number; completionTokens: number; promptChars: number }[];
-    knownProductsChars: number;
-  } | null>(null);
   const [aiEditingIdx, setAiEditingIdx] = useState<number | null>(null);
   const [aiDetectedShop, setAiDetectedShop] = useState("");
   const [aiDetectedCountry, setAiDetectedCountry] = useState("");
@@ -309,6 +301,7 @@ export default function Home() {
   const [aiSaveStatus, setAiSaveStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
+  const [aiElapsedSec, setAiElapsedSec] = useState(0);
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
     hierarchy[0]?.["Kategória"] ?? ""
@@ -438,6 +431,12 @@ export default function Home() {
   );
 
   useEffect(() => {
+    if (!isAiExtracting) return;
+    const id = setInterval(() => setAiElapsedSec(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isAiExtracting]);
+
+  useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") {
       setTheme(saved);
@@ -542,6 +541,7 @@ export default function Home() {
     let storagePath = "";
     try {
       setIsAiExtracting(true);
+      setAiElapsedSec(0);
 
       // Upload PDF to Supabase Storage via signed URL (bypasses RLS)
       let pdfStoragePath = "";
@@ -594,7 +594,6 @@ export default function Home() {
       setAiExtractMeta(meta);
       setAiExtracted(items);
       setAiDebugText(typeof payload?.debugText === "string" ? payload.debugText : "");
-      setAiTokenStats(payload?.tokenStats && typeof payload.tokenStats === "object" ? payload.tokenStats : null);
       setAiDetectedShop(typeof payload?.detectedShop === "string" ? payload.detectedShop : "");
       setAiDetectedCountry(typeof payload?.detectedCountry === "string" ? payload.detectedCountry : "");
       setAiSaveStatus(null);
@@ -2100,8 +2099,8 @@ const deleteDebugFile = async () => {
 
             <div className="mt-16 rounded-2xl border border-black/10 bg-white/70 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  AI import PDF (test)
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink)]">
+                  AI import PDF
                 </div>
                 {aiExtracted.length > 0 ? (
                   <button
@@ -2126,7 +2125,6 @@ const deleteDebugFile = async () => {
                     setAiExtracted([]);
                     setAiExtractMeta({});
                     setAiDebugText("");
-                    setAiTokenStats(null);
                     setAiExtractStatus("");
                     setAiExtractError("");
                   }}
@@ -2139,8 +2137,8 @@ const deleteDebugFile = async () => {
                 >
                   {t("btn_select_pdf")}
                 </button>
-                <span className="text-xs text-[color:var(--muted)]">
-                  {aiPdfFile?.name ? aiPdfFile.name : t("no_file_selected")}
+                <span className="text-xs text-[color:var(--muted)] max-w-[220px] truncate" title={aiPdfFile?.name || ""}>
+                  {aiPdfFile?.name ? (aiPdfFile.name.length > 25 ? aiPdfFile.name.slice(0, 25) + "…" : aiPdfFile.name) : t("no_file_selected")}
                 </span>
                 <select
                   className={`rounded-full border ${aiCountry ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-white px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 focus:outline-none`}
@@ -2171,20 +2169,21 @@ const deleteDebugFile = async () => {
                 >
                   {isAiExtracting ? t("btn_processing") : t("btn_analyze_pdf")}
                 </button>
+                {isAiExtracting ? (
+                  <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
+                ) : aiElapsedSec > 0 ? (
+                  <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ analýza trvala {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
+                ) : null}
                 {aiExtractStatus ? (
-                  <span className="text-xs text-[color:var(--muted)]">{aiExtractStatus}</span>
+                  <span className="text-xs font-medium text-[color:var(--ink)]">{aiExtractStatus}</span>
                 ) : null}
               </div>
               {aiExtractError ? (
                 <div className="mt-2 text-xs text-red-600">{aiExtractError}</div>
               ) : null}
-              {aiExtractMeta.date_from || aiExtractMeta.date_to ? (
-                <div className="mt-2 text-xs font-medium text-[color:var(--ink)]">
-                  Leták: {formatDateRange(aiExtractMeta.date_from, aiExtractMeta.date_to)}
-                </div>
-              ) : null}
+
               {aiExtracted.length > 0 ? (
-                <div className="mt-3 grid max-h-[420px] gap-1.5 overflow-y-auto pr-1">
+                <div className="mt-3 grid max-h-[580px] gap-1.5 overflow-y-auto pr-1">
                   {aiExtracted.map((item, idx) => {
                       const showPageDivider = item.page != null && item.page !== aiExtracted[idx - 1]?.page;
                       const upd = (field: keyof AiExtractItem, value: string) =>
@@ -2477,37 +2476,7 @@ const deleteDebugFile = async () => {
                 </div>
               )}
 
-              {aiTokenStats ? (
-                <details className="mt-2 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">
-                  <summary className="cursor-pointer font-semibold text-[color:var(--ink)]">
-                    📊 Token stats — prompt: {aiTokenStats.promptTokens.toLocaleString()} | completion: {aiTokenStats.completionTokens.toLocaleString()} | total: {aiTokenStats.totalTokens.toLocaleString()} | ~${aiTokenStats.estimatedCostUsd} USD
-                  </summary>
-                  <div className="mt-2 space-y-1">
-                    <div className="text-[11px]">knownProducts block: <strong>{aiTokenStats.knownProductsChars.toLocaleString()} chars</strong> ≈ <strong>{Math.round(aiTokenStats.knownProductsChars / 4).toLocaleString()} est. tokens</strong></div>
-                    <table className="mt-1 w-full border-collapse text-[11px]">
-                      <thead>
-                        <tr className="border-b border-black/10 text-left">
-                          <th className="pr-3 pb-1">Dávka</th>
-                          <th className="pr-3 pb-1">Prompt tokens</th>
-                          <th className="pr-3 pb-1">Completion tokens</th>
-                          <th className="pb-1">Prompt chars</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {aiTokenStats.batches.map(b => (
-                          <tr key={b.batch} className="border-b border-black/5">
-                            <td className="pr-3 py-0.5">{b.batch}</td>
-                            <td className="pr-3 py-0.5">{b.promptTokens.toLocaleString()}</td>
-                            <td className="pr-3 py-0.5">{b.completionTokens.toLocaleString()}</td>
-                            <td className="py-0.5">{b.promptChars.toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="pt-1 text-[10px] text-[color:var(--muted)]">* Cena je odhad pre text tokeny (gpt-4.1-mini $0.40/1M prompt, $1.60/1M completion). Image tokeny sú ┊čarté zvlášť.</div>
-                  </div>
-                </details>
-              ) : null}
+
 
               {aiDebugText ? (
                 <details className="mt-3 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-[color:var(--muted)]">
