@@ -2176,7 +2176,7 @@ const deleteDebugFile = async () => {
               ) : null}
 
               {aiExtracted.length > 0 ? (
-                <div className="mt-3 grid max-h-[580px] gap-1.5 overflow-y-auto pr-1">
+                <div className="mt-3 grid max-h-[580px] gap-2 overflow-y-auto rounded-xl bg-black/[0.03] p-2">
                   {aiExtracted.map((item, idx) => {
                       const showPageDivider = item.page != null && item.page !== aiExtracted[idx - 1]?.page;
                       const upd = (field: keyof AiExtractItem, value: string) =>
@@ -2202,7 +2202,7 @@ const deleteDebugFile = async () => {
                       className={`rounded-xl border px-3 py-2 text-xs space-y-0 transition-all ${
                         aiEditingIdx === idx
                           ? "border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-200"
-                          : "border-black/10 bg-[var(--surface)]"
+                          : "border-black/20 bg-[var(--surface)] shadow-sm"
                       }`}
                       onFocus={() => setAiEditingIdx(idx)}
                       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAiEditingIdx(null); }}
