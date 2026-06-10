@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron-dev": "next dev & sleep 2 && electron .",
+    "electron-build": "next build && electron-builder --publish never",
+    "electron-start": "node .next/standalone/server.js & sleep 2 && electron ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
@@ -24,6 +27,40 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "electron": "^28.0.0",
+    "electron-builder": "^25.0.0",
+    "electron-is-dev": "^3.0.0"
+  },
+  "build": {
+    "appId": "com.capleafleteditor.app",
+    "productName": "CAP Leaflet Editor",
+    "directories": {
+      "buildResources": "assets"
+    },
+    "files": [
+      "next.config.ts",
+      "package.json",
+      "public/**/*",
+      ".next/**/*",
+      "main.js"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   }
 }

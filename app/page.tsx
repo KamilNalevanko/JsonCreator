@@ -538,53 +538,19 @@ export default function Home() {
       setAiExtractError(t("ai_extract_error_no_file"));
       return;
     }
-    if (!supabase) {
-      setAiExtractError("Supabase nie je nakonfigurovaný (chýba URL/KEY).");
-      return;
-    }
-    let storagePath = "";
     try {
       setIsAiExtracting(true);
       setAiElapsedSec(0);
 
-      // Upload PDF to Supabase Storage via signed URL (bypasses RLS)
-      let pdfStoragePath = "";
-      {
-        // 1) Get a signed upload URL from our API (small JSON, no Vercel limit)
-        const urlRes = await fetch("/api/ai/signed-upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: aiPdfFile.name }),
-        });
-        const urlData = await urlRes.json().catch(() => ({}));
-        if (!urlRes.ok || !urlData.signedUrl) {
-          setAiExtractError(`Nepodarilo sa získať upload URL: ${urlData.error || "unknown"}`);
-          return;
-        }
-        // 2) Upload PDF directly to Supabase (bypasses Vercel entirely)
-        const uploadRes = await fetch(urlData.signedUrl, {
-          method: "PUT",
-          headers: { "Content-Type": "application/pdf" },
-          body: aiPdfFile,
-        });
-        if (!uploadRes.ok) {
-          setAiExtractError(`Upload PDF na Supabase zlyhal: ${uploadRes.status}`);
-          return;
-        }
-        pdfStoragePath = urlData.storagePath;
-        storagePath = urlData.storagePath;
-      }
+      // Local/direct mode: send PDF directly to parse endpoint (no Supabase upload)
+      const formData = new FormData();
+      formData.append("file", aiPdfFile);
+      formData.append("country", aiCountry);
+      formData.append("shop", aiShop);
 
-      // 3) Send only the storage path to API (small JSON payload)
       const response = await fetch("/api/ai/parse-flyer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storagePath: pdfStoragePath,
-          country: aiCountry,
-          shop: aiShop,
-          debug: "1",
-        }),
+        body: formData,
       });
 
       const payload = await response.json().catch(() => ({}));
