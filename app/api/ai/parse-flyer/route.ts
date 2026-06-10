@@ -7,9 +7,9 @@ import plLabels from "../../../../assets/langs/pl.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 900; // 15 minutes (max on Vercel) for large PDFs
 
-const MAX_PAGES = 0; // 0 = no limit; set e.g. to 15 to limit pages for testing
+const MAX_PAGES = 50; // Limit to 50 pages to prevent 504 timeout (large PDFs)
 
 interface Product {
   name: string;
@@ -161,8 +161,8 @@ export async function POST(req: Request) {
     const lang = country === "pl" ? "pl" : country === "cz" ? "cz" : "sk";
 
     // Render all pages to JPEG images (serially to keep memory usage stable)
-    const RENDER_SCALE = 1.5;
-    const JPEG_QUALITY = 85;
+    const RENDER_SCALE = 1.0; // Reduced from 1.5 for faster processing
+    const JPEG_QUALITY = 75; // Reduced from 85 to prevent timeouts
     const MAX_BASE64_SIZE = 3_500_000; // ~2.6 MB JPEG — safety cap per image
     const pageImages: { pageNum: number; imageData: string }[] = [];
 
