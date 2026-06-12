@@ -2,6 +2,9 @@
 
 
 :root {
+  --font-body: "Segoe UI", sans-serif;
+  --font-display: "Georgia", serif;
+
   /* Plochy */
   --background: #ffffff;         /* pozadie celej stránky */
   --form: #c2d6f2;               /* hlavný panel formulára */
