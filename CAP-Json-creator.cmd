@@ -36,22 +36,30 @@ echo [0/3] Stopping old Node.js processes...
 powershell -NoProfile -Command "Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue" >nul 2>nul
 timeout /t 1 /nobreak >nul
 
-if not exist ".next\BUILD_ID" (
-	echo [1/3] Build not found, creating production build...
-	call npm run build
-	if errorlevel 1 (
-		echo [ERROR] Build failed.
-		pause
-		exit /b 1
-	)
-) else (
-	echo [1/3] Existing build found, skipping build.
+echo [1/4] Cleaning old build and node_modules...
+if exist ".next" rmdir /s /q ".next"
+if exist "node_modules" rmdir /s /q "node_modules"
+
+echo [2/4] Installing dependencies...
+call npm ci
+if errorlevel 1 (
+    echo [ERROR] npm ci failed.
+    pause
+    exit /b 1
 )
 
-echo [2/3] Starting app server in background...
+echo [3/4] Creating fresh production build...
+call npm run build
+if errorlevel 1 (
+    echo [ERROR] Build failed.
+    pause
+    exit /b 1
+)
+
+echo [4/4] Starting app server in background...
 start "CAP-Json-creator-server" /min cmd /c "cd /d ""%~dp0"" && npm run start"
 
-echo [3/3] Waiting for server on http://localhost:3000 ...
+echo [4/4] Waiting for server on http://localhost:3000 ...
 set READY=0
 for /l %%i in (1,1,30) do (
 	powershell -NoProfile -Command "try { $r = Invoke-WebRequest -UseBasicParsing http://localhost:3000 -TimeoutSec 2; if ($r.StatusCode -ge 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>nul
