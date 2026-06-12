@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 import hierarchyData from "../../../../assets/hierarchia.json";
 import skLabels from "../../../../assets/langs/sk.json";
@@ -29,10 +28,6 @@ interface ParsedResponse {
   };
   products?: Product[];
 }
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const SHOP_PATTERNS: Array<{ pattern: RegExp; shop: string; country?: string }> = [
   { pattern: /\bkaufland\b/i, shop: "kaufland" },
   { pattern: /\blidl\b/i, shop: "lidl" },
@@ -83,20 +78,64 @@ function detectShopAndCountry(text: string): { shop: string | null; country: str
   return { shop, country };
 }
 
+type ChatCompletionResponse = {
+  choices?: Array<{ message?: { content?: string | null } }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+};
+
+async function createOpenAIChatCompletion(payload: Record<string, unknown>): Promise<ChatCompletionResponse> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const functionName = process.env.SUPABASE_OPENAI_FUNCTION || "openai-chat-completion";
+
+  if (!supabaseUrl) {
+    throw new Error("Chýba NEXT_PUBLIC_SUPABASE_URL / SUPABASE_URL v prostredí.");
+  }
+  if (!supabaseAnonKey) {
+    throw new Error("Chýba NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_ANON_KEY v prostredí.");
+  }
+
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/${functionName}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": supabaseAnonKey,
+      "Authorization": `Bearer ${supabaseAnonKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await response.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { raw: text };
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof data === "object" && data && "error" in data
+        ? String((data as { error?: unknown }).error)
+        : text || `HTTP ${response.status}`;
+    const error = new Error(`Supabase OpenAI function failed (${response.status}): ${message}`) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  return data as ChatCompletionResponse;
+}
+
 
 export async function POST(req: Request) {
   let tempStoragePath = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let sbClient: any = null;
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return Response.json(
-        { error: "Chýba OPENAI_API_KEY v prostredí." },
-        { status: 500 }
-      );
-    }
-
     // Support two modes:
     // 1) JSON body with storagePath (PDF stored in Supabase) — used on Vercel
     // 2) FormData with file (direct upload) — fallback / local dev
@@ -462,11 +501,11 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
             const payloadSizeMB = content.reduce((sum, p) => sum + (p.type === "text" ? p.text.length : (p as { image_url: { url: string } }).image_url.url.length), 0) / (1024 * 1024);
             console.log(`[payload] Batch ${batchIdx + 1}/${batches.length}: ~${payloadSizeMB.toFixed(1)} MB (${batch.length} pages)`);
 
-            const response = await client.chat.completions.create({
+            const response = await createOpenAIChatCompletion({
               model: "gpt-4.1-mini",
               response_format: { type: "json_object" },
               max_completion_tokens: 24000,
-              messages: [{ role: "user", content: content as OpenAI.Chat.ChatCompletionContentPart[] }],
+              messages: [{ role: "user", content }],
             });
 
             const usage = response.usage;
@@ -719,6 +758,6 @@ export async function GET() {
   return Response.json({
     message: "PDF Parser API (Text only - OpenAI)",
     status: "ready",
-    apiKeyConfigured: !!process.env.OPENAI_API_KEY,
+    apiKeyConfiguredInSupabaseFunction: true,
   });
 }
