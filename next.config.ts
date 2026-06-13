@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/ai/parse-flyer": [
       "./node_modules/mupdf/**/*",
+      "./node_modules/mupdf/dist/**/*",
     ],
+  },
+  webpack: (config) => {
+    config.experiments = { ...config.experiments, asyncWebAssembly: true };
+    return config;
   },
 };
 

@@ -4,12 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
+    "release:local": "npm run clean:next && next build --webpack && node scripts/create-local-release.mjs",
+    "release:zip": "npm run release:local && powershell -NoProfile -Command \"$zip='dist/CAP-Leaflet-Editor-win-x64.zip'; if (Test-Path $zip) { Remove-Item $zip -Force }; Compress-Archive -Path 'dist/local-release/CAP-Leaflet-Editor/*' -DestinationPath $zip -Force\"",
     "lint": "eslint",
     "electron-dev": "next dev & sleep 2 && electron .",
     "electron-build": "next build && electron-builder --publish never",
-    "electron-start": "node .next/standalone/server.js & sleep 2 && electron ."
+    "electron-start": "node .next/standalone/server.js & sleep 2 && electron .",
+    "clean:next": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
     "@next/swc-win32-x64-msvc": "16.1.6",

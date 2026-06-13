@@ -1,0 +1,156 @@
+import { cp, mkdir, rm, writeFile, access, readFile, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { brotliDecompressSync } from "node:zlib";
+import path from "node:path";
+
+const require = createRequire(import.meta.url);
+
+const root = process.cwd();
+const standaloneSrc = path.join(root, ".next", "standalone");
+const staticSrc = path.join(root, ".next", "static");
+const publicSrc = path.join(root, "public");
+const assetsSrc = path.join(root, "assets");
+const envExampleSrc = path.join(root, ".env.example");
+
+const outBase = path.join(root, "dist", "local-release");
+const outDir = path.join(outBase, "CAP-Leaflet-Editor");
+
+async function exists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyIfExists(src, dest) {
+  if (await exists(src)) {
+    await cp(src, dest, { recursive: true });
+  }
+}
+
+async function ensureMupdfRuntime() {
+  let mupdfRoot;
+  try {
+    mupdfRoot = path.dirname(require.resolve("mupdf/package.json"));
+  } catch {
+    throw new Error("Balík mupdf nie je nainštalovaný. Spusti npm ci a potom release:zip.");
+  }
+
+  const destRoot = path.join(outDir, "node_modules", "mupdf");
+
+  // Next standalone tracing pri WASM balíkoch občas skopíruje neúplný/rozbitý mupdf.
+  // Preto ho vo finálnom release vždy prepíšeme čistou kópiou z node_modules.
+  await rm(destRoot, { recursive: true, force: true });
+  await mkdir(path.dirname(destRoot), { recursive: true });
+  await cp(mupdfRoot, destRoot, { recursive: true });
+
+  const wasmPath = path.join(destRoot, "dist", "mupdf-wasm.wasm");
+  const wasmBrPath = path.join(destRoot, "dist", "mupdf-wasm.wasm.br");
+
+  // Niektoré npm/zip/release scenáre nechajú .wasm poškodený alebo ho zabalia ako brotli dáta.
+  // Ak existuje .wasm.br, vygenerujeme z neho čistý .wasm.
+  if (await exists(wasmBrPath)) {
+    const compressed = await readFile(wasmBrPath);
+    const decompressed = brotliDecompressSync(compressed);
+    await writeFile(wasmPath, decompressed);
+  }
+
+  if (!(await exists(wasmPath))) {
+    throw new Error("Vo finálnom release chýba node_modules/mupdf/dist/mupdf-wasm.wasm");
+  }
+
+  const s = await stat(wasmPath);
+  if (s.size < 1_000_000) {
+    throw new Error(`mupdf-wasm.wasm vyzerá poškodený, veľkosť je iba ${s.size} bajtov.`);
+  }
+
+  console.log(`MuPDF runtime OK: ${path.relative(root, wasmPath)} (${Math.round(s.size / 1024)} KB)`);
+}
+
+const runCmd = `@echo off
+setlocal
+cd /d "%~dp0"
+
+where node >nul 2>nul
+if errorlevel 1 (
+  echo ERROR: Node.js is not installed or not in PATH.
+  echo Install Node.js LTS from https://nodejs.org/
+  pause
+  exit /b 1
+)
+
+echo Starting CAP Leaflet Editor...
+echo.
+echo Open this URL if browser does not open automatically:
+echo http://localhost:3000
+echo.
+start "" "http://localhost:3000"
+node .\\server.js
+pause
+`;
+
+const stopCmd = `@echo off
+setlocal
+powershell -NoProfile -Command "Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue"
+echo Node processes stopped.
+pause
+`;
+
+const readme = `CAP Leaflet Editor - Local Release
+
+Requirements on customer PC:
+- Windows x64
+- Node.js LTS installed
+
+How to start:
+1) Extract ZIP.
+2) Double-click RUN_APP.cmd.
+3) App opens at http://localhost:3000.
+
+Do NOT run npm install on customer PC.
+Do NOT run npm run build on customer PC.
+
+If port 3000 is busy:
+- close other Node apps, or run STOP_APP.cmd.
+`;
+
+async function main() {
+  if (!(await exists(standaloneSrc))) {
+    throw new Error("Missing .next/standalone. Run npm run build first.");
+  }
+
+  await rm(outDir, { recursive: true, force: true });
+  await mkdir(outDir, { recursive: true });
+
+  // Copy standalone server output to release root.
+  await cp(standaloneSrc, outDir, { recursive: true });
+
+  // Next standalone expects static assets under .next/static.
+  await copyIfExists(staticSrc, path.join(outDir, ".next", "static"));
+
+  // Public and assets are used by runtime routes/files.
+  await copyIfExists(publicSrc, path.join(outDir, "public"));
+  await copyIfExists(assetsSrc, path.join(outDir, "assets"));
+
+  // Critical: copy/decompress MuPDF WASM runtime correctly.
+  await ensureMupdfRuntime();
+
+  // Optional example env file for customers.
+  if (await exists(envExampleSrc)) {
+    await cp(envExampleSrc, path.join(outDir, ".env.example"));
+  }
+
+  await writeFile(path.join(outDir, "RUN_APP.cmd"), runCmd, "utf8");
+  await writeFile(path.join(outDir, "STOP_APP.cmd"), stopCmd, "utf8");
+  await writeFile(path.join(outDir, "README_INSTALL.txt"), readme, "utf8");
+
+  console.log("Local release prepared:");
+  console.log(path.relative(root, outDir));
+}
+
+main().catch((err) => {
+  console.error("Release preparation failed:", err);
+  process.exit(1);
+});
