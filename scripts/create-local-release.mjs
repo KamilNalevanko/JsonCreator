@@ -12,6 +12,8 @@ const envExampleSrc = path.join(root, ".env.example");
 
 const outBase = path.join(root, "dist", "local-release");
 const outDir = path.join(outBase, "CAP-Leaflet-Editor");
+const launcherName = "Spustiť Editor Letákov.cmd";
+const launcherShortcutName = "Spustiť Editor Letákov.lnk";
 
 async function exists(filePath) {
   try {
@@ -85,6 +87,11 @@ const runCmd = `@echo off
 setlocal
 cd /d "%~dp0"
 
+set "SHORTCUT_PATH=%~dp0${launcherShortcutName}"
+if not exist "%SHORTCUT_PATH%" (
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='${launcherShortcutName}'; $target='${launcherName}'; $base=[System.IO.Path]::GetFullPath('.'); $shortcutPath=Join-Path $base $p; $targetPath=Join-Path $base $target; $w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut($shortcutPath); $s.TargetPath=$targetPath; $s.WorkingDirectory=$base; $s.IconLocation='$env:SystemRoot\\System32\\shell32.dll,220'; $s.Description='Spustiť Editor Letákov'; $s.Save()" >nul 2>nul
+)
+
 where node >nul 2>nul
 if errorlevel 1 (
   echo ERROR: Node.js is not installed or not in PATH.
@@ -118,7 +125,7 @@ Requirements on customer PC:
 
 How to start:
 1) Extract ZIP.
-2) Double-click RUN_APP.cmd.
+2) Double-click Spustiť Editor Letákov.cmd.
 3) App opens at http://localhost:3000.
 
 Do NOT run npm install on customer PC.
@@ -148,6 +155,8 @@ async function main() {
   await copyIfExists(envLocalSrc, path.join(outDir, ".env.local"));
   await copyIfExists(envExampleSrc, path.join(outDir, ".env.example"));
 
+  await writeFile(path.join(outDir, launcherName), runCmd, "utf8");
+  // Backward-compatible launcher name for older instructions.
   await writeFile(path.join(outDir, "RUN_APP.cmd"), runCmd, "utf8");
   await writeFile(path.join(outDir, "STOP_APP.cmd"), stopCmd, "utf8");
   await writeFile(path.join(outDir, "README_INSTALL.txt"), readme, "utf8");
