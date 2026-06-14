@@ -1,15 +1,13 @@
 import { cp, mkdir, rm, writeFile, access, readFile, stat } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { brotliDecompressSync } from "node:zlib";
 import path from "node:path";
-
-const require = createRequire(import.meta.url);
 
 const root = process.cwd();
 const standaloneSrc = path.join(root, ".next", "standalone");
 const staticSrc = path.join(root, ".next", "static");
 const publicSrc = path.join(root, "public");
 const assetsSrc = path.join(root, "assets");
+const envLocalSrc = path.join(root, ".env.local");
 const envExampleSrc = path.join(root, ".env.example");
 
 const outBase = path.join(root, "dist", "local-release");
@@ -31,17 +29,31 @@ async function copyIfExists(src, dest) {
 }
 
 async function ensureMupdfRuntime() {
-  let mupdfRoot;
-  try {
-    mupdfRoot = path.dirname(require.resolve("mupdf/package.json"));
-  } catch {
-    throw new Error("Balík mupdf nie je nainštalovaný. Spusti npm ci a potom release:zip.");
+  // Nepoužívame require.resolve("mupdf/package.json"), lebo mupdf v nových verziách
+  // nemusí exportovať package.json a potom release script falošne hlási, že balík chýba.
+  const candidates = [
+    path.join(root, "node_modules", "mupdf"),
+    path.join(root, "node_modules", "@mupdf", "mupdf"),
+  ];
+
+  let mupdfRoot = "";
+  for (const candidate of candidates) {
+    if (await exists(path.join(candidate, "package.json"))) {
+      mupdfRoot = candidate;
+      break;
+    }
+  }
+
+  if (!mupdfRoot) {
+    throw new Error(
+      "Balík mupdf nie je v node_modules. Spusti npm install mupdf alebo npm ci a potom npm run release:zip."
+    );
   }
 
   const destRoot = path.join(outDir, "node_modules", "mupdf");
 
   // Next standalone tracing pri WASM balíkoch občas skopíruje neúplný/rozbitý mupdf.
-  // Preto ho vo finálnom release vždy prepíšeme čistou kópiou z node_modules.
+  // Preto ho vo finálnom release vždy prepíšeme čistou kópiou z root node_modules.
   await rm(destRoot, { recursive: true, force: true });
   await mkdir(path.dirname(destRoot), { recursive: true });
   await cp(mupdfRoot, destRoot, { recursive: true });
@@ -49,8 +61,8 @@ async function ensureMupdfRuntime() {
   const wasmPath = path.join(destRoot, "dist", "mupdf-wasm.wasm");
   const wasmBrPath = path.join(destRoot, "dist", "mupdf-wasm.wasm.br");
 
-  // Niektoré npm/zip/release scenáre nechajú .wasm poškodený alebo ho zabalia ako brotli dáta.
-  // Ak existuje .wasm.br, vygenerujeme z neho čistý .wasm.
+  // Ak existuje .wasm.br, vždy z neho vygenerujeme čistý .wasm.
+  // Tým sa vyhneme chybe WebAssembly.instantiate(): section extends past end of module.
   if (await exists(wasmBrPath)) {
     const compressed = await readFile(wasmBrPath);
     const decompressed = brotliDecompressSync(compressed);
@@ -124,23 +136,17 @@ async function main() {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
-  // Copy standalone server output to release root.
   await cp(standaloneSrc, outDir, { recursive: true });
-
-  // Next standalone expects static assets under .next/static.
   await copyIfExists(staticSrc, path.join(outDir, ".next", "static"));
-
-  // Public and assets are used by runtime routes/files.
   await copyIfExists(publicSrc, path.join(outDir, "public"));
   await copyIfExists(assetsSrc, path.join(outDir, "assets"));
 
-  // Critical: copy/decompress MuPDF WASM runtime correctly.
   await ensureMupdfRuntime();
 
-  // Optional example env file for customers.
-  if (await exists(envExampleSrc)) {
-    await cp(envExampleSrc, path.join(outDir, ".env.example"));
-  }
+  // Release appka potrebuje runtime env hodnoty. Ak nechceš zákazníkovi posielať tajné kľúče,
+  // nechaj v .env.local iba verejné NEXT_PUBLIC_* hodnoty a OpenAI nech ide cez Supabase Edge Function.
+  await copyIfExists(envLocalSrc, path.join(outDir, ".env.local"));
+  await copyIfExists(envExampleSrc, path.join(outDir, ".env.example"));
 
   await writeFile(path.join(outDir, "RUN_APP.cmd"), runCmd, "utf8");
   await writeFile(path.join(outDir, "STOP_APP.cmd"), stopCmd, "utf8");

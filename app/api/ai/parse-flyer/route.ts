@@ -6,9 +6,6 @@ import plLabels from "../../../../assets/langs/pl.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 minutes (Vercel Hobby limit) for safety
-
-const MAX_PAGES = 30; // Limit to 30 pages to avoid timeouts on shared hosts
 
 interface Product {
   name: string;
@@ -182,7 +179,7 @@ export async function POST(req: Request) {
 
     const doc = mupdf.Document.openDocument(buffer, "application/pdf");
     const totalPages = doc.countPages();
-    const pages = MAX_PAGES > 0 ? Math.min(totalPages, MAX_PAGES) : totalPages;
+    const pages = totalPages;
 
     // Quick text extraction from first few pages for shop/country detection
     const textSamplePages: string[] = [];
@@ -243,8 +240,8 @@ export async function POST(req: Request) {
 
     console.log(`Vyrenderovaných ${pageImages.length} strán, spracovávam cez Vision AI...`);
 
-    // Batch pages for vision API (6 pages per call)
-    const VISION_BATCH_SIZE = 6;
+    // Batch pages for vision API (8 pages per call)
+    const VISION_BATCH_SIZE = 8;
     const batches: { pageNum: number; imageData: string }[][] = [];
     for (let i = 0; i < pageImages.length; i += VISION_BATCH_SIZE) {
       batches.push(pageImages.slice(i, i + VISION_BATCH_SIZE));
@@ -466,8 +463,8 @@ Dates DD.MM.YYYY or null. "page" = page number from === STRANA/STRONA N ===. Bet
     console.log(`[tokens] knownProducts block: ${knownProductsPrompt.length} chars ≈ ${Math.round(knownProductsPrompt.length / 4)} tokens`);
     console.log(`[tokens] Batches: ${batches.length} × up to ${VISION_BATCH_SIZE} pages each`);
 
-    // Process batches with limited concurrency (max 3 parallel to stay under TPM limits)
-    const MAX_CONCURRENT = 3;
+    // Process batches with limited concurrency (max 5 parallel for faster local runs)
+    const MAX_CONCURRENT = 5;
     const batchResults: (ParsedResponse | null)[] = new Array(batches.length).fill(null);
 
     for (let start = 0; start < batches.length; start += MAX_CONCURRENT) {
