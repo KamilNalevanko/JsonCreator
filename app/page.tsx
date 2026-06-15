@@ -96,15 +96,51 @@ const unitOptions = ["g", "kg", "ml", "l", "ks", "bal"];
 
 // helper removed - use `locLabelFor` instead
 
-const calculateUnitPrice = (price: string, amount: string, unit: string): string => {
-  if (!price?.trim() || !amount?.trim()) return '';
-  const priceNum = parseFloat(price.replace(',', '.'));
-  const amountNum = parseFloat(amount.replace(',', '.'));
+const toText = (value: unknown): string => {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+};
+
+const toPageNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeAiExtractItem = (item: unknown): AiExtractItem => {
+  const src = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+  return {
+    name: toText(src.name),
+    amount: toText(src.amount),
+    unit: toText(src.unit),
+    price_sale: toText(src.price_sale),
+    price_regular: toText(src.price_regular),
+    note: toText(src.note),
+    date_from: toText(src.date_from),
+    date_to: toText(src.date_to),
+    page: toPageNumber(src.page),
+    categoryKey: toText(src.categoryKey),
+    subcategoryKey: toText(src.subcategoryKey),
+    placementKey: toText(src.placementKey),
+  };
+};
+
+const calculateUnitPrice = (price: unknown, amount: unknown, unit: unknown): string => {
+  const priceText = toText(price);
+  const amountText = toText(amount);
+  const unitText = toText(unit);
+  if (!priceText || !amountText) return '';
+  const priceNum = parseFloat(priceText.replace(',', '.'));
+  const amountNum = parseFloat(amountText.replace(',', '.'));
   if (isNaN(priceNum) || isNaN(amountNum) || amountNum === 0) return '';
   
   // Pre gramy a mililitry prepočítaj na kg/l (vynásob 1000)
   let multiplier = 1;
-  if (unit === 'g' || unit === 'ml') {
+  if (unitText === 'g' || unitText === 'ml') {
     multiplier = 1000;
   }
   
@@ -561,8 +597,9 @@ export default function Home() {
       const meta =
         payload?.meta && typeof payload.meta === "object" ? payload.meta : {};
       const items = Array.isArray(payload?.items) ? payload.items : [];
+      const normalizedItems = items.map(normalizeAiExtractItem);
       setAiExtractMeta(meta);
-      setAiExtracted(items);
+      setAiExtracted(normalizedItems);
       setAiDebugText(typeof payload?.debugText === "string" ? payload.debugText : "");
       setAiDetectedShop(typeof payload?.detectedShop === "string" ? payload.detectedShop : "");
       setAiDetectedCountry(typeof payload?.detectedCountry === "string" ? payload.detectedCountry : "");
