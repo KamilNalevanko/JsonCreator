@@ -624,9 +624,8 @@ export default function Home() {
         }));
       }
 
-      const dateLabel = formatDateRange(nextDateFrom, nextDateTo);
       setAiExtractStatus(
-        `${t("ai_found_items")}: ${items.length}${dateLabel ? ` • Leták: ${dateLabel}` : ""}`
+        `${t("ai_found_items")}: ${items.length}`
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : t("ai_extract_failed");
