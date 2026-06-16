@@ -16,6 +16,7 @@ interface Product {
   note: string;
   page?: number;
   placementKey?: string;
+  food?: boolean;
 }
 
 interface ParsedResponse {
@@ -290,6 +291,7 @@ type ChatCompletionResponse = {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    prompt_tokens_details?: { cached_tokens?: number };
   };
 };
 
@@ -583,7 +585,7 @@ export async function POST(req: Request) {
 
     const PRODUCT_SCHEMA = `{
   "meta": { "date_from": "DD.MM.YYYY or null", "date_to": "DD.MM.YYYY or null" },
-  "products": [{ "name": "...", "amount": "...", "unit": "g/kg/ml/l/ks/zväzok/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N, "placementKey": "..." }]
+  "products": [{ "name": "Brand + product when brand is readable, e.g. Lindt Lindor pralinky", "amount": "...", "unit": "g/kg/ml/l/ks/zväzok/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N, "placementKey": "...", "food": true }]
 }`;
 
     // Build placement lookup + translated list for AI
@@ -636,11 +638,15 @@ export async function POST(req: Request) {
     // fallback-supplement with other products from the same country if too few.
     let knownProductsPrompt = "";
     const dbKnownMap = new Map<string, string>(); // lowercase name → placementKey (for post-AI reclassification)
+    // Same-shop known product names (full, brand included). Used later as ground truth
+    // to correct hallucinated own-brand prefixes (e.g. a false "K-Classic" on a product
+    // the DB lists without an own brand).
+    const shopKnownNames: string[] = [];
     try {
       const supabaseUrl =
         process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
       const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      const queryShop = formShop || "";
+      const queryShop = formShop || detectedShop || "";
       const queryCountry = country; // already resolved (from PDF detect or form)
       if (supabaseUrl && serviceRole) {
         const supabaseDb = createClient(supabaseUrl, serviceRole);
@@ -667,7 +673,12 @@ export async function POST(req: Request) {
             .eq("country", queryCountry)
             .eq("shop", queryShop)
             .not("placement", "eq", "");
-          if (shopRows) pairs = dedup(shopRows);
+          if (shopRows) {
+            pairs = dedup(shopRows);
+            for (const r of shopRows) {
+              if (r.name) shopKnownNames.push(r.name);
+            }
+          }
         }
 
         // 2) If fewer than 50 results (new/unknown shop), supplement with the rest of the country
@@ -722,73 +733,95 @@ export async function POST(req: Request) {
     const targetLanguageName =
       lang === "pl" ? "Polish" : lang === "cz" ? "Czech" : "Slovak";
 
-    const PRODUCT_RULES = `You are extracting supermarket flyer products for country="${country}", language="${targetLanguageName}".
-Return ONLY valid JSON in the requested schema.
+    // Retailer private-label (own brand) hint — helps the model recognise small
+    // stylised own-brand logos (e.g. the red "K" of Kaufland's "K-Classic") that
+    // are otherwise hard to read as text.
+    const PRIVATE_LABELS: Record<string, string[]> = {
+      kaufland: [
+        "K-Classic",
+        "K-Gold",
+        "K-Bio",
+        "K-take it veggie",
+        "K-Purland",
+        "K-to go",
+      ],
+      lidl: [
+        "Milbona",
+        "Pilos",
+        "Combino",
+        "Freeway",
+        "Crownfield",
+        "Dulano",
+        "Sondey",
+        "Alesto",
+        "Vitasia",
+        "Italiamo",
+        "Cien",
+      ],
+      billa: ["Clever", "BILLA", "Vegavita"],
+      "tesco-hypermarket": ["Tesco", "Tesco Finest"],
+      "coop-jednota": ["Coop", "Dobré z našej dediny"],
+      peny: ["Boni", "San Fabio", "Penny"],
+      globus: ["Globus", "Korrekt"],
+      "albert-hypermarket": ["Albert", "Albert Excellent", "Albert Bio"],
+      aldi: ["Milsani", "Almare", "Gut Bio"],
+      biedronka: ["Biedronka", "Go Active", "Dada"],
+      "auchan-hypermarket": ["Auchan", "Pewex"],
+      carrefour: ["Carrefour", "Carrefour Bio"],
+    };
+    const resolvedShopKey = (detectedShop || formShop || "").toLowerCase();
+    const shopOwnBrands = PRIVATE_LABELS[resolvedShopKey] || [];
+    const privateLabelHint =
+      shopOwnBrands.length > 0
+        ? `\n\nRETAILER PRIVATE LABELS (own brands of this shop): ${shopOwnBrands.join(", ")}.
+- Use one of these own brands ONLY when you can clearly see its own-brand logo/badge on THIS product's own package or printed inside its own offer tile — e.g. Kaufland's "K-Classic" badge = a red "K" square with the word "CLASSIC". Read the actual badge; do not infer it from the product looking generic. If a printed third-party brand is shown instead (e.g. "Vegeta", "Haribo", "Lindt"), use that brand.
+- The badge must belong to THIS product. Do NOT carry a badge or brand over from a neighbouring offer tile (tiles are packed close together). Country-of-origin flags/coats-of-arms ("made in"), quality seals, award medals, eco/bio/vegan logos, and the plain store name ("Kaufland", "Lidl") are NOT product brands.
+- If the product shows no clearly readable brand AND no own-brand badge of its own (e.g. packaging shows only a generic product type like "VLOČKY"), leave the brand EMPTY. An empty brand is better than a guessed one.`
+        : "";
 
-CORE TASK:
-- Extract ONLY food, drinks and alcohol.
-- ONE visible product offer = ONE record.
-- Include small products in corners if they are food/drinks.
-- Skip pages or areas that contain only non-food or campaign/legal text.
+    const PRODUCT_RULES = `You extract supermarket flyer products. country="${country}", language="${targetLanguageName}". Return ONLY valid JSON in the schema.
 
-PRODUCT NAME:
-- "name" must be a short clean product name only.
-- Keep the original language from the flyer or package. Do NOT translate.
-- Include manufacturer/brand only when it is clearly printed on the package or attached to that exact product block.
-- Do NOT include retailer names, loyalty programs, slogans, page headers, campaign titles, country flags, awards, medals, QR text, website text or neighbouring product text.
-- Do NOT include supplementary sale/package details in "name".
-- Never add words that are not supported by the same product block.
-- If text layer and image disagree, prefer the text that is visually attached to the same product/package.
-- If unsure between a short generic name and a longer uncertain name, choose the shorter clean name.
+TASK: Extract only food, drinks and alcohol. One visible offer = one record. Include small corner products if edible. Skip non-food and pure campaign/legal areas.
 
-PUT THESE INTO "note", NOT INTO "name":
-- various kinds/flavours/types
-- counter sale / sold loose / by weight
-- chilled/frozen/packaged
-- without giblets/bone/free etc.
-- multipack or 1+1 / 3+3 promo
-- deposit info, card/coupon conditions
-- fixed drained weight / drained weight
-- special offer / while stocks last
-Keep notes short. Do NOT include discount percentages, crossed prices, per-kg/per-l formulas, legal text or product marketing descriptions.
+NAME (short, clean):
+- BRAND FIRST: if a brand is clearly printed on THAT pack, start with it + product type, e.g. "Lindt Lindor čokoládové pralinky", "Davidoff instantná káva". Check the logo even on small/dark/glossy packs. Add the sub-brand/line if printed together (e.g. "Lindt Lindor", "Figaro Tatiana", "Haribo Goldbären"). Write the brand exactly as printed; do not translate it.
+- Only use a brand you can actually read for that product. Never guess it, copy it from a neighbour, or invent one that does not fit the product (e.g. lollipops are not "Skittles"). If unsure, omit the brand.
+- Keep the product term in the flyer's language; do not translate. Prefer text attached to the same pack; prefer a short clean name over a long uncertain one.
+- Exclude retailer names, loyalty programs, slogans, headers, campaign/award/QR/website text, and sale/package details.${privateLabelHint}
 
-AMOUNT AND UNIT:
-- "amount" must be a string, never a JSON number.
-- Use the sold unit/package amount, not the per-kg/per-l comparison price.
-- Allowed "unit": "g", "kg", "ml", "l", "ks", "zväzok", or "".
-- For bunch/bundle products use unit "zväzok".
-- For multipacks, amount should describe one sold package when clear; put multipack details in "note".
+NOTE (short) — put here, not in name: various kinds/flavours; counter/loose/by weight; chilled/frozen/packaged; without giblets/bone; multipack or 1+1/3+3; deposit & card/coupon conditions; drained weight; special offer/while stocks last. Exclude % discounts, crossed prices, per-kg/per-l formulas, legal text and marketing copy.
+
+AMOUNT/UNIT:
+- "amount" = string (never a number); the sold package amount, not the per-kg/per-l comparison.
+- "unit" ∈ {g, kg, ml, l, ks, zväzok, ""}; use "zväzok" for bunches. For multipacks, amount = one package, details in note.
 
 PRICES:
-- "price_sale" = the main final customer price for the offer. Card/coupon price can be used only when it is the actual prominent advertised price.
-- "price_regular" = crossed-out previous/original price, if visible.
-- Ignore comparison prices in brackets, such as per kg/per l/per wash.
-- Do not invent missing prices.
+- "price_sale" = main final customer price (card/coupon price only if it is the prominent advertised one).
+- "price_regular" = crossed-out old price if visible. Ignore bracketed comparison prices. Never invent prices.
 
-TEXT LAYER + IMAGE:
-- Each page is provided as text layer plus image.
-- Use the text layer to verify product names, amounts and prices.
-- Use the image/layout to decide which text belongs to which product.
-- Ignore text layer lines from legal footer, banners, campaign blocks, QR, websites and unrelated non-food areas.
+INPUT: each page = text layer + image. Use the text to verify names/brands/amounts/prices; use the image to map text to the right product and to read package logos. Ignore footer/banner/QR/website/non-food text.
 
-SKIP NON-FOOD COMPLETELY:
-Pet food, cosmetics, hygiene, oral care, cleaning/laundry, baby formula/food, flowers, plants, clothing, electronics, tools, toys, dishes, household paper/foil/bags.
+FOOD vs NON-FOOD (language-independent — judge by what the product actually is, not by keywords):
+- This catalogue keeps ONLY human food, drinks and alcohol.
+- For EVERY product you output, set "food": true if it is edible human food / drink / alcohol, otherwise "food": false.
+- Non-food (food=false) includes e.g.: pet food, cosmetics, hygiene & oral care, cleaning/laundry, paper goods, flowers/plants, clothing & footwear, toys, electronics & appliances, cookware/dishes, tools, garden, stationery.
+- You MAY skip obvious non-food entirely to save effort, but if you do include such an item you MUST mark it food=false. When in doubt about edibility, set food=false.
 
-CLASSIFICATION:
-- Choose "placementKey" from the list below.
-- Classify by the actual product, not by the brand.
-- If an exact placement exists, use it.
-- If only a broad/near placement exists, use it only when it is clearly the same product family.
-- Do NOT map an unknown exotic fruit to an unrelated known fruit just to fill the field.
-- Empty placementKey is better than a confidently wrong placement.
-- Still try to classify common food/drink/alcohol products whenever a reasonable placement exists.
+CLASSIFY ("placementKey" from the list): classify by the product, not the brand. Use an exact placement if it exists, else a clearly-matching broader one. Do not map unknown items to unrelated ones. Empty is better than confidently wrong, but do classify common items when a reasonable placement exists.
+Avoid these category mix-ups — judge by what the product physically IS, not by a loosely similar word:
+- A bar/stick eaten as a snack (chocolate bar, wafer bar, muesli bar) is a confectionery BAR — never a spread/cream. Spreads/creams come in a jar or tube and are spreadable.
+- Canned or jarred fruit in slices, halves or pieces (in syrup/juice) is preserved/sterilized FRUIT — never jam/marmalade. Jam is a spreadable fruit purée.
+- A child's fizzy or still soft DRINK (e.g. sparkling juice, kids' lemonade) is a soft drink / lemonade — not a milk or yogurt drink, unless it actually contains milk or yogurt.
+- Breakfast cereals / muesli / cereal flakes are a breakfast/cereal product — never a ready-made or chilled meal.
 
 PLACEMENT LIST:
 ${PLACEMENTS_PROMPT}
+Use ONLY the key before ":". Dates may be null. "page" must match the page marker.${knownProductsPrompt}`;
 
-Use ONLY the key before ":" as placementKey.
-Dates may be null. "page" must match the provided page marker.
-${knownProductsPrompt}`;
+    // Static instruction block — identical for every batch of this flyer. Kept in
+    // a separate `system` message so OpenAI's automatic prompt caching reuses it
+    // across batches (big saving when many/dense batches are sent per flyer).
+    const SYSTEM_PROMPT = `OUTPUT JSON SCHEMA:\n${PRODUCT_SCHEMA}\n\n${PRODUCT_RULES}`;
 
     type VisionContentPart =
       | { type: "text"; text: string }
@@ -832,6 +865,11 @@ ${knownProductsPrompt}`;
     const tokenStats = {
       totalPromptTokens: 0,
       totalCompletionTokens: 0,
+      totalCachedTokens: 0,
+      // Breakdown of the text-only second-pass classification calls (subset of totals).
+      classifyPromptTokens: 0,
+      classifyCompletionTokens: 0,
+      classifyCachedTokens: 0,
       batches: [] as {
         batch: number;
         promptTokens: number;
@@ -872,7 +910,7 @@ ${knownProductsPrompt}`;
               const content: VisionContentPart[] = [
                 {
                   type: "text",
-                  text: `Analyze these supermarket flyer pages (batch ${batchIdx + 1}/${batches.length}).\n\nOUTPUT JSON SCHEMA:\n${PRODUCT_SCHEMA}\n\n${PRODUCT_RULES}${!isFirst ? "\nFor this non-first batch, meta dates may be null." : ""}`,
+                  text: `Analyze these supermarket flyer pages (batch ${batchIdx + 1}/${batches.length}).${!isFirst ? " For this non-first batch, meta dates may be null." : ""}`,
                 },
               ];
 
@@ -920,13 +958,18 @@ ${knownProductsPrompt}`;
                 response_format: { type: "json_object" },
                 temperature: 0,
                 max_completion_tokens: 24000,
-                messages: [{ role: "user", content }],
+                messages: [
+                  { role: "system", content: SYSTEM_PROMPT },
+                  { role: "user", content },
+                ],
               });
 
               const usage = response.usage;
               if (usage) {
+                const cached = usage.prompt_tokens_details?.cached_tokens || 0;
                 tokenStats.totalPromptTokens += usage.prompt_tokens;
                 tokenStats.totalCompletionTokens += usage.completion_tokens;
+                tokenStats.totalCachedTokens += cached;
                 tokenStats.batches.push({
                   batch: batchIdx + 1,
                   promptTokens: usage.prompt_tokens,
@@ -934,7 +977,7 @@ ${knownProductsPrompt}`;
                   promptChars,
                 });
                 console.log(
-                  `[tokens] Batch ${batchIdx + 1}/${batches.length}: prompt=${usage.prompt_tokens} compl=${usage.completion_tokens} total=${usage.total_tokens} (promptChars=${promptChars})`,
+                  `[tokens] Batch ${batchIdx + 1}/${batches.length}: prompt=${usage.prompt_tokens} (cached=${cached}) compl=${usage.completion_tokens} total=${usage.total_tokens} (promptChars=${promptChars})`,
                 );
               }
 
@@ -1022,66 +1065,28 @@ ${knownProductsPrompt}`;
 
     const retailerHints = [formShop, detectedShop || ""].filter(Boolean);
 
-    const keywordFallbacks: Array<{
-      re: RegExp;
-      placementKey: string;
-      force?: boolean;
-    }> = [
-      { re: /mango|manga/i, placementKey: "mango" },
-      { re: /mung|faz[uó]l|fazuľ|fasol|bean/i, placementKey: "fazu_a" },
-      { re: /paradaj|rajč|pomidor|tomat/i, placementKey: "paradajky" },
-      {
-        re: /dyň|dyna|mel[oó]n|arbuz|watermelon/i,
-        placementKey: "mel_n",
-        force: true,
-      },
-      { re: /avok[aá]d|awokad/i, placementKey: "avok_do" },
-      { re: /hrozno|winogron|hrozny|grape/i, placementKey: "hrozno" },
-      { re: /jabl|jabł|apple/i, placementKey: "jablk" },
-      { re: /nektar|brosk|brzoskw|peach/i, placementKey: "broskyne" },
-      {
-        re: /marhu[ľl]|meru[nň]|morel|apricot/i,
-        placementKey: "marhule",
-        force: true,
-      },
-      { re: /cibuľ|cibul|cebula|onion/i, placementKey: "cibu_a" },
-      { re: /mrkv|marchew|carrot/i, placementKey: "mrkva" },
-      { re: /anan[aá]s|pineapple/i, placementKey: "anan_s" },
-      {
-        re: /kur[čc]a|kurac|kuřec|kurczak|chicken/i,
-        placementKey: "kur_a",
-        force: true,
-      },
-      {
-        re: /mlet[éeá].*brav|vepř.*mlet|wieprz.*miel/i,
-        placementKey: "mlet_brav_ov",
-      },
-      { re: /maslo|máslo|masło|butter/i, placementKey: "maslo_82" },
-      { re: /mlieko|mléko|mleko|milk/i, placementKey: "plnotu_n_mlieko" },
-      { re: /smotana|smetana|śmietana|cream/i, placementKey: "kysl_smotana" },
-      { re: /mozzarella/i, placementKey: "mozarella" },
-      { re: /slanina|boczek|bacon/i, placementKey: "slanina" },
-      {
-        re: /cestovin|těstovin|makaron|spag|špag|spag/i,
-        placementKey: "pagety",
-      },
-      { re: /olivov.*olej|olive.*oil|oliwa/i, placementKey: "olivov_olej" },
-      { re: /tequila|vodka|rum|gin/i, placementKey: "biely_alkohol" },
-      { re: /whisk|whisk(e)?y/i, placementKey: "ko_ak_a_whiskey" },
-      { re: /víno|vino|winn|wine|velt/i, placementKey: "biele_v_no" },
-      { re: /pivo|piwo|beer|lež[iá]k/i, placementKey: "alkoholick_pivo" },
-      {
-        re: /nanuk|mrazen[ýy]\s+kr[eé]m|mražen[ýy]\s+kr[eé]m|zmrzlin|lody|ice\s*cream/i,
-        placementKey: "zmrzlina",
-        force: true,
-      },
-      {
-        re: /k[aá]va|kávy|coffee|kawa|espresso|crema|cappuccino/i,
-        placementKey: "instantn",
-      },
-    ];
+    // Normalize for keyword matching: strip diacritics (handles NFD/decomposed
+    // accents from the model, e.g. "Brumík"/"Piškótový") and lowercase.
+    const normForMatch = (s: string) =>
+      (s || "")
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase();
 
-    const items = deduped.map((item: Product) => {
+    // Drop non-food using the model's own food/non-food judgement (food=false).
+    // Language-independent and scalable — no keyword lists to maintain per country.
+    // Missing flag defaults to food (kept), so we never over-remove.
+    const foodDeduped = deduped.filter((p) => p.food !== false);
+    if (foodDeduped.length < deduped.length) {
+      const droppedNonFood = deduped.filter((p) => p.food === false);
+      console.log(
+        `[filter] Removed ${droppedNonFood.length} non-food (AI food=false): ${droppedNonFood
+          .map((p) => p.name)
+          .join(", ")}`,
+      );
+    }
+
+    const items = foodDeduped.map((item: Product) => {
       let pk = item.placementKey || "";
       // Validate placementKey — clear invalid ones so reclassification can fix them
       if (pk && !placementLookup[pk]) {
@@ -1136,8 +1141,7 @@ ${knownProductsPrompt}`;
     if (needsReclass.length > 0 && refMap.size > 0) {
       // Tokenize reference names for keyword matching
       const tokenize = (s: string) =>
-        s
-          .toLowerCase()
+        normForMatch(s)
           .replace(/[^\p{L}\p{N}]/gu, " ")
           .split(/\s+/)
           .filter((w) => w.length > 2);
@@ -1184,160 +1188,320 @@ ${knownProductsPrompt}`;
       }
     }
 
-    // Final lightweight multilingual fallback for common food names.
-    // High-confidence rules may override a wrong AI placement, otherwise only fill empty placementKey.
-    let fallbackClassified = 0;
-    for (const item of items) {
-      const found = keywordFallbacks.find(
-        (rule) => rule.re.test(item.name) && placementLookup[rule.placementKey],
-      );
-      if (!found) continue;
-
-      const canOverride =
-        !item.placementKey ||
-        !item.categoryKey ||
-        found.force === true ||
-        ["pomaran_e", "panenka_brav_ov"].includes(item.placementKey);
-
-      if (!canOverride) continue;
-
-      const parent = placementLookup[found.placementKey];
-      item.placementKey = found.placementKey;
-      item.categoryKey = parent.categoryKey;
-      item.subcategoryKey = parent.subcategoryKey;
-      fallbackClassified++;
-    }
-    if (fallbackClassified > 0) {
-      console.log(
-        `[reclass] Keyword fallback fixed/overrode ${fallbackClassified} products`,
-      );
-    }
-
-    // Post-processing: filter out non-food products that AI failed to skip
-    const NON_FOOD_RE = new RegExp(
-      [
-        // Candles, grave supplies, LED inserts (PL/SK/CZ)
-        "świec[aąy]",
-        "sviečk",
-        "svíčk",
-        "znicz",
-        "zniczy",
-        "kahán",
-        "wkład.*(znic|led|olejow)",
-        "subito",
-        // Air fresheners, wardrobe sachets
-        "odświeżacz",
-        "osviežovač",
-        "osvěžovač",
-        "saszetk.*szaf",
-        // Cleaning & laundry
-        "proszek do prania",
-        "prací práš",
-        "płyn do prania",
-        "avivá[zž]",
-        "tabletk.*(zmywark|umývačk|myčk)",
-        "środek czystości",
-        "čistic.*prostřed",
-        // Toilet/kitchen paper, paper towels
-        "papier toaletow",
-        "toaletn[ýí] papí",
-        "ręcznik.*papierow",
-        "papírov.*utěr",
-        "ręcznik.*kuchen",
-        "utierky kuchyn",
-        // Cosmetics & body care
-        "szampon",
-        "šampón",
-        "šampon",
-        "odżywk.*włos",
-        "kondicionér.*vlas",
-        "kondicionér.*vlas",
-        "żel pod prysznic",
-        "sprchov.* g[eé]l",
-        "dezodorant",
-        "antiperspiran",
-        "farb.*(włos|vlas)",
-        "barv.*vlas",
-        "lakier do włos",
-        "lak na vlas",
-        "maszyn[eę]k.*golen",
-        "holic[ií]",
-        "piank.*golen",
-        "pěn.*holen",
-        "żel do golen",
-        "żel po golen",
-        "piank.*do twarzy",
-        "piank.*na tvár",
-        "pěn.*na obličej",
-        "żel do mycia",
-        "sprchov.* g[eé]l",
-        "parfém",
-        "perfum",
-        "woda toaletow",
-        "eau de toilette",
-        "płatk.*pod oczy",
-        "balsam do ciała",
-        "krem do twarzy",
-        "mgiełk.*ciał",
-        "mleczko do ciał",
-        "woda po golen",
-        "balsam po golen",
-        "patyczk.*kosmetycz",
-        // Oral hygiene
-        "pasta do zębów",
-        "zubn[áí] past",
-        "szczoteczk.*zębów",
-        "zubn[áí] kefk",
-        "zubn[íi] kartáč",
-        "ústn[aí] vod",
-        "płyn do płukania.*ust",
-        // Feminine hygiene & diapers
-        "podpask[iy]",
-        "tampon[yů]",
-        "wkładk.*higien",
-        "pieluch[iy]",
-        "pieluszk",
-        "\\bplienk",
-        "\\bplenk",
-        // Pet food
-        "karma dla",
-        "\\bkrmivo\\b",
-        "whiskas",
-        "pedigree",
-        "sheba",
-        // Misc non-food
-        "żarówk",
-        "žiarovk",
-        "žárovk",
-      ].join("|"),
-      "i",
+    // ─── Second-pass AI classification (text-only) ───
+    // Replaces the old hand-written keyword regex fallback. For products still
+    // unclassified after DB token-matching, we send just their names plus the full
+    // placement list to the model and let it pick the best key. Language-independent
+    // and scales to any country with no per-language rules to maintain. Text-only,
+    // so it's cheap and the placement list is cached across this flyer's chunks.
+    const stillUnclassified = items.filter(
+      (it) => !it.placementKey || !it.categoryKey,
     );
+    if (stillUnclassified.length > 0) {
+      // Dedupe by name — many offers can share the same product name.
+      const uniqueNames = Array.from(
+        new Set(stillUnclassified.map((it) => it.name.trim()).filter(Boolean)),
+      );
 
-    const foodItems = items.filter((p) => !NON_FOOD_RE.test(p.name));
-    if (foodItems.length < items.length) {
-      const removed = items.filter((p) => NON_FOOD_RE.test(p.name));
+      const CLASSIFY_SYSTEM = `You classify supermarket products into a fixed placement taxonomy. Output language context: "${targetLanguageName}".
+For each product name, choose the single best matching placementKey from the list below. Classify by what the product IS, not by its brand. Use an exact placement if one exists, otherwise the closest clearly-matching broader one. If no placement reasonably fits, return an empty string for that product — an empty key is better than a wrong one.
+Return ONLY valid JSON: {"classifications":[{"name":"<exact input name>","placementKey":"<key from list or empty>"}]}. Use ONLY the key before ":".
+
+PLACEMENT LIST:
+${PLACEMENTS_PROMPT}`;
+
+      const classifyModel = (
+        process.env.OPENAI_CLASSIFY_MODEL ||
+        process.env.OPENAI_VISION_MODEL ||
+        "gpt-4.1-mini"
+      ).trim();
+      const CLASSIFY_CHUNK = Number(process.env.CLASSIFY_CHUNK_SIZE || 60);
+
+      // Collect all model answers first (name → placementKey), then apply once.
+      const classMap = new Map<string, string>();
+      for (let i = 0; i < uniqueNames.length; i += CLASSIFY_CHUNK) {
+        const chunk = uniqueNames.slice(i, i + CLASSIFY_CHUNK);
+        const res = await callWithRetry(async () => {
+          const response = await createOpenAIChatCompletion({
+            model: classifyModel,
+            response_format: { type: "json_object" },
+            temperature: 0,
+            max_completion_tokens: 8000,
+            messages: [
+              { role: "system", content: CLASSIFY_SYSTEM },
+              {
+                role: "user",
+                content: `Classify these products:\n${chunk
+                  .map((n, idx) => `${idx + 1}. ${n}`)
+                  .join("\n")}`,
+              },
+            ],
+          });
+
+          const usage = response.usage;
+          if (usage) {
+            const cached = usage.prompt_tokens_details?.cached_tokens || 0;
+            tokenStats.totalPromptTokens += usage.prompt_tokens;
+            tokenStats.totalCompletionTokens += usage.completion_tokens;
+            tokenStats.totalCachedTokens += cached;
+            tokenStats.classifyPromptTokens += usage.prompt_tokens;
+            tokenStats.classifyCompletionTokens += usage.completion_tokens;
+            tokenStats.classifyCachedTokens += cached;
+          }
+
+          const txt = response.choices?.[0]?.message?.content?.trim() ?? "";
+          if (!txt) return null;
+          const parseLoose = (s: string) => {
+            try {
+              return JSON.parse(s);
+            } catch {
+              const a = s.indexOf("{");
+              const b = s.lastIndexOf("}");
+              if (a !== -1 && b > a) {
+                try {
+                  return JSON.parse(s.slice(a, b + 1));
+                } catch {
+                  return null;
+                }
+              }
+              return null;
+            }
+          };
+          return parseLoose(txt) as {
+            classifications?: { name?: string; placementKey?: string }[];
+          } | null;
+        });
+
+        const classifications = res?.classifications;
+        if (!Array.isArray(classifications)) continue;
+        for (const c of classifications) {
+          const pk = (c?.placementKey || "").trim();
+          const name = (c?.name || "").trim().toLowerCase();
+          if (name && pk && placementLookup[pk]) classMap.set(name, pk);
+        }
+      }
+
+      let secondPassClassified = 0;
+      for (const item of stillUnclassified) {
+        if (item.placementKey && item.categoryKey) continue;
+        const pk = classMap.get(item.name.trim().toLowerCase());
+        if (pk && placementLookup[pk]) {
+          const parent = placementLookup[pk];
+          item.placementKey = pk;
+          item.categoryKey = parent.categoryKey;
+          item.subcategoryKey = parent.subcategoryKey;
+          secondPassClassified++;
+          console.log(`[reclass-ai] "${item.name}" → ${pk}`);
+        }
+      }
+      if (secondPassClassified > 0) {
+        console.log(
+          `[reclass-ai] Second-pass AI classified ${secondPassClassified}/${stillUnclassified.length} products`,
+        );
+      }
+    }
+
+    // ─── Sibling placement correction from hierarchy labels ───
+    // Generic, language-independent fix for "valid but wrong sibling" results: if a
+    // product name clearly matches a DIFFERENT placement label within the SAME
+    // subcategory (e.g. an item literally called "Želé cukríky" placed under
+    // "Dražé cukríky"), switch to the better-matching sibling. Driven purely by the
+    // translated hierarchy labels — no per-product keyword lists to maintain.
+    {
+      const tokenizeWords = (s: string) =>
+        normForMatch(s)
+          .replace(/[^\p{L}\p{N}]/gu, " ")
+          .split(/\s+/)
+          .filter((w) => w.length > 2);
+
+      // subcategoryKey → [{ key, label tokens }]
+      const siblingsBySubcat = new Map<
+        string,
+        { key: string; tokens: string[] }[]
+      >();
+      for (const [key, parent] of Object.entries(placementLookup)) {
+        const label = (labels as Record<string, string>)[key] || key;
+        const arr = siblingsBySubcat.get(parent.subcategoryKey) || [];
+        arr.push({ key, tokens: tokenizeWords(label) });
+        siblingsBySubcat.set(parent.subcategoryKey, arr);
+      }
+
+      let siblingFixed = 0;
+      for (const item of items) {
+        if (!item.placementKey || !item.subcategoryKey) continue;
+        const siblings = siblingsBySubcat.get(item.subcategoryKey);
+        if (!siblings || siblings.length < 2) continue;
+
+        const nameTokens = new Set(tokenizeWords(item.name));
+        if (nameTokens.size === 0) continue;
+
+        const currentTokens =
+          siblings.find((s) => s.key === item.placementKey)?.tokens || [];
+        const overlap = (tokens: string[]) =>
+          tokens.filter((t) => nameTokens.has(t)).length;
+        const currentScore = overlap(currentTokens);
+
+        let bestKey = item.placementKey;
+        let bestScore = currentScore;
+        for (const sib of siblings) {
+          if (sib.key === item.placementKey) continue;
+          const s = overlap(sib.tokens);
+          // Switch only on a STRONG sibling match: it must beat the current label,
+          // overlap on at least TWO label words, AND contribute a distinctive word
+          // (≥4 chars) the current label lacks. The ≥2 floor prevents flipping a
+          // correct-but-lexically-unrelated placement (e.g. "Vegeta", "Rôzne druhy")
+          // onto a sibling that merely shares one generic word like "cestoviny".
+          const distinctive = sib.tokens.some(
+            (t) =>
+              t.length >= 4 && nameTokens.has(t) && !currentTokens.includes(t),
+          );
+          if (s > bestScore && s >= 2 && distinctive) {
+            bestScore = s;
+            bestKey = sib.key;
+          }
+        }
+
+        if (bestKey !== item.placementKey) {
+          const parent = placementLookup[bestKey];
+          console.log(
+            `[reclass-sibling] "${item.name}" ${item.placementKey} → ${bestKey}`,
+          );
+          item.placementKey = bestKey;
+          item.categoryKey = parent.categoryKey;
+          item.subcategoryKey = parent.subcategoryKey;
+          siblingFixed++;
+        }
+      }
+      if (siblingFixed > 0) {
+        console.log(
+          `[reclass-sibling] Corrected ${siblingFixed} sibling placements`,
+        );
+      }
+    }
+
+    // ─── Own-brand correction against same-shop DB ground truth ───
+    // The vision model sometimes adds a retailer own-brand (e.g. "K-Classic") to a
+    // product that does not carry it — a stubborn false positive that prompt/render
+    // tuning does not reliably fix (the badge is a tiny image, no text-layer signal).
+    // The curated DB knows the truth: if the same-shop product is listed WITHOUT an
+    // own brand, strip the hallucinated prefix. Deterministic, scales with the DB.
+    if (shopOwnBrands.length > 0 && shopKnownNames.length > 0) {
+      // Hyphen/space-insensitive matcher for each own brand (e.g. "K-Classic" also
+      // matches "K Classic", "K classic").
+      const brandRes = shopOwnBrands.map((b) => ({
+        label: b,
+        re: new RegExp(
+          b
+            .split(/[-\s]+/)
+            .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+            .join("[-\\s]*"),
+          "i",
+        ),
+      }));
+      const detectBrand = (name: string) =>
+        brandRes.find((b) => b.re.test(name))?.label || null;
+      const stripBrands = (name: string) => {
+        let n = name;
+        for (const b of brandRes) n = n.replace(b.re, " ");
+        return n.replace(/\s+/g, " ").trim();
+      };
+      // Brand-stripped, order-independent key of the product's "core" name.
+      const coreTokens = (name: string) =>
+        normForMatch(stripBrands(name))
+          .replace(/[^\p{L}\p{N}]/gu, " ")
+          .split(/\s+/)
+          .filter((w) => w.length > 2);
+      const coreKey = (name: string) => coreTokens(name).slice().sort().join(" ");
+
+      // DB truth: core name → own brand label, or "" when the DB lists it brand-less.
+      // A definite own brand always wins over a brand-less sighting of the same core.
+      const dbBrandTruth = new Map<string, string>();
+      for (const nm of shopKnownNames) {
+        if (coreTokens(nm).length < 2) continue; // skip generic single-word names
+        const key = coreKey(nm);
+        if (!key) continue;
+        const b = detectBrand(nm);
+        if (b) dbBrandTruth.set(key, b);
+        else if (!dbBrandTruth.has(key)) dbBrandTruth.set(key, "");
+      }
+
+      let brandStripped = 0;
+      for (const item of items) {
+        const itemBrand = detectBrand(item.name);
+        if (!itemBrand) continue; // only correct false positives (strip), never invent
+        if (coreTokens(item.name).length < 2) continue;
+        const truth = dbBrandTruth.get(coreKey(item.name));
+        if (truth === "") {
+          const stripped = stripBrands(item.name);
+          if (stripped && stripped.toLowerCase() !== item.name.toLowerCase()) {
+            console.log(
+              `[brand] Strip "${itemBrand}" from "${item.name}" (DB lists it brand-less) → "${stripped}"`,
+            );
+            item.name = stripped;
+            brandStripped++;
+          }
+        }
+      }
+      if (brandStripped > 0) {
+        console.log(
+          `[brand] Removed ${brandStripped} hallucinated own-brand prefix(es) using DB`,
+        );
+      }
+    }
+
+    // Non-food filtering is handled above by the AI "food" flag (food=false),
+    // which is language-independent and needs no per-country keyword lists.
+
+    // Drop offers without any usable price (e.g. teaser products like "Avokádo"
+    // or "Kaizerka" shown without a number). Both prices empty => skip.
+    const hasPrice = (p: { price_sale?: string; price_regular?: string }) =>
+      Boolean((p.price_sale || "").trim() || (p.price_regular || "").trim());
+    const pricedItems = items.filter(hasPrice);
+    if (pricedItems.length < items.length) {
+      const dropped = items.filter((p) => !hasPrice(p));
       console.log(
-        `[filter] Removed ${removed.length} non-food: ${removed.map((p) => p.name).join(", ")}`,
+        `[filter] Removed ${dropped.length} without price: ${dropped.map((p) => p.name).join(", ")}`,
       );
     }
 
     // Final token summary log
     const totalTokens =
       tokenStats.totalPromptTokens + tokenStats.totalCompletionTokens;
-    // gpt-4.1-mini pricing (as of 2025): $0.40/1M prompt, $1.60/1M completion (vision prompt charged separately)
-    const costUsd =
-      (tokenStats.totalPromptTokens / 1_000_000) * 0.4 +
-      (tokenStats.totalCompletionTokens / 1_000_000) * 1.6;
+    // gpt-4.1-mini pricing (as of 2025): $0.40/1M prompt, $0.10/1M cached prompt, $1.60/1M completion
+    const estimateCost = (
+      promptTokens: number,
+      cachedTokens: number,
+      completionTokens: number,
+    ) =>
+      ((promptTokens - cachedTokens) / 1_000_000) * 0.4 +
+      (cachedTokens / 1_000_000) * 0.1 +
+      (completionTokens / 1_000_000) * 1.6;
+
+    const cachedPromptTokens = tokenStats.totalCachedTokens;
+    const costUsd = estimateCost(
+      tokenStats.totalPromptTokens,
+      cachedPromptTokens,
+      tokenStats.totalCompletionTokens,
+    );
+    // Cost of the text-only second-pass classification calls (subset of total).
+    const classifyCostUsd = estimateCost(
+      tokenStats.classifyPromptTokens,
+      tokenStats.classifyCachedTokens,
+      tokenStats.classifyCompletionTokens,
+    );
     console.log(`[tokens] ===== SUMMARY =====`);
     console.log(
-      `[tokens] Prompt tokens total:     ${tokenStats.totalPromptTokens}`,
+      `[tokens] Prompt tokens total:     ${tokenStats.totalPromptTokens} (cached ${cachedPromptTokens})`,
     );
     console.log(
       `[tokens] Completion tokens total: ${tokenStats.totalCompletionTokens}`,
     );
     console.log(`[tokens] Grand total:             ${totalTokens}`);
     console.log(
-      `[tokens] Est. text cost (USD):    $${costUsd.toFixed(4)} (excl. image tokens)`,
+      `[tokens] Classification pass:     prompt=${tokenStats.classifyPromptTokens} (cached ${tokenStats.classifyCachedTokens}) compl=${tokenStats.classifyCompletionTokens} → $${classifyCostUsd.toFixed(4)}`,
+    );
+    console.log(
+      `[tokens] Est. total cost (USD):   $${costUsd.toFixed(4)} (all-in: vision prompt incl. images + completion + classification pass)`,
     );
     console.log(
       `[tokens] knownProducts chars:     ${knownProductsPrompt.length} ≈ ${Math.round(knownProductsPrompt.length / 4)} est. tokens`,
@@ -1345,14 +1509,21 @@ ${knownProductsPrompt}`;
 
     const result: Record<string, unknown> = {
       meta,
-      items: foodItems,
+      items: pricedItems,
       detectedShop: detectedShop ?? null,
       detectedCountry: detectedCountry ?? null,
       tokenStats: {
         promptTokens: tokenStats.totalPromptTokens,
+        cachedPromptTokens: tokenStats.totalCachedTokens,
         completionTokens: tokenStats.totalCompletionTokens,
         totalTokens,
         estimatedCostUsd: parseFloat(costUsd.toFixed(4)),
+        classificationPass: {
+          promptTokens: tokenStats.classifyPromptTokens,
+          cachedPromptTokens: tokenStats.classifyCachedTokens,
+          completionTokens: tokenStats.classifyCompletionTokens,
+          estimatedCostUsd: parseFloat(classifyCostUsd.toFixed(4)),
+        },
         batches: tokenStats.batches,
         knownProductsChars: knownProductsPrompt.length,
       },
