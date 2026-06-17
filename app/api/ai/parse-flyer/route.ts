@@ -171,7 +171,12 @@ function cleanSupplementalNote(note: string): string {
   cleaned = cleaned
     // per-unit prices and technical price formulas belong nowhere in the product record
     .replace(
-      /\(?\s*=\s*1\s*(kg|l|liter|litre|pranie|dávka|porcia)\s+[^),;]+[),;]?/gi,
+      /\(?\s*=\s*1\s*(kg|l|liter|litre|pranie|dávka|porcia)\b[\s\d.,/€-]*\)?/gi,
+      " ",
+    )
+    // bare per-kg/per-100g price like "1 kg 9,95", "cena za 1 kg 9,95 €", "1 kg od /", "1 kg 1,73 / 1,98"
+    .replace(
+      /(cena\s+za\s+)?\b1\s*(kg|l|liter|litre)\b\s*(od\b)?[\s\d.,/€-]*/gi,
       " ",
     )
     .replace(/\b(1\s*(kg|l|liter|litre))\s*[=:]\s*\d+[,.]\d+\s*€?/gi, " ")
@@ -179,6 +184,21 @@ function cleanSupplementalNote(note: string): string {
     .replace(/\bB-?C\s*\d+[,.]\d+[^,;]*/gi, " ")
     .replace(/\bdiscount\s*\d+%/gi, " ")
     .replace(/[-–]\s*\d+\s*%/g, " ")
+    // bare "discount/sale" words are not useful metadata (the price fields already say it)
+    .replace(
+      /\b(z[ľl]ava|sleva|akci[ae]|akcj\w*|zni[zż]k\w*|rabat\w*|obni[zż]k\w*|promocj\w*|sleva|wyprzeda[zż]\w*)\b/gi,
+      " ",
+    )
+    // leftover lone slash / "od" after a price was stripped
+    .replace(/\s+\/\s+/g, " ")
+    .replace(/(^|,)\s*\/\s*(?=,|$)/g, "$1")
+    // a bare currency symbol is never useful in a note (prices are excluded by design)
+    .replace(/€/g, " ")
+    // remove parentheses/brackets left empty after a price was stripped, e.g. "( )", "(=)", "( - )"
+    .replace(/[([{][^\p{L}\p{N}]*[)\]}]/gu, " ")
+    // drop a lone dangling open/close bracket with no real content around it
+    .replace(/\s[([{]\s|\s[)\]}]\s/g, " ")
+    .replace(/^\s*[)\]}]\s*|\s*[([{]\s*$/g, "")
     // remove empty generic packaging notes when amount/unit already captured it
     .replace(/^(s\s+)?balením$/i, "")
     .replace(/^balenie$/i, "")
@@ -774,7 +794,7 @@ export async function POST(req: Request) {
     const privateLabelHint =
       shopOwnBrands.length > 0
         ? `\n\nRETAILER PRIVATE LABELS (own brands of this shop): ${shopOwnBrands.join(", ")}.
-- Use one of these own brands ONLY when you can clearly see its own-brand logo/badge on THIS product's own package or printed inside its own offer tile — e.g. Kaufland's "K-Classic" badge = a red "K" square with the word "CLASSIC". Read the actual badge; do not infer it from the product looking generic. If a printed third-party brand is shown instead (e.g. "Vegeta", "Haribo", "Lindt"), use that brand.
+- Use one of these own brands when you can clearly see its own-brand logo on THIS product — printed ON the package itself OR as a badge beside its title. Kaufland's "K-Classic" logo = a RED square containing a white "K" with the white word "CLASSIC"; whenever you see that red-K + white-"CLASSIC" logo on a product, its brand is "K-Classic" → put "K-Classic" at the START of the name. Read the actual logo; do not infer it just because a product looks generic. If a DIFFERENT manufacturer brand is printed on the pack (e.g. "Vegeta", "Haribo", "Lindt"), that brand wins — use it instead of the store own brand.
 - The badge must belong to THIS product. Do NOT carry a badge or brand over from a neighbouring offer tile (tiles are packed close together). Country-of-origin flags/coats-of-arms ("made in"), quality seals, award medals, eco/bio/vegan logos, and the plain store name ("Kaufland", "Lidl") are NOT product brands.
 - If the product shows no clearly readable brand AND no own-brand badge of its own (e.g. packaging shows only a generic product type like "VLOČKY"), leave the brand EMPTY. An empty brand is better than a guessed one.`
         : "";
@@ -784,8 +804,8 @@ export async function POST(req: Request) {
 TASK: Extract only food, drinks and alcohol. One visible offer = one record. Include small corner products if edible. Skip non-food and pure campaign/legal areas.
 
 NAME (short, clean):
-- BRAND FIRST: if a brand is clearly printed on THAT pack, start with it + product type, e.g. "Lindt Lindor čokoládové pralinky", "Davidoff instantná káva". Check the logo even on small/dark/glossy packs. Add the sub-brand/line if printed together (e.g. "Lindt Lindor", "Figaro Tatiana", "Haribo Goldbären"). Write the brand exactly as printed; do not translate it.
-- Only use a brand you can actually read for that product. Never guess it, copy it from a neighbour, or invent one that does not fit the product (e.g. lollipops are not "Skittles"). If unsure, omit the brand.
+- BRAND FIRST (always): actively look for the product's brand on its package before naming it — check the logo even on small/dark/glossy packs; most packaged products do carry a brand, so make the effort and try not to leave it missing. When a brand is readable, the name MUST start with it, then the product type. Even if the flyer writes the product type first, REORDER so the brand leads: write "Brand + product type", never "product type + Brand". Examples: "Lindt Lindor čokoládové pralinky", "Davidoff instantná káva". Add the sub-brand/line if printed together (e.g. "Lindt Lindor", "Figaro Tatiana", "Haribo Goldbären"). Write the brand exactly as printed; do not translate it.
+- Use only a brand you can actually read for that product. Never invent one, guess it, or copy it from a neighbouring tile (e.g. lollipops are not automatically "Skittles"). If you truly cannot read any brand, leave it out — but only as a last resort, after genuinely looking.
 - Keep the product term in the flyer's language; do not translate. Prefer text attached to the same pack; prefer a short clean name over a long uncertain one.
 - Exclude retailer names, loyalty programs, slogans, headers, campaign/award/QR/website text, and sale/package details.${privateLabelHint}
 
