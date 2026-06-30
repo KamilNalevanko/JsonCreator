@@ -296,6 +296,22 @@ const getTodayDate = (): string => {
   return formatDateToSk(today);
 };
 
+// Canonicalize any user/AI date to "DD.MM.YYYY" (zero-padded) so the flyer file and
+// the DB never hold mixed formats (e.g. "24.6.2026" vs "24.06.2026"), which break the
+// <input type="date"> round-trip and confuse consumers. Unparseable input is kept as-is.
+const normalizeSkDate = (value?: string): string => {
+  const s = (value ?? "").trim();
+  if (!s) return "";
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return `${iso[3].padStart(2, "0")}.${iso[2].padStart(2, "0")}.${iso[1]}`;
+  const dmy = s.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{2,4})$/);
+  if (dmy) {
+    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    return `${dmy[1].padStart(2, "0")}.${dmy[2].padStart(2, "0")}.${year}`;
+  }
+  return s;
+};
+
 const formatDateRange = (dateFrom?: string, dateTo?: string) => {
   if (dateFrom && dateTo) {
     if (dateFrom === dateTo) return dateFrom;
@@ -1401,8 +1417,8 @@ export default function Home() {
       "Akciová cena": normalizePrice(form.priceSale),
       "Akciová jednotková cena": normalizePrice(form.priceSaleUnit),
       "Doplnková Informácia": form.info?.trim() || "",
-      "Dátum akcie od": form.dateFrom?.trim() || "",
-      "Dátum akcie do": form.dateTo?.trim() || "",
+      "Dátum akcie od": normalizeSkDate(form.dateFrom),
+      "Dátum akcie do": normalizeSkDate(form.dateTo),
       "Obchody": shops,
     };
 
@@ -1618,8 +1634,8 @@ export default function Home() {
       "Akciová cena": normalizePrice(form.priceSale),
       "Akciová jednotková cena": normalizePrice(form.priceSaleUnit),
       "Doplnková Informácia": form.info?.trim() || "",
-      "Dátum akcie od": form.dateFrom?.trim() || "",
-      "Dátum akcie do": form.dateTo?.trim() || "",
+      "Dátum akcie od": normalizeSkDate(form.dateFrom),
+      "Dátum akcie do": normalizeSkDate(form.dateTo),
       "Obchody": shops,
     };
 
@@ -2284,6 +2300,18 @@ const deleteDebugFile = async () => {
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
                       </div>
+                      {/* R5: Duplikovať — 1:1 kópia hneď pod tento produkt */}
+                      <div className="flex justify-end border-t border-black/[0.05] pt-1">
+                        <button
+                          tabIndex={-1}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => setAiExtracted(prev => [...prev.slice(0, idx + 1), JSON.parse(JSON.stringify(item)) as AiExtractItem, ...prev.slice(idx + 1)])}
+                          className="flex items-center gap-1 rounded-md bg-black/[0.04] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--muted)] transition hover:bg-black/[0.08] hover:text-[color:var(--ink)]"
+                          title={t("ai_duplicate") ?? "Duplikovať"}
+                        >
+                          <span className="text-xs leading-none">⧉</span> {t("ai_duplicate") ?? "Duplikovať"}
+                        </button>
+                      </div>
                     </div>
                     {/* + button at end of each page group */}
                     {(idx === aiExtracted.length - 1 || aiExtracted[idx + 1]?.page !== item.page) && (
@@ -2377,11 +2405,19 @@ const deleteDebugFile = async () => {
                           setIsAiSaving(true);
                           setAiSaveStatus(null);
                           try {
+                            // Canonicalize dates once so the DB and the flyer file always
+                            // agree and never carry mixed formats (e.g. "24.6.2026").
+                            const saveItems = aiExtracted.map((it) => ({
+                              ...it,
+                              date_from: normalizeSkDate(it.date_from),
+                              date_to: normalizeSkDate(it.date_to),
+                            }));
+
                             // 1) Uložiť/aktualizovať produkty v DB
                             const dbRes = await fetch("/api/ai/bulk-save", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ country: aiSaveCountry, shop: aiSaveShop, items: aiExtracted }),
+                              body: JSON.stringify({ country: aiSaveCountry, shop: aiSaveShop, items: saveItems }),
                             });
                             const dbJson = await dbRes.json();
                             if (!dbJson.ok) {
@@ -2391,7 +2427,7 @@ const deleteDebugFile = async () => {
 
                             // 2) Zostaviť letákový JSON z aiExtracted
                             const productMap = new Map<string, FlyerProduct[]>();
-                            for (const item of aiExtracted) {
+                            for (const item of saveItems) {
                               if (!item.name?.trim()) continue;
                               const cat = item.categoryKey || "";
                               const sub = item.subcategoryKey || "";

@@ -87,27 +87,42 @@ function pad2(value: string): string {
   return value.padStart(2, "0");
 }
 
+// Canonicalize any flyer date to a single format: "DD.MM.YYYY" (zero-padded).
+// The AI may return "24.6.2026", "24. 6. 2026" or "2026-06-24"; mixed formats in
+// one flyer break the editor's <input type="date"> round-trip and confuse the app.
+// Unknown / unparseable input is returned trimmed so we never invent a date.
+function normalizeSkDate(value: unknown): string {
+  const s = (value === null || value === undefined ? "" : String(value)).trim();
+  if (!s) return "";
+  // ISO: YYYY-MM-DD
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return `${pad2(iso[3])}.${pad2(iso[2])}.${iso[1]}`;
+  // DMY: D.M.YYYY / D. M. YYYY / D.M.YY
+  const dmy = s.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{2,4})$/);
+  if (dmy) {
+    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    return `${pad2(dmy[1])}.${pad2(dmy[2])}.${year}`;
+  }
+  return s;
+}
+
 function detectFlyerDateRange(
   text: string,
 ): { date_from: string; date_to: string } | null {
-  const patterns = [
-    /plat[íi]\s+od\s+(\d{1,2})\.\s*(\d{1,2})\.?\s+do\s+(\d{1,2})\.\s*(\d{1,2})\.?\s*(20\d{2})/i,
-    /od\s+\w+\s+(\d{1,2})\.\s*(\d{1,2})\.?\s+do\s+(\d{1,2})\.\s*(\d{1,2})\.?\s*(20\d{2})/i,
-    /od\s+(\d{1,2})\.\s*(\d{1,2})\.?\s+do\s+(\d{1,2})\.\s*(\d{1,2})\.?\s*(20\d{2})/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const [, d1, m1, d2, m2, year] = match;
-      return {
-        date_from: `${pad2(d1)}.${pad2(m1)}.${year}`,
-        date_to: `${pad2(d2)}.${pad2(m2)}.${year}`,
-      };
-    }
-  }
-
-  return null;
+  // Matches "…platí/platia od [deň] D. M. do [deň] D. M. YYYY"
+  // ("platí" = Billa, "platia" = Tesco "Ceny platia"; optional weekday word).
+  // FIRST match wins: the page/offer header sits ABOVE any repeated footer or
+  // legal line that restates the whole-flyer validity (and above narrower
+  // sub-offers), so the first hit is the authoritative range for this text.
+  const re =
+    /plat(?:í|ia)\s+od\s+(?:\p{L}+\s+)?(\d{1,2})\.\s*(\d{1,2})\.?\s+do\s+(?:\p{L}+\s+)?(\d{1,2})\.\s*(\d{1,2})\.?\s*(20\d{2})/iu;
+  const m = text.match(re);
+  if (!m) return null;
+  const [, d1, m1, d2, m2, year] = m;
+  return {
+    date_from: `${pad2(d1)}.${pad2(m1)}.${year}`,
+    date_to: `${pad2(d2)}.${pad2(m2)}.${year}`,
+  };
 }
 
 function cleanProductName(name: string, retailerHints: string[]): string {
@@ -184,6 +199,17 @@ function cleanSupplementalNote(note: string): string {
     .replace(/\bB-?C\s*\d+[,.]\d+[^,;]*/gi, " ")
     .replace(/\bdiscount\s*\d+%/gi, " ")
     .replace(/[-–]\s*\d+\s*%/g, " ")
+    // deposit / returnable-packaging fee is never useful in a product note
+    // (SK/CZ "záloha (za vratný obal)", PL "kaucja", DE "Pfand"); strips a trailing price too
+    .replace(
+      /,?\s*(?:z[áa]loh\w*|kaucj\w*|pfand)\w*[^,;0-9]*(?:\d+[,.]\d+)?/gi,
+      " ",
+    )
+    // loyalty-card per-unit comparison price, e.g. "= 9,68 s Clubcard", "= 5,53 s kartou"
+    .replace(
+      /,?\s*=?\s*(?:\d+[,.]\d+\s*)?(?:s|z|so|with)?\s*(?:clubcard|kart[a-ząé]*)\b\w*/gi,
+      " ",
+    )
     // bare "discount/sale" words are not useful metadata (the price fields already say it)
     .replace(
       /\b(z[ľl]ava|sleva|akci[ae]|akcj\w*|zni[zż]k\w*|rabat\w*|obni[zż]k\w*|promocj\w*|sleva|wyprzeda[zż]\w*)\b/gi,
@@ -264,10 +290,21 @@ function normalizeExtractedAmountUnitNote(
   unitValue: unknown,
   noteValue: unknown,
 ): { amount: string; unit: string; note: string } {
-  const amount =
+  let amount =
     amountValue === null || amountValue === undefined
       ? ""
       : String(amountValue).trim();
+  // The model sometimes puts the unit into "amount" (e.g. "500 g", "110 ml").
+  // Amount must stay a bare number — the unit belongs in `unit`. Strip a trailing
+  // unit, both glued ("500g") and space-separated ("500 g"). For multipacks this
+  // only drops the final unit token (e.g. "8 x 0,5 l + 4 l" → "8 x 0,5 l + 4").
+  amount = amount
+    .replace(/^([\d.,]+)(kg|dkg|dag|hg|mg|g|ml|cl|dl|l|ks)\.?$/i, "$1")
+    .replace(
+      /\s+(kg|dkg|dag|hg|mg|g|ml|cl|dl|l|ks|kus(?:y|ov)?|pcs?|zv[äa]zok|svaz[eo]k|p[ęe]czek)\.?\s*$/i,
+      "",
+    )
+    .trim();
   let unit =
     unitValue === null || unitValue === undefined
       ? ""
@@ -809,7 +846,7 @@ NAME (short, clean):
 - Keep the product term in the flyer's language; do not translate. Prefer text attached to the same pack; prefer a short clean name over a long uncertain one.
 - Exclude retailer names, loyalty programs, slogans, headers, campaign/award/QR/website text, and sale/package details.${privateLabelHint}
 
-NOTE (short) — put here, not in name: various kinds/flavours; counter/loose/by weight; chilled/frozen/packaged; without giblets/bone; multipack or 1+1/3+3; deposit & card/coupon conditions; drained weight; special offer/while stocks last. Exclude % discounts, crossed prices, per-kg/per-l formulas, legal text and marketing copy.
+NOTE (short) — put here, not in name: various kinds/flavours; counter/loose/by weight; chilled/frozen/packaged; without giblets/bone; multipack or 1+1/3+3; drained weight; special offer/while stocks last. NEVER put in note (exclude entirely): deposit / returnable-packaging fees in ANY language (e.g. "záloha za vratný obal 0,15", "zálohované obaly", "kaucja za butelkę", "Pfand"); % discounts; crossed-out prices; per-kg/per-l comparison prices including loyalty-card formulas (e.g. "= 9,68 s Clubcard"); legal text and marketing copy.
 
 AMOUNT/UNIT:
 - "amount" = string (never a number); the sold package amount, not the per-kg/per-l comparison.
@@ -1059,6 +1096,22 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
       meta.date_from = detectedDateRange.date_from;
       meta.date_to = detectedDateRange.date_to;
     }
+    // Canonicalize the global meta so any AI-provided fallback date is consistent too.
+    meta.date_from = normalizeSkDate(meta.date_from);
+    meta.date_to = normalizeSkDate(meta.date_to);
+
+    // Per-page validity: many flyers print a different "platí/platia od … do …"
+    // header on each page (e.g. Tesco: page 1 = 24.6–30.6, page 2 = 24.6–7.7,
+    // page 3 = 16.6–29.6). Detect each page's own range from its text layer so a
+    // product gets its page's dates instead of one global range for the whole flyer.
+    const pageDateRanges = new Map<
+      number,
+      { date_from: string; date_to: string }
+    >();
+    for (const pg of pageImages) {
+      const r = detectFlyerDateRange(pg.textData);
+      if (r) pageDateRanges.set(pg.pageNum, r);
+    }
 
     // Sort by page number numerically before deduplication
     allProducts.sort((a, b) => (a.page ?? 0) - (b.page ?? 0));
@@ -1125,6 +1178,9 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
       const moved = moveNameDetailsToNote(cleanedBaseName, normalized.note);
 
       const parent = pk ? placementLookup[pk] : undefined;
+      // Use this product's page-specific validity when detected, else the global range.
+      const pageRange =
+        item.page != null ? pageDateRanges.get(item.page) : undefined;
       return {
         name: moved.name,
         amount: normalized.amount,
@@ -1132,8 +1188,8 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
         price_sale: item.price_sale || "",
         price_regular: item.price_regular || "",
         note: moved.note,
-        date_from: meta.date_from,
-        date_to: meta.date_to,
+        date_from: normalizeSkDate(pageRange?.date_from || meta.date_from),
+        date_to: normalizeSkDate(pageRange?.date_to || meta.date_to),
         page: item.page ?? null,
         categoryKey: parent?.categoryKey || "",
         subcategoryKey: parent?.subcategoryKey || "",

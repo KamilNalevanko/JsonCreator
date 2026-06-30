@@ -614,6 +614,18 @@
           {
             "Zaradenie": "gulatozrnn_r_yza",
             "Produkty": []
+          },
+          {
+            "Zaradenie": "dlhozrnn_r_yza",
+            "Produkty": []
+          },
+          {
+            "Zaradenie": "basmati",
+            "Produkty": []
+          },
+          {
+            "Zaradenie": "jazm_nov_r_yza",
+            "Produkty": []
           }
         ]
       },
@@ -970,7 +982,7 @@
         "Podkategória": "sirupy",
         "Zaradenia": [
           {
-            "Zaradenie": "ovocn",
+            "Zaradenie": "ovocn_sirupy",
             "Produkty": []
           },
           {

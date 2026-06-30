@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rogue-tides-3d",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "5603", "--directory", "D:/Projekty/rogue-tides-3d"],
+      "port": 5603
+    }
+  ]
+}

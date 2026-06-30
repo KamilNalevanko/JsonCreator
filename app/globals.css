@@ -219,6 +219,18 @@ body {
   background-color: #101814 !important;
 }
 
+/* Editing highlight (karta práve v úprave) — v tmavom režime jemná amber
+   namiesto svetlej oranžovej, ktorá v dark mode reže oči. */
+[data-theme="dark"] .bg-orange-50 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+[data-theme="dark"] .border-orange-400 {
+  border-color: rgba(245, 158, 11, 0.55) !important;
+}
+[data-theme="dark"] .ring-orange-200 {
+  --tw-ring-color: rgba(245, 158, 11, 0.25) !important;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator {
   display: none;
 }
