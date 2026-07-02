@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  normalizeNameKey,
+  normalizePrice,
+  calculateUnitPrice,
+} from "../../../../lib/normalize";
 
 interface AiItem {
   name: string;
@@ -15,30 +20,9 @@ interface AiItem {
   placementKey?: string;
 }
 
-const normalizeNameKey = (value: string) =>
-  (value || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
-
 /* Pomocná fn: vráti novú hodnotu, ale ak je prázdna, ponechá starú z DB */
 const mergeField = (aiValue: string, dbValue: string) =>
   aiValue || dbValue || "";
-
-/* Vypočíta jednotkovú cenu (rovnaká logika ako na frontende) */
-const calculateUnitPrice = (price: string, amount: string, unit: string): string => {
-  if (!price?.trim() || !amount?.trim()) return "";
-  const priceNum = parseFloat(price.replace(",", "."));
-  const amountNum = parseFloat(amount.replace(",", "."));
-  if (isNaN(priceNum) || isNaN(amountNum) || amountNum === 0) return "";
-  let multiplier = 1;
-  if (unit === "g" || unit === "ml") multiplier = 1000;
-  const unitPrice = (priceNum / amountNum) * multiplier;
-  return unitPrice.toFixed(2).replace(".", ",");
-};
 
 export async function POST(req: Request) {
   try {
@@ -120,6 +104,13 @@ export async function POST(req: Request) {
 
       const resolvedAmount = mergeField(item.amount || "", db.amount || "");
       const resolvedUnit = mergeField(item.unit || "", db.unit || "");
+      // Canonical comma-decimal prices so the DB never mixes "0.45" and "0,45".
+      const resolvedPriceRegular = normalizePrice(
+        mergeField(item.price_regular || "", db.price_regular || "")
+      );
+      const resolvedPriceSale = normalizePrice(
+        mergeField(item.price_sale || "", db.price_sale || "")
+      );
 
       return {
         country,
@@ -131,15 +122,15 @@ export async function POST(req: Request) {
         placement: resolvedPlacement,
         amount: resolvedAmount,
         unit: resolvedUnit,
-        price_regular: mergeField(item.price_regular || "", db.price_regular || ""),
+        price_regular: resolvedPriceRegular,
         price_regular_unit: calculateUnitPrice(
-          mergeField(item.price_regular || "", db.price_regular || ""),
+          resolvedPriceRegular,
           resolvedAmount,
           resolvedUnit
         ),
-        price_sale: mergeField(item.price_sale || "", db.price_sale || ""),
+        price_sale: resolvedPriceSale,
         price_sale_unit: calculateUnitPrice(
-          mergeField(item.price_sale || "", db.price_sale || ""),
+          resolvedPriceSale,
           resolvedAmount,
           resolvedUnit
         ),

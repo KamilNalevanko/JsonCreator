@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { normalizeNameKey } from "../../../../lib/normalize";
 
 type ProductIdentity = {
   "Názov"?: string;
@@ -7,15 +8,6 @@ type ProductIdentity = {
   "Podkategória"?: string;
   "Zaradenie"?: string;
 };
-
-const normalizeNameKey = (value: string) =>
-  (value || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
 
 export async function POST(req: Request) {
   try {

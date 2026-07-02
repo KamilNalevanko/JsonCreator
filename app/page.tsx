@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import {
+  normalizeSkDate,
+  normalizePrice as canonicalizePrice,
+  calculateUnitPrice,
+} from "../lib/normalize";
 import hierarchyData from "../assets/hierarchia.json";
 import skLabels from "../assets/langs/sk.json";
 import czLabels from "../assets/langs/cs.json";
@@ -129,25 +133,8 @@ const normalizeAiExtractItem = (item: unknown): AiExtractItem => {
   };
 };
 
-const calculateUnitPrice = (price: unknown, amount: unknown, unit: unknown): string => {
-  const priceText = toText(price);
-  const amountText = toText(amount);
-  const unitText = toText(unit);
-  if (!priceText || !amountText) return '';
-  const priceNum = parseFloat(priceText.replace(',', '.'));
-  const amountNum = parseFloat(amountText.replace(',', '.'));
-  if (isNaN(priceNum) || isNaN(amountNum) || amountNum === 0) return '';
-  
-  // Pre gramy a mililitry prepočítaj na kg/l (vynásob 1000)
-  let multiplier = 1;
-  if (unitText === 'g' || unitText === 'ml') {
-    multiplier = 1000;
-  }
-  
-  const unitPrice = (priceNum / amountNum) * multiplier;
-  return unitPrice.toFixed(2).replace('.', ',');
-};
-
+// calculateUnitPrice + date/price canonicalization now live in lib/normalize.ts
+// (shared with the API routes — single source of truth).
 const normalizePrice = (value: string) => (value || "").replace(/\./g, ",").trim();
 
 const foldSpecialLatin = (s: string) =>
@@ -299,19 +286,6 @@ const getTodayDate = (): string => {
 // Canonicalize any user/AI date to "DD.MM.YYYY" (zero-padded) so the flyer file and
 // the DB never hold mixed formats (e.g. "24.6.2026" vs "24.06.2026"), which break the
 // <input type="date"> round-trip and confuse consumers. Unparseable input is kept as-is.
-const normalizeSkDate = (value?: string): string => {
-  const s = (value ?? "").trim();
-  if (!s) return "";
-  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) return `${iso[3].padStart(2, "0")}.${iso[2].padStart(2, "0")}.${iso[1]}`;
-  const dmy = s.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{2,4})$/);
-  if (dmy) {
-    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
-    return `${dmy[1].padStart(2, "0")}.${dmy[2].padStart(2, "0")}.${year}`;
-  }
-  return s;
-};
-
 const formatDateRange = (dateFrom?: string, dateTo?: string) => {
   if (dateFrom && dateTo) {
     if (dateFrom === dateTo) return dateFrom;
@@ -339,6 +313,13 @@ export default function Home() {
   const [aiCountry, setAiCountry] = useState("");
   const [aiPdfFile, setAiPdfFile] = useState<File | null>(null);
   const [aiExtracted, setAiExtracted] = useState<AiExtractItem[]>([]);
+  // Bulk date range (DD.MM.YYYY) applied to the whole flyer.
+  const [bulkDateFrom, setBulkDateFrom] = useState("");
+  const [bulkDateTo, setBulkDateTo] = useState("");
+  // Per-page date range (DD.MM.YYYY), keyed by page number.
+  const [pageDates, setPageDates] = useState<
+    Record<number, { from: string; to: string }>
+  >({});
   const [aiExtractMeta, setAiExtractMeta] = useState<AiExtractMeta>({});
   const [aiExtractStatus, setAiExtractStatus] = useState("");
   const [aiExtractError, setAiExtractError] = useState("");
@@ -383,7 +364,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [bucketPath, setBucketPath] = useState("sk");
   const [editingLoadedRef, setEditingLoadedRef] = useState<LoadedProductRef | null>(null);
   const [dbEditRef, setDbEditRef] = useState<LoadedProductRef | null>(null);
@@ -643,6 +623,16 @@ export default function Home() {
       setAiExtractStatus(
         `${t("ai_found_items")}: ${items.length}`
       );
+
+      // Coverage warnings from the server: pages where fewer offers were
+      // extracted than the text layer suggests — surface them so nothing
+      // disappears silently.
+      const warnings = Array.isArray(payload?.coverageWarnings)
+        ? (payload.coverageWarnings as string[]).filter(
+            (w) => typeof w === "string" && w.trim(),
+          )
+        : [];
+      setAiExtractError(warnings.length ? `⚠ ${warnings.join(" · ")}` : "");
     } catch (err) {
       const message = err instanceof Error ? err.message : t("ai_extract_failed");
       setAiExtractError(message);
@@ -690,15 +680,6 @@ export default function Home() {
     const normalized = normalizeShopToken(shop);
     return normalized ? [normalized] : [];
   };
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-  const supabase = useMemo(() => {
-    if (!supabaseUrl || !supabaseKey) {
-      return null;
-    }
-    return createClient(supabaseUrl, supabaseKey);
-  }, [supabaseUrl, supabaseKey]);
 
   const formatCategoryPath = (cat?: string, subcat?: string, placement?: string) => {
     const parts = [cat, subcat, placement].filter(Boolean).map(p => locLabelFor(p));
@@ -1777,6 +1758,51 @@ export default function Home() {
     }
   };
 
+  // <input type="date"> gives ISO "YYYY-MM-DD"; the app works in "DD.MM.YYYY".
+  const isoToSk = (v: string) => (v ? v.split("-").reverse().join(".") : "");
+  const skToIso = (v: string) => (v ? v.split(".").reverse().join("-") : "");
+
+  // Apply the whole-flyer OD/DO range to every product.
+  // Only fields that were filled in are overwritten.
+  const applyBulkDates = () => {
+    const df = normalizeSkDate(bulkDateFrom);
+    const dt = normalizeSkDate(bulkDateTo);
+    if (!df && !dt) return;
+    setAiExtracted((prev) =>
+      prev.map((it) => ({
+        ...it,
+        ...(df ? { date_from: df } : {}),
+        ...(dt ? { date_to: dt } : {}),
+      })),
+    );
+  };
+
+  const setPageDate = (page: number, field: "from" | "to", value: string) => {
+    setPageDates((prev) => {
+      const cur = prev[page] || { from: "", to: "" };
+      return { ...prev, [page]: { ...cur, [field]: value } };
+    });
+  };
+
+  // Apply this page's own OD/DO range to the products on that page only.
+  const applyPageDates = (page: number) => {
+    const pd = pageDates[page] || { from: "", to: "" };
+    const df = normalizeSkDate(pd.from);
+    const dt = normalizeSkDate(pd.to);
+    if (!df && !dt) return;
+    setAiExtracted((prev) =>
+      prev.map((it) =>
+        it.page !== page
+          ? it
+          : {
+              ...it,
+              ...(df ? { date_from: df } : {}),
+              ...(dt ? { date_to: dt } : {}),
+            },
+      ),
+    );
+  };
+
 
   const focusNameInput = () => {
   requestAnimationFrame(() => {
@@ -1995,59 +2021,6 @@ export default function Home() {
 
 
 
-const deleteDebugFile = async () => {
-  setError("");
-  setStatus("");
-
-  if (!supabase) {
-    setError(t("error_supabase_env"));
-    return;
-  }
-
-  const countryFolder = "sk";
-  const fileName = "lidl.json";
-  const filePath = `databazy/${countryFolder}/${fileName}`;
-
-  if (!confirm(`Naozaj chces zmazat ${filePath}?`)) return;
-
-  try {
-    setIsDeleting(true);
-
-    // 1) Skús rovno zmazať – ak nemáš práva, uvidíš 403, ak neexistuje, uvidíš chybu/empty.
-    const { data, error } = await supabase.storage
-      .from("cap-data")
-      .remove([filePath]);
-
-    if (error) {
-      // Najčastejšie: 403 (policy), alebo 404 (path)
-      const detail = `${error.message} (status: ${error.statusCode ?? "?"}, code: ${(error as any).error ?? "?"}, path: ${filePath})`;
-      setError(t("error_upload_failed_detail", { message: detail }));
-      return;
-    }
-
-    // Supabase niekedy vráti data aj keď nič nezmazal? – ošetri prázdne.
-    if (!data || data.length === 0) {
-      setError(`Nepodarilo sa zmazať alebo súbor neexistuje: ${filePath}`);
-      return;
-    }
-
-    // data má položky s name/path podľa verzie SDK
-    const removedNames = data
-      .map((item: any) => item?.name ?? item?.path ?? filePath)
-      .join(", ");
-
-    setStatus(`Subor zmazany: ${removedNames}`);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    setError(t("error_upload_failed_detail", { message }));
-    console.error("Delete failed:", err);
-  } finally {
-    setIsDeleting(false);
-  }
-};
-
-
-
   return (
     <div className="relative min-h-screen">
       
@@ -2194,6 +2167,21 @@ const deleteDebugFile = async () => {
               ) : null}
 
               {aiExtracted.length > 0 ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--muted)]">{t("ai_bulk_dates") ?? "Hromadný dátum"}</span>
+                  <label className="flex items-center gap-1 text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                    {t("ai_label_from")}
+                    <input type="date" className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]" value={skToIso(bulkDateFrom)} onChange={e => setBulkDateFrom(isoToSk(e.target.value))} />
+                  </label>
+                  <label className="flex items-center gap-1 text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                    {t("ai_label_to")}
+                    <input type="date" className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]" value={skToIso(bulkDateTo)} onChange={e => setBulkDateTo(isoToSk(e.target.value))} />
+                  </label>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => applyBulkDates()} disabled={!bulkDateFrom && !bulkDateTo} className="rounded-md bg-black px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-black/75 disabled:opacity-40">{t("ai_apply_whole") ?? "Použiť na celý leták"}</button>
+                </div>
+              ) : null}
+
+              {aiExtracted.length > 0 ? (
                 <div className="mt-3 grid max-h-[580px] gap-2 overflow-y-auto rounded-xl bg-black/[0.03] p-2">
                   {aiExtracted.map((item, idx) => {
                       const showPageDivider = item.page != null && item.page !== aiExtracted[idx - 1]?.page;
@@ -2210,9 +2198,17 @@ const deleteDebugFile = async () => {
                       return (
                     <React.Fragment key={idx}>
                     {showPageDivider && (
-                      <div className="flex items-center gap-3 px-1 pt-3 pb-1">
-                        <div className="h-px w-4 bg-black/30" />
+                      <div className="flex flex-wrap items-center gap-2 px-1 pt-3 pb-1">
                         <span className="text-[11px] font-bold uppercase tracking-widest text-[color:var(--ink)]">{t("ai_page")} {item.page}</span>
+                        <label className="flex items-center gap-1 text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                          {t("ai_label_from")}
+                          <input type="date" className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-0.5 text-xs text-[color:var(--ink)]" value={skToIso(pageDates[item.page as number]?.from || "")} onChange={e => setPageDate(item.page as number, "from", isoToSk(e.target.value))} />
+                        </label>
+                        <label className="flex items-center gap-1 text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                          {t("ai_label_to")}
+                          <input type="date" className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-0.5 text-xs text-[color:var(--ink)]" value={skToIso(pageDates[item.page as number]?.to || "")} onChange={e => setPageDate(item.page as number, "to", isoToSk(e.target.value))} />
+                        </label>
+                        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => applyPageDates(item.page as number)} disabled={!(pageDates[item.page as number]?.from || pageDates[item.page as number]?.to)} className="shrink-0 rounded-md border border-black/20 px-2 py-0.5 text-[10px] font-semibold text-[color:var(--muted)] transition hover:border-black/40 hover:text-[color:var(--ink)] disabled:opacity-40">{t("ai_apply_page") ?? "Dátum na stranu"}</button>
                         <div className="h-px flex-1 bg-black/30" />
                       </div>
                     )}
@@ -2411,6 +2407,8 @@ const deleteDebugFile = async () => {
                               ...it,
                               date_from: normalizeSkDate(it.date_from),
                               date_to: normalizeSkDate(it.date_to),
+                              price_sale: canonicalizePrice(it.price_sale),
+                              price_regular: canonicalizePrice(it.price_regular),
                             }));
 
                             // 1) Uložiť/aktualizovať produkty v DB
@@ -3242,16 +3240,6 @@ placeholder={t("placeholder_extra_info")}
                     </button>
                   </>
                 )}
-                {/*
-                <button
-                  className="rounded-full border border-red-200 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-60"
-                  onClick={deleteDebugFile}
-                  type="button"
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? "Mažem..." : "Debug: zmazať lidl.json"}
-                </button>
-                */}
               </div>
             </div>
 

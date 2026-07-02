@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { normalizeNameKey } from "../../../../lib/normalize";
 
 type FlyerProduct = {
   "Názov": string;
@@ -17,15 +18,6 @@ type FlyerProduct = {
   "Dátum akcie do": string;
   "Obchody"?: string[];
 };
-
-const normalizeNameKey = (value: string) =>
-  (value || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
 
 const normalizeShops = (value?: string[]) =>
   Array.isArray(value) ? value.map((item) => String(item)) : [];

@@ -1,4 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  pad2,
+  fixFlyerYear,
+  normalizeSkDate,
+  normalizePrice,
+  capitalizeFirst,
+} from "../../../../lib/normalize";
 import hierarchyData from "../../../../assets/hierarchia.json";
 import skLabels from "../../../../assets/langs/sk.json";
 import czLabels from "../../../../assets/langs/cs.json";
@@ -17,6 +24,8 @@ interface Product {
   page?: number;
   placementKey?: string;
   food?: boolean;
+  date_from?: string;
+  date_to?: string;
 }
 
 interface ParsedResponse {
@@ -83,27 +92,56 @@ function detectShopAndCountry(text: string): {
   return { shop, country };
 }
 
-function pad2(value: string): string {
-  return value.padStart(2, "0");
+// Date/price/name normalization helpers are shared with the client — see lib/normalize.ts.
+
+// Some flyers (e.g. Biedronka) print a per-PRODUCT validity right in the product
+// text ("oferta od 29.06 do 4.07", "29.06-30.06"). Pull that range out so each
+// product gets its OWN dates instead of one page/flyer range. The year is optional
+// and defaults to the current year. Returns null when no clear range is present.
+function extractOfferDateRange(
+  text: string,
+): { date_from: string; date_to: string } | null {
+  const s = text || "";
+  const valid = (d: string, mo: string) => {
+    const dd = Number(d);
+    const mm = Number(mo);
+    return dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12;
+  };
+  const build = (
+    d1: string,
+    m1: string,
+    y1: string | undefined,
+    d2: string,
+    m2: string,
+    y2: string | undefined,
+  ) => ({
+    date_from: `${pad2(d1)}.${pad2(m1)}.${fixFlyerYear(y1 || "")}`,
+    date_to: `${pad2(d2)}.${pad2(m2)}.${fixFlyerYear(y2 || "")}`,
+  });
+  // "od 29.06 do 4.07" (years optional)
+  let m = s.match(
+    /\bod\s+(\d{1,2})\.\s*(\d{1,2})\.?(?:\s*(\d{2,4}))?\s+do\s+(\d{1,2})\.\s*(\d{1,2})\.?(?:\s*(\d{2,4}))?/i,
+  );
+  if (m && valid(m[1], m[2]) && valid(m[4], m[5]))
+    return build(m[1], m[2], m[3], m[4], m[5], m[6]);
+  // "29.06-30.06" dash range
+  m = s.match(
+    /(\d{1,2})\.\s*(\d{1,2})\.?(?:\s*(\d{2,4}))?\s*[-–]\s*(\d{1,2})\.\s*(\d{1,2})\.?(?:\s*(\d{2,4}))?/,
+  );
+  if (m && valid(m[1], m[2]) && valid(m[4], m[5]))
+    return build(m[1], m[2], m[3], m[4], m[5], m[6]);
+  return null;
 }
 
-// Canonicalize any flyer date to a single format: "DD.MM.YYYY" (zero-padded).
-// The AI may return "24.6.2026", "24. 6. 2026" or "2026-06-24"; mixed formats in
-// one flyer break the editor's <input type="date"> round-trip and confuse the app.
-// Unknown / unparseable input is returned trimmed so we never invent a date.
-function normalizeSkDate(value: unknown): string {
-  const s = (value === null || value === undefined ? "" : String(value)).trim();
-  if (!s) return "";
-  // ISO: YYYY-MM-DD
-  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) return `${pad2(iso[3])}.${pad2(iso[2])}.${iso[1]}`;
-  // DMY: D.M.YYYY / D. M. YYYY / D.M.YY
-  const dmy = s.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{2,4})$/);
-  if (dmy) {
-    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
-    return `${pad2(dmy[1])}.${pad2(dmy[2])}.${year}`;
+// Returns the first candidate that normalizes to a real "DD.MM.YYYY" date, else "".
+function firstValidSkDate(
+  ...candidates: (string | undefined | null)[]
+): string {
+  for (const c of candidates) {
+    const n = normalizeSkDate(c ?? "");
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(n)) return n;
   }
-  return s;
+  return "";
 }
 
 function detectFlyerDateRange(
@@ -115,7 +153,7 @@ function detectFlyerDateRange(
   // legal line that restates the whole-flyer validity (and above narrower
   // sub-offers), so the first hit is the authoritative range for this text.
   const re =
-    /plat(?:í|ia)\s+od\s+(?:\p{L}+\s+)?(\d{1,2})\.\s*(\d{1,2})\.?\s+do\s+(?:\p{L}+\s+)?(\d{1,2})\.\s*(\d{1,2})\.?\s*(20\d{2})/iu;
+    /(?:plat(?:í|ia)\s+)?od\s+(?:\p{L}+\s+)?(\d{1,2})\.\s*(\d{1,2})\.?\s+do\s+(?:\p{L}+\s+)?(\d{1,2})\.\s*(\d{1,2})\.?\s*(20\d{2})/iu;
   const m = text.match(re);
   if (!m) return null;
   const [, d1, m1, d2, m2, year] = m;
@@ -208,6 +246,16 @@ function cleanSupplementalNote(note: string): string {
     // loyalty-card per-unit comparison price, e.g. "= 9,68 s Clubcard", "= 5,53 s kartou"
     .replace(
       /,?\s*=?\s*(?:\d+[,.]\d+\s*)?(?:s|z|so|with)?\s*(?:clubcard|kart[a-ząé]*)\b\w*/gi,
+      " ",
+    )
+    // offer validity dates belong in the date fields, not the note
+    // ("oferta od 29.06 do 4.07", "oferta 29.06-30.06", "od 29.06 do 1.07")
+    .replace(
+      /,?\s*\boferta\b\s*(?:od\s*)?\d{1,2}\.\s*\d{1,2}\.?(?:\s*\d{2,4})?(?:\s*(?:do|[-–])\s*\d{1,2}\.\s*\d{1,2}\.?(?:\s*\d{2,4})?)?/gi,
+      " ",
+    )
+    .replace(
+      /,?\s*\bod\s+\d{1,2}\.\s*\d{1,2}\.?(?:\s*\d{2,4})?\s+do\s+\d{1,2}\.\s*\d{1,2}\.?(?:\s*\d{2,4})?/gi,
       " ",
     )
     // bare "discount/sale" words are not useful metadata (the price fields already say it)
@@ -305,6 +353,9 @@ function normalizeExtractedAmountUnitNote(
       "",
     )
     .trim();
+  // Canonical decimal separator: the model alternates "1.5" / "1,5" between
+  // runs — keep plain decimals comma-based like prices ("1.5" → "1,5").
+  if (/^\d+\.\d+$/.test(amount)) amount = amount.replace(".", ",");
   let unit =
     unitValue === null || unitValue === undefined
       ? ""
@@ -642,7 +693,7 @@ export async function POST(req: Request) {
 
     const PRODUCT_SCHEMA = `{
   "meta": { "date_from": "DD.MM.YYYY or null", "date_to": "DD.MM.YYYY or null" },
-  "products": [{ "name": "Brand + product when brand is readable, e.g. Lindt Lindor pralinky", "amount": "...", "unit": "g/kg/ml/l/ks/zväzok/null", "price_sale": "...", "price_regular": "...", "note": "...", "page": N, "placementKey": "...", "food": true }]
+  "products": [{ "name": "Brand + product when brand is readable, e.g. Lindt Lindor pralinky", "amount": "...", "unit": "g/kg/ml/l/ks/zväzok/null", "price_sale": "...", "note": "...", "page": N, "placementKey": "...", "food": true, "date_from": "DD.MM.YYYY or empty", "date_to": "DD.MM.YYYY or empty" }]
 }`;
 
     // Build placement lookup + translated list for AI
@@ -853,8 +904,15 @@ AMOUNT/UNIT:
 - "unit" ∈ {g, kg, ml, l, ks, zväzok, ""}; use "zväzok" for bunches. For multipacks, amount = one package, details in note.
 
 PRICES:
-- "price_sale" = main final customer price (card/coupon price only if it is the prominent advertised one).
-- "price_regular" = crossed-out old price if visible. Ignore bracketed comparison prices. Never invent prices.
+- Extract ONLY "price_sale" = the main final customer price of the offer (card/coupon/app price only if it is the prominent advertised one; then mention the condition in note, e.g. "s aplikací").
+- IGNORE every other number around the offer: crossed-out old prices, "BĚŽNÁ CENA", per-kg/per-l comparison prices, percentages. Do not output them anywhere.
+- Many flyers (especially Czech ones, prices in Kč) print the decimal part as SMALL RAISED digits after a big number (e.g. big "129" with a small "90" = 129,90). Read such a pair as ONE price with a decimal comma — never as two prices, never as "12990", and never guess missing decimals. In the TEXT LAYER such prices appear GLUED: "13990" means 139,90 and "5990" means 59,90 (the last two digits are the decimals).
+- Copy the price EXACTLY as printed on that offer. If you cannot clearly read it, leave it "" — an empty price is better than an estimated one. Never invent prices.
+
+DATES (per product):
+- If THIS product prints its OWN validity next to it (e.g. "oferta od 29.06 do 4.07", "29.06-30.06", "platí od…do…"), put that range in the product's "date_from"/"date_to" as DD.MM.YYYY. Copy the day and month exactly as printed. If the year is missing, still fill day.month and use the current year.
+- If the product has NO its own printed dates (validity comes only from a page/flyer header), leave "date_from"/"date_to" EMPTY — do not copy the header date into every product.
+- Do NOT keep offer dates in "note"; the date belongs only in the date fields.
 
 INPUT: each page = text layer + image. Use the text to verify names/brands/amounts/prices; use the image to map text to the right product and to read package logos. Ignore footer/banner/QR/website/non-food text.
 
@@ -1091,6 +1149,124 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
       if (Array.isArray(parsed.products)) allProducts.push(...parsed.products);
     }
 
+    // ─── Coverage check + automatic re-run of under-extracted pages ───
+    // A dense page sometimes comes back with only a couple of products (vision
+    // attention failure — e.g. a photo-collage page with 11 offers returning 2).
+    // Estimate the expected offer count from price-like tokens in the page's text
+    // layer (each offer prints regular+sale ≈ 2 tokens); if a page yielded less
+    // than half of that, re-analyze THAT page alone once with an explicit
+    // completeness instruction and merge the results (dedupe below removes overlaps).
+    const COVERAGE_MAX_RETRIES = Number(process.env.COVERAGE_MAX_RETRIES || 12);
+    const coverageWarnings: string[] = [];
+    {
+      const extractedPerPage = new Map<number, number>();
+      for (const p of allProducts) {
+        if (p.page != null)
+          extractedPerPage.set(p.page, (extractedPerPage.get(p.page) || 0) + 1);
+      }
+      const lowPages: { pageNum: number; expected: number; got: number }[] = [];
+      for (const pg of pageImages) {
+        const expected = Math.round(priceLikeCount(pg.textData) / 2);
+        const got = extractedPerPage.get(pg.pageNum) || 0;
+        if (expected >= 4 && got < expected * 0.5) {
+          lowPages.push({ pageNum: pg.pageNum, expected, got });
+        }
+      }
+
+      const parseLooseJson = (txt: string): ParsedResponse | null => {
+        try {
+          return JSON.parse(txt) as ParsedResponse;
+        } catch {
+          const a = txt.indexOf("{");
+          const b = txt.lastIndexOf("}");
+          if (a !== -1 && b > a) {
+            try {
+              return JSON.parse(txt.slice(a, b + 1)) as ParsedResponse;
+            } catch {
+              return null;
+            }
+          }
+          return null;
+        }
+      };
+
+      for (const low of lowPages.slice(0, COVERAGE_MAX_RETRIES)) {
+        const pg = pageImages.find((p) => p.pageNum === low.pageNum);
+        if (!pg) continue;
+        console.log(
+          `[coverage] Page ${low.pageNum}: extracted ${low.got}, expected ~${low.expected} — re-analyzing page alone`,
+        );
+        try {
+          const parsed = await callWithRetry(async () => {
+            const response = await createOpenAIChatCompletion({
+              model: (process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini").trim(),
+              response_format: { type: "json_object" },
+              temperature: 0,
+              max_completion_tokens: 24000,
+              messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: `Re-analysis of a single flyer page. This page contains approximately ${low.expected} distinct offers — extract EVERY one of them, including small tiles and corner offers. Do not stop early.`,
+                    },
+                    {
+                      type: "text",
+                      text: `=== PAGE ${pg.pageNum} TEXT LAYER ===\n${pg.textData || "(no text layer)"}`,
+                    },
+                    { type: "text", text: `=== PAGE ${pg.pageNum} IMAGE ===` },
+                    {
+                      type: "image_url",
+                      image_url: {
+                        url: `data:image/jpeg;base64,${pg.imageData}`,
+                        detail: IMAGE_DETAIL,
+                      },
+                    },
+                  ] as VisionContentPart[],
+                },
+              ],
+            });
+            const usage = response.usage;
+            if (usage) {
+              tokenStats.totalPromptTokens += usage.prompt_tokens;
+              tokenStats.totalCompletionTokens += usage.completion_tokens;
+              tokenStats.totalCachedTokens +=
+                usage.prompt_tokens_details?.cached_tokens || 0;
+            }
+            const txt = response.choices?.[0]?.message?.content?.trim() ?? "";
+            return txt ? parseLooseJson(txt) : null;
+          });
+
+          const rerunProducts = parsed?.products;
+          if (Array.isArray(rerunProducts) && rerunProducts.length > low.got) {
+            for (const p of rerunProducts) p.page = low.pageNum;
+            allProducts.push(...rerunProducts);
+            console.log(
+              `[coverage] Page ${low.pageNum}: re-run found ${rerunProducts.length} products (merged; dedupe cleans overlaps)`,
+            );
+          } else {
+            coverageWarnings.push(
+              `Strana ${low.pageNum}: extrahovaných ${low.got} z ~${low.expected} ponúk — skontroluj ručne.`,
+            );
+          }
+        } catch (e) {
+          console.error(
+            `[coverage] Page ${low.pageNum} re-run failed: ${(e as Error).message}`,
+          );
+          coverageWarnings.push(
+            `Strana ${low.pageNum}: re-analýza zlyhala — skontroluj ručne.`,
+          );
+        }
+      }
+      for (const low of lowPages.slice(COVERAGE_MAX_RETRIES)) {
+        coverageWarnings.push(
+          `Strana ${low.pageNum}: extrahovaných ${low.got} z ~${low.expected} ponúk — skontroluj ručne.`,
+        );
+      }
+    }
+
     // Prefer dates read from PDF text layer when available. This fixes common vision mistakes with years.
     if (detectedDateRange) {
       meta.date_from = detectedDateRange.date_from;
@@ -1119,22 +1295,48 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
     // Deduplicate by stable offer key, not only by name.
     // Same product name can appear with a different size/price on another page.
     const seen = new Set<string>();
+    const droppedNoName: string[] = [];
+    const droppedDupes: string[] = [];
     const deduped = allProducts.filter((p) => {
       const nameKey = (p.name || "").toLowerCase().replace(/\s+/g, " ").trim();
+      // Key fields must be NORMALIZED: the model alternates decimal separators
+      // between runs ("1.5" vs "1,5", "0.89" vs "0,89"), and the coverage re-run
+      // merge relies on this dedupe to clean overlaps.
       const key = [
         nameKey,
         String(p.amount || "")
           .toLowerCase()
+          .replace(/,/g, ".")
+          .replace(/\s+/g, " ")
           .trim(),
         String(p.unit || "")
           .toLowerCase()
           .trim(),
-        String(p.price_sale || "").trim(),
+        normalizePrice(p.price_sale),
       ].join("|");
-      if (!nameKey || seen.has(key)) return false;
+      if (!nameKey) {
+        droppedNoName.push(p.name || "(prázdny názov)");
+        return false;
+      }
+      if (seen.has(key)) {
+        droppedDupes.push(`${p.name} ${p.amount || ""}${p.unit || ""} @${p.price_sale || "?"}`);
+        return false;
+      }
       seen.add(key);
       return true;
     });
+    // Make removals visible so nothing disappears silently. A "duplicate" here means
+    // an identical name+amount+unit+sale-price — usually the same offer read twice.
+    if (droppedDupes.length) {
+      console.log(
+        `[dedupe] Removed ${droppedDupes.length} duplicate offer(s): ${droppedDupes.join(", ")}`,
+      );
+    }
+    if (droppedNoName.length) {
+      console.log(
+        `[dedupe] Removed ${droppedNoName.length} product(s) with empty name`,
+      );
+    }
 
     const retailerHints = [formShop, detectedShop || ""].filter(Boolean);
 
@@ -1178,18 +1380,35 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
       const moved = moveNameDetailsToNote(cleanedBaseName, normalized.note);
 
       const parent = pk ? placementLookup[pk] : undefined;
-      // Use this product's page-specific validity when detected, else the global range.
+      // Date priority for THIS product's validity:
+      //   1) the AI's own per-product date (when the offer printed its own dates),
+      //   2) a date parsed from the product's note text ("oferta od … do …"),
+      //   3) this page's detected range, 4) the global flyer range.
+      const productRange = extractOfferDateRange(item.note || "");
       const pageRange =
         item.page != null ? pageDateRanges.get(item.page) : undefined;
+
       return {
-        name: moved.name,
+        name: capitalizeFirst(moved.name),
         amount: normalized.amount,
         unit: normalized.unit,
-        price_sale: item.price_sale || "",
-        price_regular: item.price_regular || "",
+        price_sale: normalizePrice(item.price_sale),
+        // Regular (crossed-out) price is no longer extracted — the AI only reads
+        // the sale price. The field stays in the shape for editor/DB compatibility.
+        price_regular: "",
         note: moved.note,
-        date_from: normalizeSkDate(pageRange?.date_from || meta.date_from),
-        date_to: normalizeSkDate(pageRange?.date_to || meta.date_to),
+        date_from: firstValidSkDate(
+          item.date_from,
+          productRange?.date_from,
+          pageRange?.date_from,
+          meta.date_from,
+        ),
+        date_to: firstValidSkDate(
+          item.date_to,
+          productRange?.date_to,
+          pageRange?.date_to,
+          meta.date_to,
+        ),
         page: item.page ?? null,
         categoryKey: parent?.categoryKey || "",
         subcategoryKey: parent?.subcategoryKey || "",
@@ -1294,10 +1513,16 @@ ${PLACEMENTS_PROMPT}`;
       const CLASSIFY_CHUNK = Number(process.env.CLASSIFY_CHUNK_SIZE || 60);
 
       // Collect all model answers first (name → placementKey), then apply once.
-      const classMap = new Map<string, string>();
+      // Chunks are independent text-only calls → run them in PARALLEL (faster on
+      // large flyers; the cache saving from serial runs was negligible).
+      const classifyChunks: string[][] = [];
       for (let i = 0; i < uniqueNames.length; i += CLASSIFY_CHUNK) {
-        const chunk = uniqueNames.slice(i, i + CLASSIFY_CHUNK);
-        const res = await callWithRetry(async () => {
+        classifyChunks.push(uniqueNames.slice(i, i + CLASSIFY_CHUNK));
+      }
+      const classMap = new Map<string, string>();
+      const chunkResults = await Promise.all(
+        classifyChunks.map((chunk) =>
+          callWithRetry(async () => {
           const response = await createOpenAIChatCompletion({
             model: classifyModel,
             response_format: { type: "json_object" },
@@ -1346,8 +1571,15 @@ ${PLACEMENTS_PROMPT}`;
           return parseLoose(txt) as {
             classifications?: { name?: string; placementKey?: string }[];
           } | null;
-        });
-
+          }).catch((err) => {
+            console.error(
+              `[reclass-ai] Classification chunk failed: ${(err as Error).message}`,
+            );
+            return null;
+          }),
+        ),
+      );
+      for (const res of chunkResults) {
         const classifications = res?.classifications;
         if (!Array.isArray(classifications)) continue;
         for (const c of classifications) {
@@ -1588,6 +1820,7 @@ ${PLACEMENTS_PROMPT}`;
       items: pricedItems,
       detectedShop: detectedShop ?? null,
       detectedCountry: detectedCountry ?? null,
+      coverageWarnings,
       tokenStats: {
         promptTokens: tokenStats.totalPromptTokens,
         cachedPromptTokens: tokenStats.totalCachedTokens,
