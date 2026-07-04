@@ -393,6 +393,17 @@ function normalizeExtractedAmountUnitNote(
   return { amount, unit, note: cleanSupplementalNote(note) };
 }
 
+// GPT-5 / o-series reasoning models only accept the default temperature (1) and
+// reject the max_tokens param the Supabase proxy forwards — omit both for them.
+// Classic models (gpt-4.1-mini, gpt-4o-mini…) keep temperature 0 + a token cap.
+function modelTuning(
+  model: string,
+  maxCompletionTokens: number,
+): Record<string, unknown> {
+  if (/^(gpt-5|o\d)/i.test(model.trim())) return {};
+  return { temperature: 0, max_completion_tokens: maxCompletionTokens };
+}
+
 type ChatCompletionResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
   usage?: {
@@ -446,10 +457,16 @@ async function createOpenAIChatCompletion(
   }
 
   if (!response.ok) {
-    const message =
+    const rawError =
       typeof data === "object" && data && "error" in data
-        ? String((data as { error?: unknown }).error)
-        : text || `HTTP ${response.status}`;
+        ? (data as { error?: unknown }).error
+        : undefined;
+    const message =
+      rawError === undefined
+        ? text || `HTTP ${response.status}`
+        : typeof rawError === "string"
+          ? rawError
+          : JSON.stringify(rawError);
     const error = new Error(
       `Supabase OpenAI function failed (${response.status}): ${message}`,
     ) as Error & { status?: number };
@@ -1066,13 +1083,13 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
                 `[payload] Batch ${batchIdx + 1}/${batches.length}: ~${payloadSizeMB.toFixed(1)} MB (${batch.length} pages)`,
               );
 
+              const visionModel = (
+                process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+              ).trim();
               const response = await createOpenAIChatCompletion({
-                model: (
-                  process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
-                ).trim(),
+                model: visionModel,
                 response_format: { type: "json_object" },
-                temperature: 0,
-                max_completion_tokens: 24000,
+                ...modelTuning(visionModel, 24000),
                 messages: [
                   { role: "system", content: SYSTEM_PROMPT },
                   { role: "user", content },
@@ -1198,11 +1215,13 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
         );
         try {
           const parsed = await callWithRetry(async () => {
+            const coverageModel = (
+              process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+            ).trim();
             const response = await createOpenAIChatCompletion({
-              model: (process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini").trim(),
+              model: coverageModel,
               response_format: { type: "json_object" },
-              temperature: 0,
-              max_completion_tokens: 24000,
+              ...modelTuning(coverageModel, 24000),
               messages: [
                 { role: "system", content: SYSTEM_PROMPT },
                 {
@@ -1526,8 +1545,7 @@ ${PLACEMENTS_PROMPT}`;
           const response = await createOpenAIChatCompletion({
             model: classifyModel,
             response_format: { type: "json_object" },
-            temperature: 0,
-            max_completion_tokens: 8000,
+            ...modelTuning(classifyModel, 8000),
             messages: [
               { role: "system", content: CLASSIFY_SYSTEM },
               {

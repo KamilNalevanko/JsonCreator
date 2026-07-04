@@ -1527,6 +1527,10 @@
           {
             "Zaradenie": "fazu_a",
             "Produkty": []
+          },
+          {
+            "Zaradenie": "bakla_n",
+            "Produkty": []
           }
         ]
       },
@@ -2134,6 +2138,10 @@
           {
             "Zaradenie": "tekut_korenie",
             "Produkty": []
+          },
+          {
+            "Zaradenie": "ocot",
+            "Produkty": []
           }
         ]
       }
@@ -2169,6 +2177,10 @@
         "Zaradenia": [
           {
             "Zaradenie": "cere_lnaty_inka",
+            "Produkty": []
+          },
+          {
+            "Zaradenie": "ra_ajkov_cere_lie_zaradenie",
             "Produkty": []
           }
         ]
