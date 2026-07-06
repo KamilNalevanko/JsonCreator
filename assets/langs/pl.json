@@ -718,5 +718,9 @@
   "vl_kninav_potraviny": "Błonnik i produkty bogate w błonnik",
   "ovsen_vlo_ky_zaradenie": "Płatki owsiane",
   "ocot": "Ocet",
-  "ra_ajkov_cere_lie_zaradenie": "Płatki śniadaniowe"
+  "ra_ajkov_cere_lie_zaradenie": "Płatki śniadaniowe",
+  "btn_paste_json": "Wklej JSON",
+  "paste_json_restored": "Przywrócono ze schowka — ustaw kraj i sklep. Produkty",
+  "paste_json_invalid": "Wklejony tekst nie jest listą produktów z „Kopiuj JSON”.",
+  "paste_json_clipboard_failed": "Nie udało się odczytać JSON ze schowka — najpierw kliknij „Kopiuj JSON” i spróbuj ponownie."
 }

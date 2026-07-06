@@ -732,5 +732,9 @@
   "vl_kninav_potraviny": "Vláknina a vláknité potraviny",
   "ovsen_vlo_ky_zaradenie": "Ovsené vločky",
   "ocot": "Ocot",
-  "ra_ajkov_cere_lie_zaradenie": "Raňajkové cereálie"
+  "ra_ajkov_cere_lie_zaradenie": "Raňajkové cereálie",
+  "btn_paste_json": "Vložiť JSON",
+  "paste_json_restored": "Obnovené zo schránky — nastav krajinu a obchod. Produkty",
+  "paste_json_invalid": "Vložený text nie je zoznam produktov z „Kopírovať JSON“.",
+  "paste_json_clipboard_failed": "Nepodarilo sa načítať JSON zo schránky — najprv klikni „Kopírovať JSON“ a skús znova."
 }

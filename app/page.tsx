@@ -2120,17 +2120,57 @@ export default function Home() {
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink)]">
                   AI import PDF
                 </div>
-                {aiExtracted.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  {/* Obnova rozrobeného letáku zo schránky (napr. po páde/reštarte
+                      servera) — vloží JSON z „Kopírovať JSON" a pokračuje sa ďalej. */}
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(aiExtracted, null, 2));
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        const parsed = JSON.parse(text);
+                        const list = Array.isArray(parsed) ? parsed : null;
+                        if (
+                          !list ||
+                          list.length === 0 ||
+                          !list.every(
+                            (it) =>
+                              it &&
+                              typeof it === "object" &&
+                              typeof (it as Record<string, unknown>).name === "string" &&
+                              ((it as Record<string, unknown>).name as string).trim() !== ""
+                          )
+                        ) {
+                          setAiExtractError(t("paste_json_invalid"));
+                          return;
+                        }
+                        const items = list.map(normalizeAiExtractItem);
+                        setAiExtracted(items);
+                        setAiSaveStatus(null);
+                        setAiExtractError("");
+                        setAiExtractStatus(
+                          `${t("paste_json_restored")}: ${items.length}`
+                        );
+                      } catch {
+                        setAiExtractError(t("paste_json_clipboard_failed"));
+                      }
                     }}
                     className="rounded-full border border-black/10 bg-[var(--surface)] px-3 py-1 text-[11px] font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 active:scale-95"
                   >
-                    {t("btn_copy_json_count")} ({aiExtracted.length})
+                    📋 {t("btn_paste_json")}
                   </button>
-                ) : null}
+                  {aiExtracted.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(aiExtracted, null, 2));
+                      }}
+                      className="rounded-full border border-black/10 bg-[var(--surface)] px-3 py-1 text-[11px] font-semibold text-[color:var(--ink)] shadow-sm transition hover:border-black/25 active:scale-95"
+                    >
+                      {t("btn_copy_json_count")} ({aiExtracted.length})
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <input
