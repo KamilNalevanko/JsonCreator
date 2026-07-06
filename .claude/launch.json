@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "editor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
       "name": "rogue-tides-3d",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5603", "--directory", "D:/Projekty/rogue-tides-3d"],

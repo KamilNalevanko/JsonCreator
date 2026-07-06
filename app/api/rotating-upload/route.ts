@@ -69,21 +69,46 @@ const iterateProducts = function* (db: unknown): Generator<FlyerProductLite> {
   }
 };
 
-/// Vráti zoznam produktov s neplatným/nezmyselným dátumom (max `limit` príkladov).
-const findInvalidDates = (db: unknown, limit = 10): string[] => {
-  const problems: string[] = [];
-  for (const p of iterateProducts(db)) {
-    const from = parsePromoDate(p?.["Dátum akcie od"]);
-    const to = parsePromoDate(p?.["Dátum akcie do"]);
-    if (!from || !to) {
-      const name = (p?.["Názov"] ?? "?").toString().slice(0, 60);
-      problems.push(
-        `${name} (od: "${p?.["Dátum akcie od"] ?? ""}", do: "${p?.["Dátum akcie do"] ?? ""}")`
-      );
-      if (problems.length >= limit) break;
-    }
-  }
-  return problems;
+/// Vyradí z letáka produkty s neparsovateľným dátumom (namiesto zamietnutia
+/// CELÉHO letáka — jeden pokazený produkt nesmie zablokovať zvyšok).
+/// Vráti očistený leták + zoznam vyradených názvov.
+const stripInvalidDateProducts = (
+  db: unknown
+): { cleaned: unknown; skipped: string[] } => {
+  if (!Array.isArray(db)) return { cleaned: db, skipped: [] };
+  const skipped: string[] = [];
+  const cleaned = db.map((cat) => {
+    const subs = (cat as any)?.["Podkategórie"];
+    if (!Array.isArray(subs)) return cat;
+    return {
+      ...(cat as object),
+      ["Podkategórie"]: subs.map((sub) => {
+        const zars = (sub as any)?.["Zaradenia"];
+        if (!Array.isArray(zars)) return sub;
+        return {
+          ...(sub as object),
+          ["Zaradenia"]: zars.map((zar) => {
+            const prods = (zar as any)?.["Produkty"];
+            if (!Array.isArray(prods)) return zar;
+            return {
+              ...(zar as object),
+              ["Produkty"]: prods.filter((p: FlyerProductLite) => {
+                const from = parsePromoDate(p?.["Dátum akcie od"]);
+                const to = parsePromoDate(p?.["Dátum akcie do"]);
+                if (from && to) return true;
+                const name = (p?.["Názov"] ?? "?").toString().slice(0, 60);
+                skipped.push(
+                  `${name} (od: "${p?.["Dátum akcie od"] ?? ""}", do: "${p?.["Dátum akcie do"] ?? ""}")`
+                );
+                return false;
+              }),
+            };
+          }),
+        };
+      }),
+    };
+  });
+  return { cleaned, skipped };
 };
 
 /// Leták má zmysel držať, ak obsahuje aspoň jeden produkt platný dnes alebo v budúcnosti.
@@ -93,6 +118,21 @@ const flyerIsAlive = (db: unknown): boolean => {
     const from = parsePromoDate(p?.["Dátum akcie od"]);
     const to = parsePromoDate(p?.["Dátum akcie do"]);
     if (from && to && to >= today) return true;
+  }
+  return false;
+};
+
+/// Vieme dátumy v letáku vôbec posúdiť? Ak žiadny produkt nemá parsovateľný
+/// dátum (staré/iné formáty, prázdne polia), NESMIEME súbor vyhlásiť za
+/// expirovaný — o platnosti nevieme nič.
+const flyerHasJudgeableDates = (db: unknown): boolean => {
+  for (const p of iterateProducts(db)) {
+    if (
+      parsePromoDate(p?.["Dátum akcie do"]) ||
+      parsePromoDate(p?.["Dátum akcie od"])
+    ) {
+      return true;
+    }
   }
   return false;
 };
@@ -234,19 +274,28 @@ export async function POST(req: Request) {
       );
     }
 
-    const invalidDates = findInvalidDates(parsedPayload);
-    if (invalidDates.length > 0) {
+    // Produkty s nezmyselným dátumom VYRADÍME a zvyšok letáka nahráme —
+    // jeden pokazený produkt nesmie zablokovať celý upload (historicky to
+    // spôsobovalo nesúlad: DB uložená, leták nikde). Vyradené vrátime v
+    // odpovedi, nech ich klient viditeľne ukáže.
+    const { cleaned, skipped: skippedInvalid } =
+      stripInvalidDateProducts(parsedPayload);
+    if (
+      skippedInvalid.length > 0 &&
+      ![...iterateProducts(cleaned)].length
+    ) {
       return NextResponse.json(
         {
           ok: false,
           error:
-            "Leták obsahuje produkty s chýbajúcim alebo nezmyselným dátumom akcie " +
+            "Všetky produkty v letáku majú chýbajúci alebo nezmyselný dátum akcie " +
             `(očakávam DD.MM.RRRR s rokom ${MIN_YEAR}–${maxYear()}). Oprav ich a nahraj znova.`,
-          invalidProducts: invalidDates,
+          invalidProducts: skippedInvalid.slice(0, 10),
         },
         { status: 400 }
       );
     }
+    parsedPayload = cleaned;
 
     if (!flyerIsAlive(parsedPayload)) {
       return NextResponse.json(
@@ -278,18 +327,26 @@ export async function POST(req: Request) {
           .from(BUCKET)
           .download(`${basePath}/${f.name}`);
         if (dl.error || !dl.data) {
-          // Nečitateľný súbor — radšej ho odstrániť, appka by ho aj tak nespracovala.
-          dead.push(f.name);
+          // Download môže zlyhať aj prechodne (sieť/storage hiccup). Mazať sa
+          // smie LEN pri istote — nečitateľný ≠ mŕtvy, súbor nechávame tak.
+          alive.push(f);
           continue;
         }
         try {
           const json = JSON.parse(await dl.data.text());
           if (flyerIsAlive(json)) {
             alive.push(f);
-          } else {
+          } else if (flyerHasJudgeableDates(json)) {
+            // Dátumy vieme prečítať a všetky sú v minulosti → naozaj expirovaný.
             dead.push(f.name);
+          } else {
+            // Dátumy v neznámom/starom formáte — o platnosti nevieme nič,
+            // preto NEmazať (mohol by to byť plne platný leták).
+            alive.push(f);
           }
         } catch {
+          // Obsah sa stiahol, ale nie je to platný JSON — súbor je reálne
+          // poškodený a appka ho nevie spracovať; odstránenie je namieste.
           dead.push(f.name);
         }
       }
@@ -308,11 +365,22 @@ export async function POST(req: Request) {
       }
 
       // Ak by aj po vyčistení bolo príliš veľa živých slotov, zahoď najstaršie.
+      const removedOldest: string[] = [];
       while (alive.length >= MAX_SLOTS) {
         const oldest = alive.shift()!;
-        await supabase.storage
+        const oldestRes = await supabase.storage
           .from(BUCKET)
           .remove([`${basePath}/${oldest.name}`]);
+        if (oldestRes.error) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: `Removal of oldest slot failed: ${oldestRes.error.message}`,
+            },
+            { status: 500 }
+          );
+        }
+        removedOldest.push(oldest.name);
       }
 
       for (let i = 0; i < alive.length; i += 1) {
@@ -338,9 +406,10 @@ export async function POST(req: Request) {
       const slot = alive.length + 1;
       const targetPath = `${basePath}/${fileBase}_${slot}.json`;
 
+      // Nahrávame OČISTENÝ leták (bez produktov s nezmyselnými dátumami).
       const uploadRes = await supabase.storage
         .from(BUCKET)
-        .upload(targetPath, content, {
+        .upload(targetPath, JSON.stringify(parsedPayload, null, 2), {
           contentType: "application/json",
           upsert: true,
           cacheControl: "0",
@@ -366,10 +435,16 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         path: targetPath,
+        // Transparentnosť: čo cleanup reálne zmazal (expirované/poškodené sloty
+        // + najstaršie pri pretečení) — nech mazanie nie je nikdy "potiché".
+        cleaned: dead,
+        removedOldest,
         next: nextState.next,
         isFull: nextState.isFull,
         removedExpired: dead,
         keptSlots: alive.length + 1,
+        // Produkty vyradené pre nezmyselný dátum — klient ich MUSÍ ukázať.
+        skippedInvalid,
       });
     });
   } catch (e: any) {

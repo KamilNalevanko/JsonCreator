@@ -286,6 +286,24 @@ const getTodayDate = (): string => {
 // Canonicalize any user/AI date to "DD.MM.YYYY" (zero-padded) so the flyer file and
 // the DB never hold mixed formats (e.g. "24.6.2026" vs "24.06.2026"), which break the
 // <input type="date"> round-trip and confuse consumers. Unparseable input is kept as-is.
+// Status line for a DB product update, including the flyer-file sync result
+// returned by /api/master-products/update.
+const formatDbUpdateStatus = (payload: {
+  flyers?: { updatedFiles?: string[]; updatedProducts?: number; warnings?: string[] };
+}): string => {
+  const f = payload?.flyers;
+  let msg = "Produkt v databáze bol upravený.";
+  if (f?.updatedFiles?.length) {
+    msg += ` Aktualizovaný aj v letákoch (${f.updatedFiles.length}): ${f.updatedFiles.join(", ")}.`;
+  } else {
+    msg += " V letákoch na serveri sa nenašiel.";
+  }
+  if (f?.warnings?.length) {
+    msg += ` ⚠ ${f.warnings.join(" · ")}`;
+  }
+  return msg;
+};
+
 const formatDateRange = (dateFrom?: string, dateTo?: string) => {
   if (dateFrom && dateTo) {
     if (dateFrom === dateTo) return dateFrom;
@@ -1221,30 +1239,6 @@ export default function Home() {
     return value;
   };
 
-  const hasProductChanges = (original: FlyerProduct, next: FlyerProduct) => {
-    const keys: (keyof FlyerProduct)[] = [
-      "Názov",
-      "Kategória",
-      "Podkategória",
-      "Zaradenie",
-      "Množstvo",
-      "Merná jednotka",
-      "Bežná cena za bal.",
-      "Bežná jednotková cena",
-      "Akciová cena",
-      "Akciová jednotková cena",
-      "Doplnková Informácia",
-      "Dátum akcie od",
-      "Dátum akcie do",
-      "Obchody",
-    ];
-
-    return keys.some(
-      (key) =>
-        normalizeProductValue(original[key]) !== normalizeProductValue(next[key])
-    );
-  };
-
   const appendProductToLoadedFlyer = (product: FlyerProduct) => {
     setLoadedFlyer((prev: HierarchyCategory[] | null) => {
       if (!prev) return prev;
@@ -1333,7 +1327,11 @@ export default function Home() {
     }
   };
 
-  const persistUpdatedProduct = async (ref: LoadedProductRef, product: FlyerProduct) => {
+  const persistUpdatedProduct = async (
+    ref: LoadedProductRef,
+    product: FlyerProduct,
+    original?: FlyerProduct,
+  ) => {
     if (!bucketPath) return { ok: false };
     setError("");
     setStatus("");
@@ -1343,7 +1341,20 @@ export default function Home() {
       const response = await fetch("/api/master-products/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: bucketPath, ref, product }),
+        body: JSON.stringify({
+          country: bucketPath,
+          ref,
+          product,
+          // Original identity so the server can find the product in flyer files
+          // even after a rename / amount change (and not touch size variants).
+          original: original
+            ? {
+                name: original["Názov"],
+                amount: original["Množstvo"],
+                unit: original["Merná jednotka"],
+              }
+            : undefined,
+        }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -1356,7 +1367,7 @@ export default function Home() {
         return { ok: false };
       }
 
-      setStatus("Produkt v databaze bol upraveny.");
+      setStatus(formatDbUpdateStatus(payload));
       return { ok: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -1440,8 +1451,10 @@ export default function Home() {
         ]?.["Zaradenia"]?.[refToUpdate.placementIndex]?.["Produkty"]?.[
           refToUpdate.productIndex
         ];
-      const shouldUpdateDb =
-        !originalProduct || hasProductChanges(originalProduct, product);
+      // Always persist, even with no visible edits: "Uložiť zmeny" doubles as
+      // "push this product's current state into the DB and its flyer files"
+      // (fixes the case where the DB was corrected but flyers still hold old data).
+      const shouldUpdateDb = true;
       const { categoryIndex, subcategoryIndex, placementIndex, productIndex } = editingLoadedRef;
       setLoadedFlyer((prev: HierarchyCategory[] | null) => {
         if (!prev) return prev;
@@ -1516,7 +1529,7 @@ export default function Home() {
         return [...next, { id: makeId(), product }];
       });
       if (shouldUpdateDb) {
-        void persistUpdatedProduct(refToUpdate, product);
+        void persistUpdatedProduct(refToUpdate, product, originalProduct);
       }
       setEditingLoadedRef(null);
     } else if (editingId) {
@@ -1620,12 +1633,24 @@ export default function Home() {
       "Obchody": shops,
     };
 
+    const originalDbProduct = dbEditEntry?.product;
     try {
       setIsDbUpdating(true);
       const response = await fetch("/api/master-products/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: bucketPath, ref: dbEditRef, product }),
+        body: JSON.stringify({
+          country: bucketPath,
+          ref: dbEditRef,
+          product,
+          original: originalDbProduct
+            ? {
+                name: originalDbProduct["Názov"],
+                amount: originalDbProduct["Množstvo"],
+                unit: originalDbProduct["Merná jednotka"],
+              }
+            : undefined,
+        }),
       });
 
       const payload = await response.json().catch(() => ({}));
@@ -1652,7 +1677,7 @@ export default function Home() {
         return next;
       });
 
-      setStatus("Produkt v databaze bol upraveny.");
+      setStatus(formatDbUpdateStatus(payload));
       setDbEditRef(null);
       resetFormFields();
       focusNameInput();
@@ -1999,6 +2024,15 @@ export default function Home() {
         return;
       }
 
+      const skippedInvalid: string[] = Array.isArray(result.skippedInvalid)
+        ? result.skippedInvalid
+        : [];
+      if (skippedInvalid.length > 0) {
+        // Nahrané, ale s vynechanými produktmi — ukáž to ako chybu, nech sa to nedá prehliadnuť.
+        setError(
+          `⚠️ Leták nahraný (${result.path}), ale ${skippedInvalid.length} produktov VYNECHANÝCH pre zlý dátum: ${skippedInvalid.slice(0, 5).join("; ")}${skippedInvalid.length > 5 ? "…" : ""}`
+        );
+      }
       setStatus(t("status_uploaded") + ` (${result.path})`);
       setProducts([]);
       setEditingId(null);
@@ -2364,6 +2398,11 @@ export default function Home() {
                           <option value="cz">🇨🇿 {t("storage_cz")}</option>
                           <option value="pl">🇵🇱 {t("storage_pl")}</option>
                         </select>
+                        {aiCountry && aiSaveCountry !== aiCountry ? (
+                          <span className="mt-0.5 rounded-lg bg-red-100 px-2 py-1 text-[11px] font-bold normal-case text-red-700">
+                            ⚠️ PDF sa analyzovalo pre „{aiCountry.toUpperCase()}", ale ukladáš do „{aiSaveCountry.toUpperCase()}" — naozaj?
+                          </span>
+                        ) : null}
                       </label>
                       <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
                         {t("ai_label_shop")}
@@ -2477,14 +2516,30 @@ export default function Home() {
                             });
                             const uploadJson = await uploadRes.json();
                             if (!uploadJson.ok) {
-                              setAiSaveStatus({ ok: false, msg: uploadJson.error || t("ai_save_error") });
+                              // DB už je uložená, ale leták sa NEnahral — bez opravy
+                              // by appka tieto produkty nikdy nezobrazila!
+                              setAiSaveStatus({
+                                ok: false,
+                                msg: `⚠️ POZOR: produkty sú uložené v DB, ale LETÁK SA NENAHRAL (appka ich neuvidí)! Dôvod: ${uploadJson.error || t("ai_save_error")} — oprav a klikni Nahrať znova.`,
+                              });
                               return;
                             }
 
-                            setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
-
-                            // Auto-close modal after success
-                            setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2000);
+                            const skippedInvalid: string[] = Array.isArray(uploadJson.skippedInvalid)
+                              ? uploadJson.skippedInvalid
+                              : [];
+                            if (skippedInvalid.length > 0) {
+                              // Leták sa nahral, ale časť produktov vypadla pre zlé
+                              // dátumy — MUSÍ to byť vidno, okno nezatvárame.
+                              setAiSaveStatus({
+                                ok: false,
+                                msg: `⚠️ Leták nahraný (${uploadJson.path || ""}), ale ${skippedInvalid.length} produktov VYNECHANÝCH pre zlý dátum: ${skippedInvalid.slice(0, 5).join("; ")}${skippedInvalid.length > 5 ? "…" : ""}. Oprav dátumy a nahraj znova.`,
+                              });
+                            } else {
+                              setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
+                              // Auto-close modal after success
+                              setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2000);
+                            }
 
                             // 4) Refresh loadedFlyer
                             setShop(aiSaveShop);
