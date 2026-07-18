@@ -42,8 +42,189 @@ const normAmount = (v: unknown) =>
 type FlyerFileSummary = {
   updatedFiles: string[];
   updatedProducts: number;
+  insertedFiles: string[];
+  insertedShops: string[];
   warnings: string[];
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FlyerNode = Record<string, any>;
+
+// Find (or create) the category → subcategory → placement node path in a flyer
+// tree by key, returning the placement's Produkty array. Flyer nodes are
+// keys-only ({ "Kategória": key, "Podkategórie": [...] }), so creating a missing
+// path with just the keys matches the existing on-disk shape.
+function ensurePlacementProducts(
+  flyer: FlyerNode[],
+  catKey: string,
+  subKey: string,
+  plcKey: string,
+): FlyerNode[] {
+  let cat = flyer.find((c) => c?.["Kategória"] === catKey);
+  if (!cat) {
+    cat = { "Kategória": catKey, "Podkategórie": [] };
+    flyer.push(cat);
+  }
+  if (!Array.isArray(cat["Podkategórie"])) cat["Podkategórie"] = [];
+  let sub = cat["Podkategórie"].find((s: FlyerNode) => s?.["Podkategória"] === subKey);
+  if (!sub) {
+    sub = { "Podkategória": subKey, "Zaradenia": [] };
+    cat["Podkategórie"].push(sub);
+  }
+  if (!Array.isArray(sub["Zaradenia"])) sub["Zaradenia"] = [];
+  let plc = sub["Zaradenia"].find((p: FlyerNode) => p?.["Zaradenie"] === plcKey);
+  if (!plc) {
+    plc = { "Zaradenie": plcKey, "Produkty": [] };
+    sub["Zaradenia"].push(plc);
+  }
+  if (!Array.isArray(plc["Produkty"])) plc["Produkty"] = [];
+  return plc["Produkty"];
+}
+
+// DD.MM.YYYY → sortable number (0 when unparseable). Used to pick the "most
+// current" flyer file (the one whose offers end latest).
+const parseDateToNum = (v: unknown): number => {
+  const m = String(v ?? "").match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!m) return 0;
+  return Number(m[3]) * 10000 + Number(m[2]) * 100 + Number(m[1]);
+};
+
+// SHOP-SWITCH ADD: put the product into a single shop's flyer — ONLY that shop,
+// and ONLY one file (the flyer with the latest offer date). If the product is
+// already in that file it's updated in place; otherwise it's inserted (node path
+// created if needed). Other slots and other shops are never touched. Failures
+// are recorded as warnings and never fail the DB update.
+async function addProductToShopFlyer(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  basePath: string,
+  fileBase: string,
+  files: string[],
+  shop: string,
+  updated: FlyerProduct,
+  originalKey: string,
+  originalAmount: string | null,
+  originalUnit: string | null,
+  summary: FlyerFileSummary,
+): Promise<void> {
+  type FileInfo = { name: string; flyer: FlyerNode[]; maxDate: number };
+  const infos: FileInfo[] = [];
+  for (const fileName of files) {
+    try {
+      const dl = await supabase.storage
+        .from("cap-data")
+        .download(`${basePath}/${fileName}`);
+      if (dl.error || !dl.data) {
+        summary.warnings.push(`${fileName}: stiahnutie zlyhalo`);
+        continue;
+      }
+      const parsed = JSON.parse(await dl.data.text());
+      if (!Array.isArray(parsed)) continue;
+      let maxDate = 0;
+      for (const cat of parsed)
+        for (const sub of cat?.["Podkategórie"] ?? [])
+          for (const plc of sub?.["Zaradenia"] ?? [])
+            for (const p of plc?.["Produkty"] ?? []) {
+              const d = parseDateToNum(p?.["Dátum akcie do"]);
+              if (d > maxDate) maxDate = d;
+            }
+      infos.push({ name: fileName, flyer: parsed, maxDate });
+    } catch (e) {
+      summary.warnings.push(
+        `${fileName}: ${e instanceof Error ? e.message : "chyba"}`,
+      );
+    }
+  }
+
+  // Most current flyer wins; ties prefer the main {shop}.json file.
+  let target: FileInfo | null = null;
+  for (const info of infos) {
+    if (
+      !target ||
+      info.maxDate > target.maxDate ||
+      (info.maxDate === target.maxDate && info.name === `${fileBase}.json`)
+    ) {
+      target = info;
+    }
+  }
+
+  const targetName = target ? target.name : `${fileBase}.json`;
+  const flyer: FlyerNode[] = target ? target.flyer : [];
+
+  // Is the product already in the target file? (name + amount, or a lone name.)
+  type Match = { node: FlyerNode; index: number; amountMatches: boolean };
+  const matches: Match[] = [];
+  for (const cat of flyer)
+    for (const sub of cat?.["Podkategórie"] ?? [])
+      for (const plc of sub?.["Zaradenia"] ?? []) {
+        const products = plc?.["Produkty"];
+        if (!Array.isArray(products)) continue;
+        products.forEach((p: FlyerNode, index: number) => {
+          if (normalizeNameKey(p?.["Názov"] || "") !== originalKey) return;
+          const amountMatches =
+            originalAmount === null ||
+            (normAmount(p?.["Množstvo"]) === originalAmount &&
+              (originalUnit === null ||
+                String(p?.["Merná jednotka"] ?? "").toLowerCase().trim() ===
+                  originalUnit));
+          matches.push({ node: plc, index, amountMatches });
+        });
+      }
+
+  let targets = matches.filter((m) => m.amountMatches);
+  if (targets.length === 0 && matches.length === 1) targets = matches;
+
+  const nextFields = {
+    "Názov": updated["Názov"],
+    "Kategória": updated["Kategória"],
+    "Podkategória": updated["Podkategória"],
+    "Zaradenie": updated["Zaradenie"],
+    "Množstvo": updated["Množstvo"],
+    "Merná jednotka": updated["Merná jednotka"],
+    "Bežná cena za bal.": updated["Bežná cena za bal."],
+    "Bežná jednotková cena": updated["Bežná jednotková cena"],
+    "Akciová cena": updated["Akciová cena"],
+    "Akciová jednotková cena": updated["Akciová jednotková cena"],
+    "Doplnková Informácia": updated["Doplnková Informácia"],
+    "Dátum akcie od": updated["Dátum akcie od"],
+    "Dátum akcie do": updated["Dátum akcie do"],
+  };
+
+  let wasInsert = false;
+  if (targets.length > 0) {
+    for (const m of targets) {
+      m.node["Produkty"][m.index] = {
+        ...m.node["Produkty"][m.index],
+        ...nextFields,
+      };
+    }
+  } else {
+    const products = ensurePlacementProducts(
+      flyer,
+      updated["Kategória"],
+      updated["Podkategória"],
+      updated["Zaradenie"],
+    );
+    products.push({ ...nextFields, "Obchody": [shop] });
+    wasInsert = true;
+  }
+
+  const upload = await supabase.storage
+    .from("cap-data")
+    .upload(`${basePath}/${targetName}`, JSON.stringify(flyer, null, 2), {
+      contentType: "application/json",
+      upsert: true,
+      cacheControl: "0",
+    });
+  if (upload.error) {
+    summary.warnings.push(`${targetName}: zápis zlyhal — ${upload.error.message}`);
+    return;
+  }
+  if (wasInsert) summary.insertedFiles.push(targetName);
+  else summary.updatedFiles.push(targetName);
+  summary.updatedProducts += 1;
+  if (!summary.insertedShops.includes(shop)) summary.insertedShops.push(shop);
+}
 
 // After the DB update, propagate the change into the shop's flyer JSON files in
 // Storage (databazy/{country}/{shop}.json + {shop}_N.json). Files are rewritten
@@ -56,10 +237,16 @@ async function syncProductIntoFlyers(
   shops: string[],
   updated: FlyerProduct,
   original: { name?: string; amount?: string; unit?: string } | undefined,
+  // Shops that were newly added to this product (e.g. via the shop-switch
+  // dropdown). For these, if the product is not already in the shop's flyer,
+  // it is INSERTED into the shop's primary file rather than only updated.
+  addShops: string[] = [],
 ): Promise<FlyerFileSummary> {
   const summary: FlyerFileSummary = {
     updatedFiles: [],
     updatedProducts: 0,
+    insertedFiles: [],
+    insertedShops: [],
     warnings: [],
   };
 
@@ -90,6 +277,25 @@ async function syncProductIntoFlyers(
       .map((f) => f?.name || "")
       .filter((name) => slotRegex.test(name));
 
+    // Shop-switch ADD: touch only this shop, only one file. Handled separately.
+    if (addShops.includes(shop)) {
+      await addProductToShopFlyer(
+        supabase,
+        basePath,
+        fileBase,
+        files,
+        shop,
+        updated,
+        originalKey,
+        originalAmount,
+        originalUnit,
+        summary,
+      );
+      continue;
+    }
+
+    // Normal edit: update the product in EVERY file where it already exists
+    // (keeps a shop's rotating slots consistent).
     for (const fileName of files) {
       const path = `${basePath}/${fileName}`;
       try {
@@ -279,11 +485,17 @@ export async function POST(req: Request) {
     const rawShops = normalizeShops(product["Obchody"]);
     const shops = rawShops.length ? rawShops : [NO_SHOP_TOKEN];
 
+    // Scope the delete to ONLY the shops we are about to (re)write. Without the
+    // `.in("shop", …)` filter this wiped every shop that shared the same
+    // country+name_key — e.g. saving Biedronka's "Czereśnie" deleted Aldi's
+    // independent "Czereśnie" row too (cross-shop data loss). Each shop is an
+    // independent record and must never be touched by editing another shop.
     const { error: deleteError } = await supabase
       .from("master_products_v2")
       .delete()
       .eq("country", baseRecord.country)
-      .eq("name_key", baseRecord.name_key);
+      .eq("name_key", baseRecord.name_key)
+      .in("shop", shops);
 
     if (deleteError) {
       return NextResponse.json(
@@ -311,18 +523,29 @@ export async function POST(req: Request) {
     let flyers: FlyerFileSummary = {
       updatedFiles: [],
       updatedProducts: 0,
+      insertedFiles: [],
+      insertedShops: [],
       warnings: [],
     };
     try {
       const original = body?.original as
         | { name?: string; amount?: string; unit?: string }
         | undefined;
+      // Shops newly added via the shop-switch dropdown — restricted to shops we
+      // actually write, so a stale client value can't force unrelated inserts.
+      const addShops = normalizeShops(body?.addShops).filter((s) =>
+        rawShops.includes(s),
+      );
+      // On a shop-switch add, sync ONLY the newly added shop's flyer — the other
+      // (unchanged) shops must not be re-written. A normal edit syncs all shops.
+      const syncShops = addShops.length ? addShops : rawShops;
       flyers = await syncProductIntoFlyers(
         supabase,
         country,
-        rawShops,
+        syncShops,
         product,
         original,
+        addShops,
       );
     } catch (e) {
       flyers.warnings.push(

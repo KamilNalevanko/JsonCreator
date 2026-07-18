@@ -289,13 +289,25 @@ const getTodayDate = (): string => {
 // Status line for a DB product update, including the flyer-file sync result
 // returned by /api/master-products/update.
 const formatDbUpdateStatus = (payload: {
-  flyers?: { updatedFiles?: string[]; updatedProducts?: number; warnings?: string[] };
+  flyers?: {
+    updatedFiles?: string[];
+    updatedProducts?: number;
+    insertedFiles?: string[];
+    insertedShops?: string[];
+    warnings?: string[];
+  };
 }): string => {
   const f = payload?.flyers;
-  let msg = "Produkt v databáze bol upravený.";
+  const addedShops = f?.insertedShops?.length ? f.insertedShops.join(", ") : "";
+  let msg = addedShops
+    ? `Produkt pridaný do obchodu ${addedShops} (databáza).`
+    : "Produkt v databáze bol upravený.";
+  if (f?.insertedFiles?.length) {
+    msg += ` Vložený do letáka: ${f.insertedFiles.join(", ")}.`;
+  }
   if (f?.updatedFiles?.length) {
     msg += ` Aktualizovaný aj v letákoch (${f.updatedFiles.length}): ${f.updatedFiles.join(", ")}.`;
-  } else {
+  } else if (!f?.insertedFiles?.length) {
     msg += " V letákoch na serveri sa nenašiel.";
   }
   if (f?.warnings?.length) {
@@ -421,6 +433,15 @@ export default function Home() {
   const pendingAppendRef = useRef(0);
   const [isAppending, setIsAppending] = useState(false);
   const [isDbUpdating, setIsDbUpdating] = useState(false);
+  // Prominent green confirmation shown after a successful "Uložiť zmeny"
+  // (what was saved + where). Auto-clears after a few seconds.
+  const [saveNotice, setSaveNotice] = useState("");
+  const saveNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showSaveNotice = (msg: string) => {
+    setSaveNotice(msg);
+    if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current);
+    saveNoticeTimer.current = setTimeout(() => setSaveNotice(""), 12000);
+  };
   const shopOptionsByFolder: Record<
     string,
     Array<{ value: string; label: string }>
@@ -1331,6 +1352,7 @@ export default function Home() {
     ref: LoadedProductRef,
     product: FlyerProduct,
     original?: FlyerProduct,
+    addShops?: string[],
   ) => {
     if (!bucketPath) return { ok: false };
     setError("");
@@ -1354,6 +1376,9 @@ export default function Home() {
                 unit: original["Merná jednotka"],
               }
             : undefined,
+          // Shops newly added via the shop-switch dropdown — server inserts the
+          // product into these shops' flyers if missing.
+          addShops: addShops && addShops.length ? addShops : undefined,
         }),
       });
 
@@ -1367,7 +1392,7 @@ export default function Home() {
         return { ok: false };
       }
 
-      setStatus(formatDbUpdateStatus(payload));
+      showSaveNotice(formatDbUpdateStatus(payload));
       return { ok: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -1528,8 +1553,30 @@ export default function Home() {
         }
         return [...next, { id: makeId(), product }];
       });
+      // Shop-switch: if the user changed the top "Názov siete" dropdown to a
+      // shop that isn't already on this product, add it. The DB gets a new row
+      // for that shop and the server inserts the product into that shop's flyer.
+      const originalShops = Array.isArray(originalProduct?.["Obchody"])
+        ? (originalProduct!["Obchody"] as string[])
+        : shops;
+      const dropdownShop = normalizeShopToken(shop);
+      const addShops =
+        dropdownShop &&
+        !originalShops.map(normalizeShopToken).includes(dropdownShop)
+          ? [dropdownShop]
+          : [];
+      if (addShops.length) {
+        product["Obchody"] = Array.from(
+          new Set([...originalShops, ...addShops]),
+        );
+      }
       if (shouldUpdateDb) {
-        void persistUpdatedProduct(refToUpdate, product, originalProduct);
+        void persistUpdatedProduct(
+          refToUpdate,
+          product,
+          originalProduct,
+          addShops,
+        );
       }
       setEditingLoadedRef(null);
     } else if (editingId) {
@@ -1677,7 +1724,7 @@ export default function Home() {
         return next;
       });
 
-      setStatus(formatDbUpdateStatus(payload));
+      showSaveNotice(formatDbUpdateStatus(payload));
       setDbEditRef(null);
       resetFormFields();
       focusNameInput();
@@ -1988,8 +2035,13 @@ export default function Home() {
 
   const confirmClearAll = () => {
     setShowClearAllConfirm(false);
+    // "Produkty letáku" list = displayProducts = [...aiExtracted, ...products].
+    // Clearing only `products` left the AI-extracted rows visible ("veci dole
+    // nezmizli"), so wipe both sources that feed the list.
     setProducts([]);
+    setAiExtracted([]);
     setEditingId(null);
+    setEditingLoadedRef(null);
   };
 
   const uploadToSupabase = async () => {
@@ -3257,6 +3309,28 @@ placeholder={t("placeholder_extra_info")}
               {status ? (
                 <div className="rounded-xl border border-[color:var(--notice-info-border)] bg-[color:var(--notice-info-bg)] px-4 py-3 text-sm text-[color:var(--notice-info-text)]">
                   {status}
+                </div>
+              ) : null}
+              {saveNotice ? (
+                <div
+                  className="flex items-start gap-3 rounded-xl border-2 border-green-500 bg-green-50 px-4 py-3 text-base font-semibold text-green-800 shadow-md dark:border-green-400 dark:bg-green-950/50 dark:text-green-200"
+                  role="status"
+                >
+                  <span className="text-2xl leading-none">✓</span>
+                  <div className="flex-1">
+                    <div className="text-sm uppercase tracking-wide opacity-80">
+                      Uložené
+                    </div>
+                    <div>{saveNotice}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSaveNotice("")}
+                    className="text-green-700 opacity-60 transition hover:opacity-100 dark:text-green-300"
+                    aria-label="Zavrieť"
+                  >
+                    ✕
+                  </button>
                 </div>
               ) : null}
 
