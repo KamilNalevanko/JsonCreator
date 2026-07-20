@@ -2356,11 +2356,11 @@ export default function Home() {
                       </div>
                       {/* R2: Info + Gramáž na jednom riadku */}
                       <div className="flex items-center gap-3 border-t border-black/[0.05] py-1 flex-wrap">
-                        <div className="flex items-center gap-1">
+                        <div className="flex min-w-0 items-center gap-1">
                           <span className={lbl}>{t("ai_label_info")}</span>
-                          <input className={`${inp} w-36`} value={item.note || ""} placeholder={t("ai_label_info")} onChange={e => upd("note", e.target.value)} />
+                          <input className={`${inp} w-[27rem] max-w-full`} value={item.note || ""} placeholder={t("ai_label_info")} onChange={e => upd("note", e.target.value)} />
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex shrink-0 items-center gap-1">
                           <span className={lbl}>{t("ai_label_weight")}</span>
                           <input className={`${inp} w-14`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
                           <select className={`${sel} w-14`} value={item.unit || ""} onChange={e => upd("unit", e.target.value)}>
