@@ -71,48 +71,6 @@ const iterateProducts = function* (db: unknown): Generator<FlyerProductLite> {
   }
 };
 
-/// Vyradí z letáka produkty s neparsovateľným dátumom (namiesto zamietnutia
-/// CELÉHO letáka — jeden pokazený produkt nesmie zablokovať zvyšok).
-/// Vráti očistený leták + zoznam vyradených názvov.
-const stripInvalidDateProducts = (
-  db: unknown
-): { cleaned: unknown; skipped: string[] } => {
-  if (!Array.isArray(db)) return { cleaned: db, skipped: [] };
-  const skipped: string[] = [];
-  const cleaned = db.map((cat) => {
-    const subs = (cat as any)?.["Podkategórie"];
-    if (!Array.isArray(subs)) return cat;
-    return {
-      ...(cat as object),
-      ["Podkategórie"]: subs.map((sub) => {
-        const zars = (sub as any)?.["Zaradenia"];
-        if (!Array.isArray(zars)) return sub;
-        return {
-          ...(sub as object),
-          ["Zaradenia"]: zars.map((zar) => {
-            const prods = (zar as any)?.["Produkty"];
-            if (!Array.isArray(prods)) return zar;
-            return {
-              ...(zar as object),
-              ["Produkty"]: prods.filter((p: FlyerProductLite) => {
-                const from = parsePromoDate(p?.["Dátum akcie od"]);
-                const to = parsePromoDate(p?.["Dátum akcie do"]);
-                if (from && to) return true;
-                const name = (p?.["Názov"] ?? "?").toString().slice(0, 60);
-                skipped.push(
-                  `${name} (od: "${p?.["Dátum akcie od"] ?? ""}", do: "${p?.["Dátum akcie do"] ?? ""}")`
-                );
-                return false;
-              }),
-            };
-          }),
-        };
-      }),
-    };
-  });
-  return { cleaned, skipped };
-};
-
 /// Leták má zmysel držať, ak obsahuje aspoň jeden produkt platný dnes alebo v budúcnosti.
 const flyerIsAlive = (db: unknown): boolean => {
   const today = todayMidnight();
@@ -216,12 +174,16 @@ const withUploadLock = async <T>(
 // POST: nahraj nový leták + uprac sloty obchodu.
 //
 // Postup (pod zámkom pre daný obchod):
-//  1. Validácia payloadu: JSON + rozumné dátumy (inak 400 so zoznamom problémov).
-//  2. Stiahni existujúce sloty, zisti ktoré sú ešte "živé" (platné dnes/v budúcnosti).
-//  3. Expirované zmaž, živé prečísluj na súvislé _1.._K (appka číta sloty od _1
-//     a zastaví sa na prvej diere — súvislosť je nutná).
-//  4. Nový leták zapíš ako _{K+1}. Pri prekročení MAX_SLOTS zmaž najstarší.
-//  5. Index = { next: K+2, isFull: false }.
+//  1. Validácia payloadu: len parsovateľný JSON. OBSAH sa nekontroluje —
+//     letáky sa nahrávajú aj dopredu, dátumy rieši UI editora (starý rok)
+//     a appka (filter „v akcii dnes").
+//  2. Stiahni existujúce STARÉ sloty, zisti ktoré sú ešte "živé" (aspoň jeden
+//     produkt platný dnes/v budúcnosti; neposúditeľné dátumy = nechať).
+//  3. Expirované/poškodené sloty zmaž, živé prečísluj na súvislé _1.._K
+//     (appka číta sloty od _1 a zastaví sa na diere — súvislosť je nutná).
+//  4. Nový leták zapíš ako _{K+1}. Pri prekročení max. slotov (pl=30, inak 10)
+//     zmaž najstarší živý.
+//  5. Index = { next: K+2 }.
 // ---------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
@@ -276,39 +238,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Produkty s nezmyselným dátumom VYRADÍME a zvyšok letáka nahráme —
-    // jeden pokazený produkt nesmie zablokovať celý upload (historicky to
-    // spôsobovalo nesúlad: DB uložená, leták nikde). Vyradené vrátime v
-    // odpovedi, nech ich klient viditeľne ukáže.
-    const { cleaned, skipped: skippedInvalid } =
-      stripInvalidDateProducts(parsedPayload);
-    if (
-      skippedInvalid.length > 0 &&
-      ![...iterateProducts(cleaned)].length
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Všetky produkty v letáku majú chýbajúci alebo nezmyselný dátum akcie " +
-            `(očakávam DD.MM.RRRR s rokom ${MIN_YEAR}–${maxYear()}). Oprav ich a nahraj znova.`,
-          invalidProducts: skippedInvalid.slice(0, 10),
-        },
-        { status: 400 }
-      );
-    }
-    parsedPayload = cleaned;
-
-    if (!flyerIsAlive(parsedPayload)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Leták neobsahuje žiadny produkt platný dnes ani v budúcnosti — nenahrávam expirovaný leták.",
-        },
-        { status: 400 }
-      );
-    }
+    // ŽIADNA validácia obsahu letáka — letáky sa nahrávajú aj DOPREDU a
+    // formáty dátumov sa líšia. Nahrá sa VŠETKO, čo príde (appka si sama
+    // filtruje, čo je dnes v akcii). Jediná kontrola (starý rok) beží v UI
+    // editora ešte pred odoslaním.
 
     const fileBase = sanitizeBase(shop);
     const basePath = `databazy/${country}`;
@@ -446,8 +379,6 @@ export async function POST(req: Request) {
         isFull: nextState.isFull,
         removedExpired: dead,
         keptSlots: alive.length + 1,
-        // Produkty vyradené pre nezmyselný dátum — klient ich MUSÍ ukázať.
-        skippedInvalid,
       });
     });
   } catch (e: any) {

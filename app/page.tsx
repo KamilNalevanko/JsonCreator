@@ -115,21 +115,6 @@ const toPageNumber = (value: unknown): number | null => {
   return null;
 };
 
-// Rovnaké pravidlo ako server (rotating-upload): DD.MM.RRRR, reálny dátum,
-// rok 2024 až budúci rok. Validuje sa NORMALIZOVANÁ hodnota (normalizeSkDate).
-const isValidPromoDateText = (raw: string): boolean => {
-  const m = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (!m) return false;
-  const day = Number(m[1]);
-  const month = Number(m[2]);
-  const year = Number(m[3]);
-  if (year < 2024 || year > new Date().getFullYear() + 1) return false;
-  const d = new Date(year, month - 1, day);
-  return (
-    d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
-  );
-};
-
 const normalizeAiExtractItem = (item: unknown): AiExtractItem => {
   const src = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
   return {
@@ -381,45 +366,29 @@ export default function Home() {
   // upload sa zablokuje, kým sa neopravia (inak by ich server vyradil).
   const [aiInvalidDates, setAiInvalidDates] = useState<Set<number>>(new Set());
 
-  // Kontrola dátumov PRED otvorením upload okna (na prvý klik na Nahrať):
-  // 1) zlý formát -> červené polia + zoznam mien; 2) celý leták expirovaný
-  // (server by ho odmietol) -> červené dátumy v minulosti. Vráti true = OK.
+  // JEDINÁ kontrola dátumov (na prvý klik na Nahrať): rok starší ako aktuálny
+  // (napr. 2025, keď je 2026 — preklep/zlý rok z AI). Nič iné sa nekontroluje —
+  // letáky sa nahrávajú aj DOPREDU, budúce ani "expirované" dátumy neriešime.
   const validateAiDatesForUpload = (): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const badFormat: number[] = [];
-    const expired: number[] = [];
-    let anyAlive = false;
+    const currentYear = new Date().getFullYear();
+    const oldYear: number[] = [];
     aiExtracted.forEach((it, i) => {
-      const from = normalizeSkDate(it.date_from);
-      const to = normalizeSkDate(it.date_to);
-      if (!isValidPromoDateText(from) || !isValidPromoDateText(to)) {
-        badFormat.push(i);
-        return;
-      }
-      const m = to.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)!;
-      const toDate = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-      if (toDate >= today) {
-        anyAlive = true;
-      } else {
-        expired.push(i);
+      for (const raw of [normalizeSkDate(it.date_from), normalizeSkDate(it.date_to)]) {
+        const m = raw.match(/(\d{4})/);
+        if (m && Number(m[1]) < currentYear) {
+          oldYear.push(i);
+          return;
+        }
       }
     });
-    if (badFormat.length > 0) {
-      setAiInvalidDates(new Set(badFormat));
-      const names = badFormat
+    if (oldYear.length > 0) {
+      setAiInvalidDates(new Set(oldYear));
+      const names = oldYear
         .slice(0, 5)
         .map((i) => aiExtracted[i]?.name || "?")
         .join("; ");
       setAiExtractError(
-        `⚠️ ${badFormat.length} produktov má neplatný dátum akcie (očakávam DD.MM.RRRR): ${names}${badFormat.length > 5 ? "…" : ""}. Oprav červené polia a klikni Nahrať znova.`
-      );
-      return false;
-    }
-    if (!anyAlive) {
-      setAiInvalidDates(new Set(expired));
-      setAiExtractError(
-        `⚠️ Leták je celý EXPIROVANÝ — žiadny z ${aiExtracted.length} produktov neplatí dnes ani v budúcnosti (server by leták odmietol). Skontroluj červené dátumy a klikni Nahrať znova.`
+        `⚠️ ${oldYear.length} produktov má dátum so STARÝM ROKOM (menším ako ${currentYear}): ${names}${oldYear.length > 5 ? "…" : ""}. Oprav červené polia a klikni Nahrať znova.`
       );
       return false;
     }
@@ -2141,15 +2110,6 @@ export default function Home() {
         return;
       }
 
-      const skippedInvalid: string[] = Array.isArray(result.skippedInvalid)
-        ? result.skippedInvalid
-        : [];
-      if (skippedInvalid.length > 0) {
-        // Nahrané, ale s vynechanými produktmi — ukáž to ako chybu, nech sa to nedá prehliadnuť.
-        setError(
-          `⚠️ Leták nahraný (${result.path}), ale ${skippedInvalid.length} produktov VYNECHANÝCH pre zlý dátum: ${skippedInvalid.slice(0, 5).join("; ")}${skippedInvalid.length > 5 ? "…" : ""}`
-        );
-      }
       setStatus(t("status_uploaded") + ` (${result.path})`);
       setProducts([]);
       setEditingId(null);
@@ -2610,32 +2570,6 @@ export default function Home() {
                               price_regular: canonicalizePrice(it.price_regular),
                             }));
 
-                            // 0) Validácia dátumov PRED zápisom — inak by server
-                            // produkty so zlým dátumom vyradil (a v DB by ostali
-                            // "neviditeľné"). Chybné zvýrazníme červeno.
-                            const invalid = saveItems
-                              .map((it, i) => ({ i, it }))
-                              .filter(
-                                ({ it }) =>
-                                  !isValidPromoDateText(it.date_from || "") ||
-                                  !isValidPromoDateText(it.date_to || "")
-                              );
-                            if (invalid.length > 0) {
-                              setAiInvalidDates(new Set(invalid.map((x) => x.i)));
-                              const names = invalid
-                                .slice(0, 5)
-                                .map(({ it }) => it.name || "?")
-                                .join("; ");
-                              // Zavri modal a ukáž chybu v hlavnej sekcii —
-                              // červené polia treba vidieť a opraviť.
-                              setAiExtractError(
-                                `⚠️ ${invalid.length} produktov má neplatný dátum akcie (očakávam DD.MM.RRRR): ${names}${invalid.length > 5 ? "…" : ""}. Oprav červené polia a klikni Nahrať znova.`
-                              );
-                              setAiSaveModal(false);
-                              return;
-                            }
-                            setAiInvalidDates(new Set());
-
                             // 1) Uložiť/aktualizovať produkty v DB
                             const dbRes = await fetch("/api/ai/bulk-save", {
                               method: "POST",
@@ -2711,21 +2645,10 @@ export default function Home() {
                               return;
                             }
 
-                            const skippedInvalid: string[] = Array.isArray(uploadJson.skippedInvalid)
-                              ? uploadJson.skippedInvalid
-                              : [];
-                            if (skippedInvalid.length > 0) {
-                              // Leták sa nahral, ale časť produktov vypadla pre zlé
-                              // dátumy — MUSÍ to byť vidno, okno nezatvárame.
-                              setAiSaveStatus({
-                                ok: false,
-                                msg: `⚠️ Leták nahraný (${uploadJson.path || ""}), ale ${skippedInvalid.length} produktov VYNECHANÝCH pre zlý dátum: ${skippedInvalid.slice(0, 5).join("; ")}${skippedInvalid.length > 5 ? "…" : ""}. Oprav dátumy a nahraj znova.`,
-                              });
-                            } else {
-                              setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
-                              // Auto-close modal after success
-                              setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2000);
-                            }
+                            // Úspech: vždy ukáž, KOĽKO produktov sa nahralo.
+                            setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
+                            // Auto-close modal after success
+                            setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2000);
 
                             // 4) Refresh loadedFlyer
                             setShop(aiSaveShop);
