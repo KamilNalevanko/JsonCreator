@@ -8,7 +8,9 @@ type IndexState = {
 };
 
 const BUCKET = "cap-data";
-const MAX_SLOTS = 10;
+// Poľsko má dlhé (mesačné) akcie a viac súbežných letákov → vyšší limit.
+// Appka číta sloty s rovnakým limitom (maxSlotsForLang v databazy_loader.dart).
+const maxSlotsFor = (country: string) => (country === "pl" ? 30 : 10);
 
 const sanitizeBase = (value: string) =>
   (value || "")
@@ -366,7 +368,8 @@ export async function POST(req: Request) {
 
       // Ak by aj po vyčistení bolo príliš veľa živých slotov, zahoď najstaršie.
       const removedOldest: string[] = [];
-      while (alive.length >= MAX_SLOTS) {
+      const maxSlots = maxSlotsFor(country);
+      while (alive.length >= maxSlots) {
         const oldest = alive.shift()!;
         const oldestRes = await supabase.storage
           .from(BUCKET)
@@ -423,7 +426,7 @@ export async function POST(req: Request) {
       }
 
       // 5) Aktualizuj index.
-      const nextState: IndexState = { next: slot + 1, isFull: slot >= MAX_SLOTS };
+      const nextState: IndexState = { next: slot + 1, isFull: slot >= maxSlots };
       const indexRes = await writeIndex(supabase, indexPath, nextState);
       if (indexRes.error) {
         return NextResponse.json(

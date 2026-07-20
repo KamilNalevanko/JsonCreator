@@ -115,6 +115,21 @@ const toPageNumber = (value: unknown): number | null => {
   return null;
 };
 
+// Rovnaké pravidlo ako server (rotating-upload): DD.MM.RRRR, reálny dátum,
+// rok 2024 až budúci rok. Validuje sa NORMALIZOVANÁ hodnota (normalizeSkDate).
+const isValidPromoDateText = (raw: string): boolean => {
+  const m = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!m) return false;
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const year = Number(m[3]);
+  if (year < 2024 || year > new Date().getFullYear() + 1) return false;
+  const d = new Date(year, month - 1, day);
+  return (
+    d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+  );
+};
+
 const normalizeAiExtractItem = (item: unknown): AiExtractItem => {
   const src = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
   return {
@@ -362,6 +377,9 @@ export default function Home() {
   const [aiSaveShop, setAiSaveShop] = useState("");
   const [aiSaveCountry, setAiSaveCountry] = useState("sk");
   const [aiSaveStatus, setAiSaveStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  // Indexy produktov s neplatným dátumom akcie — zvýraznia sa červeno a
+  // upload sa zablokuje, kým sa neopravia (inak by ich server vyradil).
+  const [aiInvalidDates, setAiInvalidDates] = useState<Set<number>>(new Set());
   const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [aiElapsedSec, setAiElapsedSec] = useState(0);
@@ -2385,11 +2403,11 @@ export default function Home() {
                         </div>
                         <div className="flex items-center gap-1">
                           <span className={lbl}>{t("ai_label_from")}</span>
-                          <input className={`${inp} w-[5.5rem]`} value={item.date_from || ""} placeholder="DD.MM.YYYY" onChange={e => upd("date_from", e.target.value)} />
+                          <input className={`${inp} w-[5.5rem] ${aiInvalidDates.has(idx) ? "border-red-500 ring-1 ring-red-400 bg-red-50" : ""}`} value={item.date_from || ""} placeholder="DD.MM.YYYY" onChange={e => { upd("date_from", e.target.value); if (aiInvalidDates.has(idx)) setAiInvalidDates(prev => { const n = new Set(prev); n.delete(idx); return n; }); }} />
                         </div>
                         <div className="flex items-center gap-1">
                           <span className={lbl}>{t("ai_label_to")}</span>
-                          <input className={`${inp} w-[5.5rem]`} value={item.date_to || ""} placeholder="DD.MM.YYYY" onChange={e => upd("date_to", e.target.value)} />
+                          <input className={`${inp} w-[5.5rem] ${aiInvalidDates.has(idx) ? "border-red-500 ring-1 ring-red-400 bg-red-50" : ""}`} value={item.date_to || ""} placeholder="DD.MM.YYYY" onChange={e => { upd("date_to", e.target.value); if (aiInvalidDates.has(idx)) setAiInvalidDates(prev => { const n = new Set(prev); n.delete(idx); return n; }); }} />
                         </div>
                       </div>
                       {/* R4: Zaradenie (Kategória / Podkategória / Zaradenie) */}
@@ -2541,6 +2559,32 @@ export default function Home() {
                               price_sale: canonicalizePrice(it.price_sale),
                               price_regular: canonicalizePrice(it.price_regular),
                             }));
+
+                            // 0) Validácia dátumov PRED zápisom — inak by server
+                            // produkty so zlým dátumom vyradil (a v DB by ostali
+                            // "neviditeľné"). Chybné zvýrazníme červeno.
+                            const invalid = saveItems
+                              .map((it, i) => ({ i, it }))
+                              .filter(
+                                ({ it }) =>
+                                  !isValidPromoDateText(it.date_from || "") ||
+                                  !isValidPromoDateText(it.date_to || "")
+                              );
+                            if (invalid.length > 0) {
+                              setAiInvalidDates(new Set(invalid.map((x) => x.i)));
+                              const names = invalid
+                                .slice(0, 5)
+                                .map(({ it }) => it.name || "?")
+                                .join("; ");
+                              // Zavri modal a ukáž chybu v hlavnej sekcii —
+                              // červené polia treba vidieť a opraviť.
+                              setAiExtractError(
+                                `⚠️ ${invalid.length} produktov má neplatný dátum akcie (očakávam DD.MM.RRRR): ${names}${invalid.length > 5 ? "…" : ""}. Oprav červené polia a klikni Nahrať znova.`
+                              );
+                              setAiSaveModal(false);
+                              return;
+                            }
+                            setAiInvalidDates(new Set());
 
                             // 1) Uložiť/aktualizovať produkty v DB
                             const dbRes = await fetch("/api/ai/bulk-save", {
