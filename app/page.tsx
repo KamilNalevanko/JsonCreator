@@ -380,6 +380,53 @@ export default function Home() {
   // Indexy produktov s neplatným dátumom akcie — zvýraznia sa červeno a
   // upload sa zablokuje, kým sa neopravia (inak by ich server vyradil).
   const [aiInvalidDates, setAiInvalidDates] = useState<Set<number>>(new Set());
+
+  // Kontrola dátumov PRED otvorením upload okna (na prvý klik na Nahrať):
+  // 1) zlý formát -> červené polia + zoznam mien; 2) celý leták expirovaný
+  // (server by ho odmietol) -> červené dátumy v minulosti. Vráti true = OK.
+  const validateAiDatesForUpload = (): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const badFormat: number[] = [];
+    const expired: number[] = [];
+    let anyAlive = false;
+    aiExtracted.forEach((it, i) => {
+      const from = normalizeSkDate(it.date_from);
+      const to = normalizeSkDate(it.date_to);
+      if (!isValidPromoDateText(from) || !isValidPromoDateText(to)) {
+        badFormat.push(i);
+        return;
+      }
+      const m = to.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)!;
+      const toDate = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+      if (toDate >= today) {
+        anyAlive = true;
+      } else {
+        expired.push(i);
+      }
+    });
+    if (badFormat.length > 0) {
+      setAiInvalidDates(new Set(badFormat));
+      const names = badFormat
+        .slice(0, 5)
+        .map((i) => aiExtracted[i]?.name || "?")
+        .join("; ");
+      setAiExtractError(
+        `⚠️ ${badFormat.length} produktov má neplatný dátum akcie (očakávam DD.MM.RRRR): ${names}${badFormat.length > 5 ? "…" : ""}. Oprav červené polia a klikni Nahrať znova.`
+      );
+      return false;
+    }
+    if (!anyAlive) {
+      setAiInvalidDates(new Set(expired));
+      setAiExtractError(
+        `⚠️ Leták je celý EXPIROVANÝ — žiadny z ${aiExtracted.length} produktov neplatí dnes ani v budúcnosti (server by leták odmietol). Skontroluj červené dátumy a klikni Nahrať znova.`
+      );
+      return false;
+    }
+    setAiInvalidDates(new Set());
+    setAiExtractError("");
+    return true;
+  };
   const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [aiElapsedSec, setAiElapsedSec] = useState(0);
@@ -2480,6 +2527,9 @@ export default function Home() {
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={() => {
+                      // Kontrola dátumov HNEĎ na prvý klik — pri chybe sa okno
+                      // neotvorí, chybné produkty sa vyznačia červeno v zozname.
+                      if (!validateAiDatesForUpload()) return;
                       setAiSaveShop(aiShop || aiDetectedShop || "");
                       setAiSaveCountry(aiCountry || bucketPath || aiDetectedCountry || "sk");
                       setAiSaveStatus(null);
