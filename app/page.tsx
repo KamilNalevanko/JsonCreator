@@ -2380,7 +2380,7 @@ export default function Home() {
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <span className={lbl}>{t("ai_label_weight")}</span>
-                          <input className={`${inp} w-14`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
+                          <input className={`${inp} w-24`} value={item.amount || ""} placeholder="0" onChange={e => upd("amount", e.target.value)} />
                           <select className={`${sel} w-14`} value={item.unit || ""} onChange={e => upd("unit", e.target.value)}>
                             <option value="">—</option>
                             {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
