@@ -183,7 +183,7 @@ const SHOP_ALIASES: Record<string, string> = {
   auchansupermarket: "auchansupermarket",
   aldi: "aldi",
   dino: "dino",
-  lewiatan: "lewiatan",
+  netto: "netto",
   carrefour: "carrefour",
   carrefourmarket: "carrefourmarket",
   carrefourexpress: "carrefourexpress",
@@ -396,6 +396,75 @@ export default function Home() {
     setAiExtractError("");
     return true;
   };
+
+  // Stabilný kľúč „rovnakej" položky — všetky polia VRÁTANE zaradenia.
+  const aiDupKey = (it: AiExtractItem) =>
+    [
+      normalizeKey(it.name || ""),
+      String(it.amount || "").toLowerCase().replace(/,/g, ".").replace(/\s+/g, " ").trim(),
+      String(it.unit || "").toLowerCase().trim(),
+      canonicalizePrice(it.price_sale),
+      canonicalizePrice(it.price_regular),
+      (it.note || "").trim().toLowerCase(),
+      normalizeSkDate(it.date_from),
+      normalizeSkDate(it.date_to),
+      it.categoryKey || "",
+      it.subcategoryKey || "",
+      it.placementKey || "",
+    ].join("|");
+
+  // ŽIVÉ vyznačenie rovnakých položiek. Nič sa NEMAŽE ani neblokuje —
+  // len sa červeno obtiahnu, nech si zákazník skontroluje, či tam obe patria.
+  // Prepočíta sa automaticky pri každej úprave/zmazaní.
+  const aiDupRows = useMemo(() => {
+    const groups = new Map<string, number[]>();
+    aiExtracted.forEach((it, i) => {
+      if (!it.name?.trim()) return;
+      const k = aiDupKey(it);
+      groups.set(k, [...(groups.get(k) ?? []), i]);
+    });
+    const dup = new Set<number>();
+    for (const idxs of groups.values()) {
+      if (idxs.length > 1) idxs.forEach((i) => dup.add(i));
+    }
+    return dup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiExtracted]);
+
+  // Platné kľúče (kat||podkat||zaradenie) z hierarchie — produkt s kľúčom mimo
+  // tejto množiny sa NEDÁ zaradiť do letáka.
+  const hierValidKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of hierarchy)
+      for (const sub of c["Podkategórie"] ?? [])
+        for (const z of sub["Zaradenia"] ?? [])
+          s.add(`${c["Kategória"]}||${sub["Podkategória"]}||${z["Zaradenie"]}`);
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Riadky, ktoré sa do letáka NEDOSTANÚ (prázdny názov alebo zaradenie mimo
+  // hierarchie). Sú viditeľné v zozname (oranžovo vyznačené), ale NErátajú sa
+  // do počtu na tlačidle — aby číslo na tlačidle = počet reálne nahraných.
+  const aiUnplacedRows = useMemo(() => {
+    const set = new Set<number>();
+    aiExtracted.forEach((it, i) => {
+      if (!it.name?.trim()) {
+        set.add(i);
+        return;
+      }
+      const key = `${it.categoryKey || ""}||${it.subcategoryKey || ""}||${it.placementKey || ""}`;
+      if (!hierValidKeys.has(key)) set.add(i);
+    });
+    return set;
+  }, [aiExtracted, hierValidKeys]);
+
+  // JEDNO číslo všade: nahráva sa VŠETKO zo zoznamu (aj položky bez zaradenia
+  // idú do letáka, len sa v appke zobrazia až po doplnení zaradenia). Takže
+  // počet na tlačidle = počet v zozname = počet po nahratí. Žiadne rozdielne
+  // číslo, ktoré by zákazníka stresovalo.
+  const aiUploadableCount = aiExtracted.length;
+
   const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [aiElapsedSec, setAiElapsedSec] = useState(0);
@@ -505,7 +574,7 @@ export default function Home() {
       { value: "stokrotka-express", label: "Stokrotka Express" },
       { value: "stokrotka-market", label: "Stokrotka Market" },
       { value: "stokrotka-supermarket", label: "Stokrotka Supermarket" },
-      { value: "lewiatan", label: "Lewiatan" },
+      { value: "netto", label: "Netto" },
       { value: "carrefour-express", label: "Carrefour Express" },
       { value: "carrefour-market", label: "Carrefour Market" },
       { value: "carrefour", label: "Carrefour" },
@@ -2365,7 +2434,11 @@ export default function Home() {
                     )}
                     <div
                       className={`rounded-xl border px-3 py-2 text-xs space-y-0 transition-all ${
-                        aiEditingIdx === idx
+                        aiDupRows.has(idx)
+                          ? "border-red-500 bg-red-50 shadow-md ring-2 ring-red-300"
+                          : aiUnplacedRows.has(idx)
+                          ? "border-amber-500 border-dashed bg-amber-50 shadow-md ring-2 ring-amber-300"
+                          : aiEditingIdx === idx
                           ? "border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-200"
                           : "border-black/20 bg-[var(--surface)] shadow-sm"
                       }`}
@@ -2484,11 +2557,18 @@ export default function Home() {
                 </div>
               ) : null}
               {aiExtracted.length > 0 ? (
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex flex-col items-end gap-1">
+                  {aiUnplacedRows.size > 0 ? (
+                    <span className="rounded-lg bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-800">
+                      ⚠ {aiUnplacedRows.size} bez zaradenia (oranžové) — nahrajú sa, ale v appke sa zobrazia až po doplnení zaradenia
+                    </span>
+                  ) : null}
                   <button
                     onClick={() => {
                       // Kontrola dátumov HNEĎ na prvý klik — pri chybe sa okno
                       // neotvorí, chybné produkty sa vyznačia červeno v zozname.
+                      // Rovnaké položky sú vyznačené červeno v zozname (živo),
+                      // ale upload sa NEblokuje — o duplicitách rozhodne zákazník.
                       if (!validateAiDatesForUpload()) return;
                       setAiSaveShop(aiShop || aiDetectedShop || "");
                       setAiSaveCountry(aiCountry || bucketPath || aiDetectedCountry || "sk");
@@ -2497,7 +2577,7 @@ export default function Home() {
                     }}
                     className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75"
                   >
-                    🚀 {t("ai_upload_to_server")} ({aiExtracted.length})
+                    🚀 {t("ai_upload_to_server")} ({aiUploadableCount})
                   </button>
                 </div>
               ) : null}
@@ -2560,6 +2640,10 @@ export default function Home() {
                           setIsAiSaving(true);
                           setAiSaveStatus(null);
                           try {
+                            // Nahráva sa PRESNE to, čo je v zozname — nič sa
+                            // nemaže. Rovnaké položky sú len červeno vyznačené;
+                            // ak tam nemajú byť, zmazal ich zákazník ručne.
+
                             // Canonicalize dates once so the DB and the flyer file always
                             // agree and never carry mixed formats (e.g. "24.6.2026").
                             const saveItems = aiExtracted.map((it) => ({
@@ -2624,6 +2708,48 @@ export default function Home() {
                               })),
                             }));
 
+                            // NIČ nevynechať: produkty, ktorých kľúč nesedí so
+                            // žiadnym uzlom hierarchie (prázdne/neplatné zaradenie)
+                            // pripojíme ako ďalšie uzly na koniec letáka. Tým je
+                            // počet v letáku = počet v zozname (appka ich zobrazí
+                            // až po doplnení zaradenia, ale sú uložené a započítané).
+                            const hierKeys = new Set<string>();
+                            for (const c of hierarchy)
+                              for (const s of c["Podkategórie"])
+                                for (const z of s["Zaradenia"])
+                                  hierKeys.add(`${c["Kategória"]}||${s["Podkategória"]}||${z["Zaradenie"]}`);
+                            const droppedItems: FlyerProduct[] = [];
+                            for (const [key, arr] of productMap) {
+                              if (!hierKeys.has(key)) droppedItems.push(...arr);
+                            }
+                            if (droppedItems.length > 0) {
+                              // Zoskup podľa vlastných kľúčov kat→podkat→zaradenie.
+                              const extra = new Map<string, Map<string, Map<string, FlyerProduct[]>>>();
+                              for (const p of droppedItems) {
+                                const c = p["Kategória"] || "", s = p["Podkategória"] || "", z = p["Zaradenie"] || "";
+                                if (!extra.has(c)) extra.set(c, new Map());
+                                const sm = extra.get(c)!;
+                                if (!sm.has(s)) sm.set(s, new Map());
+                                const zm = sm.get(s)!;
+                                if (!zm.has(z)) zm.set(z, []);
+                                zm.get(z)!.push(p);
+                              }
+                              for (const [c, sm] of extra) {
+                                flyerJson.push({
+                                  "Kategória": c,
+                                  "Podkategórie": [...sm].map(([s, zm]) => ({
+                                    "Podkategória": s,
+                                    "Zaradenia": [...zm].map(([z, prods]) => ({
+                                      "Zaradenie": z,
+                                      "Produkty": prods,
+                                    })),
+                                  })),
+                                });
+                              }
+                            }
+                            // Všetko pomenované je teraz v letáku → počet = zoznam.
+                            const flyerCount = saveItems.filter((it) => it.name?.trim()).length;
+
                             // 3) Nahrať leták na server
                             const uploadRes = await fetch("/api/rotating-upload", {
                               method: "POST",
@@ -2645,10 +2771,23 @@ export default function Home() {
                               return;
                             }
 
-                            // Úspech: vždy ukáž, KOĽKO produktov sa nahralo.
-                            setAiSaveStatus({ ok: true, msg: `✓ ${t("ai_upload_ok", { count: String(dbJson.saved), path: uploadJson.path || "" })}` });
+                            // Hláška ukazuje POČET V LETÁKU (to je to, čo appka
+                            // reálne zobrazí a čo bolo na tlačidle). Ak niečo
+                            // vypadlo kvôli chýbajúcemu zaradeniu, vypíšeme to —
+                            // nič sa nestráca potichu.
+                            // Počet v hláške = flyerCount = presne to, čo bolo na
+                            // tlačidle (aiUploadableCount). Nezaradené sú už vopred
+                            // vylúčené z počtu a v zozname oranžové — tu už len
+                            // jemná poznámka, nie chyba (leták sa nahral).
+                            const dropNote = droppedItems.length > 0
+                              ? ` (z toho ${droppedItems.length} bez zaradenia — v appke sa zobrazia až po doplnení)`
+                              : "";
+                            setAiSaveStatus({
+                              ok: true,
+                              msg: `✓ ${t("ai_upload_ok", { count: String(flyerCount), path: uploadJson.path || "" })}${dropNote}`,
+                            });
                             // Auto-close modal after success
-                            setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2000);
+                            setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2500);
 
                             // 4) Refresh loadedFlyer
                             setShop(aiSaveShop);
@@ -2662,7 +2801,7 @@ export default function Home() {
                         }}
                         className="rounded-xl bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
                       >
-                        {isAiSaving ? t("ai_saving") : `🚀 ${t("ai_btn_upload")} ${aiExtracted.length}`}
+                        {isAiSaving ? t("ai_saving") : `🚀 ${t("ai_btn_upload")} ${aiUploadableCount}`}
                       </button>
                     </div>
                   </div>
