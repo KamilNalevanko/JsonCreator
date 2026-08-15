@@ -162,18 +162,29 @@ for (const country of COUNTRIES) {
     });
     for (const mv of planMoves) console.log(`  MOVE   ${mv.from.split("/").pop()} -> ${mv.to.split("/").pop()}`);
 
-    const nextIndex = { next: alive.length + 1, isFull: false };
-    console.log(`  INDEX  _indexes/${shop}.json = ${JSON.stringify(nextIndex)}  (živých slotov: ${alive.length})`);
+    // Index (a novú `version`) zapisujeme LEN keď sa pre obchod reálne niečo
+    // zmenilo (zmazané/presunuté sloty). Inak index nechávame tak — appka má
+    // vtedy stále platnú diskovú cache a nemusí sťahovať letáky nanovo.
+    const deletedForShop = files.length - alive.length;
+    const shopChanged = deletedForShop > 0 || planMoves.length > 0;
+    const nextIndex = shopChanged
+      ? { next: alive.length + 1, isFull: false, version: new Date().toISOString() }
+      : null;
+    if (shopChanged) {
+      console.log(`  INDEX  _indexes/${shop}.json = ${JSON.stringify(nextIndex)}  (živých slotov: ${alive.length})`);
+    } else {
+      console.log(`  INDEX  _indexes/${shop}.json — bez zmeny, nechávam (živých slotov: ${alive.length})`);
+    }
 
     if (APPLY) {
       // Poradie: najprv mazanie (uvoľní čísla), potom presuny vzostupne, potom index.
       // (mazanie tejto skupiny sa vykoná nižšie spolu s ostatnými — presuny až po ňom)
       shops.get(shop).moves = planMoves;
-      shops.get(shop).index = nextIndex;
+      if (nextIndex) shops.get(shop).index = nextIndex;
     }
-    deletions += files.length - alive.length;
+    deletions += deletedForShop;
     moves += planMoves.length;
-    indexUpdates += 1;
+    if (shopChanged) indexUpdates += 1;
   }
 
   if (APPLY) {

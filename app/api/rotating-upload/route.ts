@@ -5,6 +5,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type IndexState = {
   next: number;
   isFull: boolean;
+  // Značka verzie letákov obchodu — mení sa pri každom nahratí (a pri cleanupe,
+  // keď sa niečo reálne zmení). Appka číta tento drobný index a sťahuje ťažké
+  // letáky iba keď sa `version` líši od jej diskovej cache → šetrí egress.
+  version?: string;
 };
 
 const BUCKET = "cap-data";
@@ -358,8 +362,13 @@ export async function POST(req: Request) {
         );
       }
 
-      // 5) Aktualizuj index.
-      const nextState: IndexState = { next: slot + 1, isFull: slot >= maxSlots };
+      // 5) Aktualizuj index (vrátane novej značky verzie — appka podľa nej vie,
+      //    že pribudol/zmenil sa leták a treba stiahnuť čerstvé dáta).
+      const nextState: IndexState = {
+        next: slot + 1,
+        isFull: slot >= maxSlots,
+        version: new Date().toISOString(),
+      };
       const indexRes = await writeIndex(supabase, indexPath, nextState);
       if (indexRes.error) {
         return NextResponse.json(
