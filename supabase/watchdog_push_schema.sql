@@ -14,15 +14,23 @@ create table if not exists public.watchdog_subscriptions (
 
 alter table public.watchdog_subscriptions enable row level security;
 
--- Appka (anon kľúč) smie vložiť/aktualizovať subscription. Identita = token
--- zariadenia; žiadne citlivé dáta. (Čítať anon nesmie.)
+-- Appka (anon kľúč) robí UPSERT (insert + on-conflict update) svojej subscription.
+-- Upsert cez PostgREST potrebuje aj SELECT (kontrola konfliktu), preto sú všetky
+-- tri policy. Dáta sú málo citlivé (FCM token + kľúče sledovaných produktov,
+-- žiadne meno/email; token sa bez server-kľúča nedá zneužiť).
+-- (Čistejšia alternatíva do budúcna: zápis cez Edge Function so service role
+--  a anon bez prístupu k tabuľke.)
 drop policy if exists "anon insert subscription" on public.watchdog_subscriptions;
-create policy "anon insert subscription" on public.watchdog_subscriptions
-  for insert to anon with check (true);
-
 drop policy if exists "anon update subscription" on public.watchdog_subscriptions;
-create policy "anon update subscription" on public.watchdog_subscriptions
-  for update to anon using (true) with check (true);
+drop policy if exists "sub insert" on public.watchdog_subscriptions;
+drop policy if exists "sub update" on public.watchdog_subscriptions;
+drop policy if exists "sub select" on public.watchdog_subscriptions;
+create policy "sub insert" on public.watchdog_subscriptions
+  for insert to public with check (true);
+create policy "sub update" on public.watchdog_subscriptions
+  for update to public using (true) with check (true);
+create policy "sub select" on public.watchdog_subscriptions
+  for select to public using (true);
 
 -- 2) Log odoslaných pushov — aby sa tá istá akcia neposlala dvakrát.
 create table if not exists public.watchdog_push_log (
