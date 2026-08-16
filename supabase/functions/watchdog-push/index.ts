@@ -97,12 +97,14 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.token;
 }
 
+// Vráti { ok, dead } — dead=true znamená neplatný token (odinštalovaná appka /
+// rotovaný token), takže volajúci ho z DB zmaže, nech sa tabuľka nezasviní.
 async function sendFcm(
   token: string,
   title: string,
   body: string,
   data: Record<string, string>,
-): Promise<boolean> {
+): Promise<{ ok: boolean; dead: boolean }> {
   const at = await getAccessToken();
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${FIREBASE_SA.project_id}/messages:send`,
@@ -123,7 +125,20 @@ async function sendFcm(
       }),
     },
   );
-  return res.ok;
+  if (res.ok) return { ok: true, dead: false };
+  let dead = false;
+  try {
+    const j = await res.json();
+    const status = j?.error?.status;
+    const codes = (j?.error?.details ?? [])
+      .map((d: { errorCode?: string }) => d?.errorCode)
+      .filter(Boolean);
+    if (res.status === 404 || status === "NOT_FOUND" ||
+        codes.includes("UNREGISTERED")) {
+      dead = true;
+    }
+  } catch (_) { /* ignore */ }
+  return { ok: false, dead };
 }
 
 // deno-lint-ignore no-explicit-any
@@ -151,10 +166,16 @@ Deno.serve(async () => {
       );
     }
 
+    // Uprac starý log, nech watchdog_push_log nerastie donekonečna.
+    const cutoff = new Date(Date.now() - 60 * 864e5).toISOString();
+    await sb.from("watchdog_push_log").delete().lt("sent_at", cutoff);
+
     let sent = 0;
+    const deadTokens = new Set<string>();
     for (const sub of subs) {
       const rows = promosByCountry[sub.country] ?? [];
       const watches = Array.isArray(sub.watches) ? sub.watches : [];
+      outer:
       for (const w of watches) {
         const matches = rows.filter((r) => {
           if (w.type === "product") {
@@ -188,7 +209,7 @@ Deno.serve(async () => {
                 : ""
             }`
             : "";
-          const ok = await sendFcm(
+          const resp = await sendFcm(
             sub.token,
             "Strážny pes: nová akcia",
             `${r.name} v akcii v ${r.shop}${priceLine}`,
@@ -201,12 +222,25 @@ Deno.serve(async () => {
               shop: r.shop ?? "",
             },
           );
-          if (ok) sent++;
+          if (resp.ok) {
+            sent++;
+          } else if (resp.dead) {
+            // Neplatný token (odinštalovaná appka) → zmaž ho, netreba ďalej skúšať.
+            deadTokens.add(sub.token);
+            break outer;
+          }
         }
       }
     }
 
-    return Response.json({ ok: true, sent });
+    // Zmaž mŕtve tokeny (odinštalované appky / rotované tokeny) aj ich log —
+    // aby sa tabuľky nezasvinili neaktívnymi zariadeniami.
+    for (const t of deadTokens) {
+      await sb.from("watchdog_subscriptions").delete().eq("token", t);
+      await sb.from("watchdog_push_log").delete().eq("token", t);
+    }
+
+    return Response.json({ ok: true, sent, cleaned: deadTokens.size });
   } catch (e) {
     return Response.json({ ok: false, error: String(e) }, { status: 500 });
   }

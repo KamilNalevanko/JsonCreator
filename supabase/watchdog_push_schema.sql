@@ -60,3 +60,18 @@ select cron.schedule(
   );
   $$
 );
+
+-- 4) Týždenné upratovanie (nedeľa 03:00) — nech DB nerastie donekonečna:
+--    starý log + prázdne/neaktívne subscriptions. (Mŕtve tokeny maže priamo
+--    Edge Function pri neúspešnom odoslaní.)
+select cron.schedule(
+  'watchdog-cleanup-weekly',
+  '0 3 * * 0',
+  $$
+  delete from public.watchdog_push_log
+    where sent_at < now() - interval '60 days';
+  delete from public.watchdog_subscriptions
+    where jsonb_array_length(watches) = 0
+      and updated_at < now() - interval '7 days';
+  $$
+);
