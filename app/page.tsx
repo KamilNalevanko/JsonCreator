@@ -2519,6 +2519,12 @@ export default function Home() {
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--ink)]">
                 Počet produktov pre reťazec <span>{loadedProductsList.length}</span>
               </div>
+              <a
+                href="/notifikacie"
+                className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white hover:bg-blue-500"
+              >
+                📣 Poslať notifikáciu
+              </a>
             </div>
 
             <div className="mt-16 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
