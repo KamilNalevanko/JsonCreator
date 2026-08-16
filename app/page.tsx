@@ -5,6 +5,7 @@ import {
   normalizeSkDate,
   normalizePrice as canonicalizePrice,
   calculateUnitPrice,
+  normalizeNameKey,
 } from "../lib/normalize";
 import hierarchyData from "../assets/hierarchia.json";
 import skLabels from "../assets/langs/sk.json";
@@ -465,6 +466,69 @@ export default function Home() {
   // číslo, ktoré by zákazníka stresovalo.
   const aiUploadableCount = aiExtracted.length;
 
+  // ── BLOKUJÚCA kontrola cien ────────────────────────────────────────────────
+  // Celá mobilná appka stojí na jednotkovej cene (porovnávanie obchodov), takže
+  // produkt bez nej je nepoužiteľný. A cena 0,01 € je takmer vždy preklik alebo
+  // zle prečítaný údaj. Kontroluje sa ŽIVO (pri každej úprave) a nahrávanie sa
+  // pri chybe nespustí — riadky sú červené a v hláške je aj číslo strany.
+  const aiPriceIssues = useMemo(() => {
+    const map = new Map<number, string>();
+    aiExtracted.forEach((it, i) => {
+      if (!it.name?.trim()) return; // bezmenné rieši aiUnplacedRows
+      const priceRaw = canonicalizePrice(it.price_sale);
+      const priceNum = parseFloat(String(priceRaw).replace(",", "."));
+      if (!priceRaw || Number.isNaN(priceNum)) {
+        map.set(i, "chýba akciová cena");
+        return;
+      }
+      if (priceNum <= 0.01) {
+        map.set(i, `podozrivá cena ${priceRaw}`);
+        return;
+      }
+      // Jednotková cena sa počíta z ceny + množstva + jednotky; keď vyjde
+      // prázdna, chýba/nesedí množstvo alebo jednotka.
+      const unitPrice = calculateUnitPrice(
+        it.price_sale || "",
+        it.amount || "",
+        it.unit || "",
+      );
+      if (!unitPrice) {
+        map.set(
+          i,
+          !String(it.amount || "").trim()
+            ? "chýba množstvo → nedá sa vypočítať jednotková cena"
+            : "nedá sa vypočítať jednotková cena",
+        );
+        return;
+      }
+      const unitNum = parseFloat(unitPrice.replace(",", "."));
+      if (Number.isNaN(unitNum) || unitNum <= 0.01) {
+        map.set(i, `podozrivá jednotková cena ${unitPrice}`);
+      }
+    });
+    return map;
+  }, [aiExtracted]);
+
+  const validateAiPricesForUpload = (): boolean => {
+    if (aiPriceIssues.size === 0) return true;
+    // Zhrnutie po stranách, nech vie zákazník kam ísť.
+    const byPage = new Map<string, string[]>();
+    for (const [idx, reason] of aiPriceIssues) {
+      const it = aiExtracted[idx];
+      const page = it?.page != null ? `str. ${it.page}` : "bez strany";
+      const list = byPage.get(page) ?? [];
+      list.push(`„${it?.name || "?"}" (${reason})`);
+      byPage.set(page, list);
+    }
+    const parts = [...byPage.entries()]
+      .slice(0, 6)
+      .map(([page, items]) => `${page}: ${items.slice(0, 3).join(", ")}${items.length > 3 ? ` +${items.length - 3} ďalších` : ""}`);
+    setAiExtractError(
+      `⛔ Nahrávanie zastavené — ${aiPriceIssues.size} ${aiPriceIssues.size === 1 ? "produkt má" : "produktov má"} chybnú cenu (červené v zozname). ${parts.join(" · ")}${byPage.size > 6 ? " · …" : ""} Oprav ich a klikni Nahrať znova.`,
+    );
+    return false;
+  };
+
   const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   const [aiElapsedSec, setAiElapsedSec] = useState(0);
@@ -531,6 +595,174 @@ export default function Home() {
     ref: LoadedProductRef;
     name: string;
   } | null>(null);
+
+  // ── Panel viacerých akcií (promo) jedného produktu ──────────────────────────
+  type PromoRow = {
+    date_from: string;
+    date_to: string;
+    price_sale: string;
+    price_regular: string;
+    note: string;
+    // zaradenie sa dedí z produktu, ale necháme ho meniteľné pre istotu
+    categoryKey: string;
+    subcategoryKey: string;
+    placementKey: string;
+  };
+  const [promoPanel, setPromoPanel] = useState<{
+    open: boolean;
+    loading: boolean;
+    saving: boolean;
+    name: string;
+    amount: string;
+    unit: string;
+    categoryKey: string;
+    subcategoryKey: string;
+    placementKey: string;
+    promos: PromoRow[];
+    msg: string;
+    ok: boolean;
+  } | null>(null);
+
+  const openPromoPanel = async (opts: {
+    name: string;
+    amount: string;
+    unit: string;
+    categoryKey: string;
+    subcategoryKey: string;
+    placementKey: string;
+  }) => {
+    if (!bucketPath || !shop) return;
+    setPromoPanel({
+      open: true,
+      loading: true,
+      saving: false,
+      ...opts,
+      promos: [],
+      msg: "",
+      ok: true,
+    });
+    try {
+      const url = `/api/master-products/promos?country=${encodeURIComponent(bucketPath)}&shop=${encodeURIComponent(shop)}&name=${encodeURIComponent(opts.name)}&amount=${encodeURIComponent(opts.amount)}&unit=${encodeURIComponent(opts.unit)}`;
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
+      const found: PromoRow[] = Array.isArray(data?.promos)
+        ? data.promos.map((p: Record<string, string>) => ({
+            date_from: p.date_from || "",
+            date_to: p.date_to || "",
+            price_sale: p.price_sale || "",
+            price_regular: p.price_regular || "",
+            note: p.note || "",
+            categoryKey: p.categoryKey || opts.categoryKey,
+            subcategoryKey: p.subcategoryKey || opts.subcategoryKey,
+            placementKey: p.placementKey || opts.placementKey,
+          }))
+        : [];
+      setPromoPanel((prev) =>
+        prev
+          ? {
+              ...prev,
+              loading: false,
+              promos: found.length
+                ? found
+                : [
+                    {
+                      date_from: form.dateFrom || "",
+                      date_to: form.dateTo || "",
+                      price_sale: form.priceSale || "",
+                      price_regular: form.priceRegular || "",
+                      note: form.info || "",
+                      categoryKey: opts.categoryKey,
+                      subcategoryKey: opts.subcategoryKey,
+                      placementKey: opts.placementKey,
+                    },
+                  ],
+              msg: found.length
+                ? `Načítaných ${found.length} akcií z letákov.`
+                : "V letákoch zatiaľ žiadna akcia — pridaj prvú.",
+              ok: true,
+            }
+          : prev,
+      );
+    } catch {
+      setPromoPanel((prev) =>
+        prev ? { ...prev, loading: false, ok: false, msg: "Načítanie akcií zlyhalo." } : prev,
+      );
+    }
+  };
+
+  const savePromoPanel = async () => {
+    if (!promoPanel || !bucketPath || !shop) return;
+    // Validácia: každá akcia musí mať cenu > 0,01 a jednotkovú cenu.
+    for (let i = 0; i < promoPanel.promos.length; i++) {
+      const p = promoPanel.promos[i];
+      const priceNum = parseFloat(canonicalizePrice(p.price_sale).replace(",", "."));
+      if (!p.price_sale || Number.isNaN(priceNum) || priceNum <= 0.01) {
+        setPromoPanel({ ...promoPanel, ok: false, msg: `Akcia ${i + 1}: chýba/zlá akciová cena.` });
+        return;
+      }
+      if (!calculateUnitPrice(p.price_sale, promoPanel.amount, promoPanel.unit)) {
+        setPromoPanel({ ...promoPanel, ok: false, msg: `Akcia ${i + 1}: nedá sa vypočítať jednotková cena (skontroluj množstvo).` });
+        return;
+      }
+      if (!p.date_from || !p.date_to) {
+        setPromoPanel({ ...promoPanel, ok: false, msg: `Akcia ${i + 1}: chýba dátum od/do.` });
+        return;
+      }
+    }
+    setPromoPanel({ ...promoPanel, saving: true, msg: "" });
+    try {
+      const res = await fetch("/api/master-products/save-promos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: bucketPath,
+          shop,
+          product: {
+            name: promoPanel.name,
+            amount: promoPanel.amount,
+            unit: promoPanel.unit,
+            categoryKey: promoPanel.categoryKey,
+            subcategoryKey: promoPanel.subcategoryKey,
+            placementKey: promoPanel.placementKey,
+          },
+          promos: promoPanel.promos.map((p) => ({
+            date_from: normalizeSkDate(p.date_from),
+            date_to: normalizeSkDate(p.date_to),
+            price_sale: canonicalizePrice(p.price_sale),
+            price_regular: canonicalizePrice(p.price_regular),
+            note: p.note,
+            amount: promoPanel.amount,
+            unit: promoPanel.unit,
+            categoryKey: p.categoryKey,
+            subcategoryKey: p.subcategoryKey,
+            placementKey: p.placementKey,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        setPromoPanel((prev) => (prev ? { ...prev, saving: false, ok: false, msg: data?.error || "Uloženie zlyhalo." } : prev));
+        return;
+      }
+      const w = Array.isArray(data.warnings) && data.warnings.length ? ` ⚠ ${data.warnings.join(" · ")}` : "";
+      setPromoPanel((prev) =>
+        prev
+          ? {
+              ...prev,
+              saving: false,
+              ok: true,
+              msg: `✓ Uložené: ${data.added} akcií v letáku (${(data.changedFiles || []).join(", ")}).${w}`,
+            }
+          : prev,
+      );
+      // Osvieženie načítaného zoznamu z DB.
+      lastLoadKeyRef.current = "";
+      loadShopJson(shop);
+    } catch {
+      setPromoPanel((prev) => (prev ? { ...prev, saving: false, ok: false, msg: "Sieťová chyba." } : prev));
+    }
+  };
+
   const lastLoadKeyRef = useRef<string>("");
   const appendQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingAppendRef = useRef(0);
@@ -1858,6 +2090,19 @@ export default function Home() {
     setError("");
     setStatus("");
 
+    // Načítaj pôvodný produkt z letáka — kvôli obchodu (nech server maže zo
+    // správneho letáka a scope-ne DB delete na obchod) a gramáži/jednotke
+    // (nech nezmaže inú veľkostnú variantu s rovnakým názvom).
+    const origProduct =
+      loadedFlyer?.[entry.ref.categoryIndex]?.["Podkategórie"]?.[
+        entry.ref.subcategoryIndex
+      ]?.["Zaradenia"]?.[entry.ref.placementIndex]?.["Produkty"]?.[
+        entry.ref.productIndex
+      ];
+    const delShops = Array.isArray(origProduct?.["Obchody"])
+      ? origProduct!["Obchody"]
+      : resolveProductShops(entry.ref, null);
+
     try {
       setIsDbUpdating(true);
       const response = await fetch("/api/master-products/delete", {
@@ -1871,6 +2116,9 @@ export default function Home() {
             "Kategória": categoryKey,
             "Podkategória": subcategoryKey,
             "Zaradenie": placementKey,
+            "Množstvo": origProduct?.["Množstvo"] ?? "",
+            "Merná jednotka": origProduct?.["Merná jednotka"] ?? "",
+            "Obchody": delShops,
           },
         }),
       });
@@ -1910,7 +2158,19 @@ export default function Home() {
         resetFormFields();
       }
 
-      setStatus("Produkt bol zmazany z databazy.");
+      const f = payload?.flyers as
+        | { removedFiles?: string[]; removedProducts?: number; warnings?: string[] }
+        | undefined;
+      let msg = "Produkt bol zmazaný z databázy.";
+      if (f?.removedFiles?.length) {
+        msg += ` Zmazaný aj z letákov (${f.removedFiles.length}): ${f.removedFiles.join(", ")}.`;
+      } else {
+        msg += " V letákoch na serveri sa nenašiel.";
+      }
+      if (f?.warnings?.length) {
+        msg += ` ⚠ ${f.warnings.join(" · ")}`;
+      }
+      setStatus(msg);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(t("error_upload_failed_detail", { message }));
@@ -2434,7 +2694,9 @@ export default function Home() {
                     )}
                     <div
                       className={`rounded-xl border px-3 py-2 text-xs space-y-0 transition-all ${
-                        aiDupRows.has(idx)
+                        aiPriceIssues.has(idx)
+                          ? "border-red-600 border-2 bg-red-100 shadow-md ring-2 ring-red-400"
+                          : aiDupRows.has(idx)
                           ? "border-red-500 bg-red-50 shadow-md ring-2 ring-red-300"
                           : aiUnplacedRows.has(idx)
                           ? "border-amber-500 border-dashed bg-amber-50 shadow-md ring-2 ring-amber-300"
@@ -2445,6 +2707,13 @@ export default function Home() {
                       onFocus={() => setAiEditingIdx(idx)}
                       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAiEditingIdx(null); }}
                     >
+                      {/* Blokujúca chyba ceny — dôvod priamo pri produkte */}
+                      {aiPriceIssues.has(idx) && (
+                        <div className="mb-1 rounded-md bg-red-600 px-2 py-1 text-[11px] font-bold text-white">
+                          ⛔ {item.page != null ? `Strana ${item.page} — ` : ""}
+                          {aiPriceIssues.get(idx)} — oprav, inak sa leták nedá nahrať
+                        </div>
+                      )}
                       {/* R1: Názov + delete */}
                       <div className="flex items-center gap-2 pb-1">
                         <span className={lbl} style={{width: "3.5rem"}}>{t("ai_label_name")}</span>
@@ -2520,8 +2789,28 @@ export default function Home() {
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
                       </div>
-                      {/* R5: Duplikovať — 1:1 kópia hneď pod tento produkt */}
-                      <div className="flex justify-end border-t border-black/[0.05] pt-1">
+                      {/* R5: Ďalšia akcia + Duplikovať — kópie hneď pod produkt */}
+                      <div className="flex justify-end gap-2 border-t border-black/[0.05] pt-1">
+                        <button
+                          tabIndex={-1}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            // Kópia toho istého produktu ako ĎALŠIA akcia:
+                            // zachová názov/gramáž/jednotku/zaradenie/info, ale
+                            // vyčistí dátumy a ceny — doplníš druhú akciu (rôzna
+                            // cena/dátum). Appka potom zobrazí najlacnejšiu platnú.
+                            const copy = JSON.parse(JSON.stringify(item)) as AiExtractItem;
+                            copy.date_from = "";
+                            copy.date_to = "";
+                            copy.price_sale = "";
+                            copy.price_regular = "";
+                            setAiExtracted(prev => [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
+                          }}
+                          className="flex items-center gap-1 rounded-md bg-[color:var(--accent)]/15 px-2 py-0.5 text-[10px] font-bold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/25"
+                          title="Pridať ďalšiu akciu na ten istý produkt (iný dátum/cena)"
+                        >
+                          <span className="text-xs leading-none">＋</span> Ďalšia akcia
+                        </button>
                         <button
                           tabIndex={-1}
                           onMouseDown={e => e.preventDefault()}
@@ -2558,6 +2847,19 @@ export default function Home() {
               ) : null}
               {aiExtracted.length > 0 ? (
                 <div className="mt-3 flex flex-col items-end gap-1">
+                  {aiPriceIssues.size > 0 ? (
+                    <span className="rounded-lg bg-red-600 px-2 py-1 text-[11px] font-bold text-white">
+                      ⛔ {aiPriceIssues.size} s chybnou cenou (červené) — nahrávanie zablokované
+                      {(() => {
+                        const pages = [...new Set(
+                          [...aiPriceIssues.keys()]
+                            .map((i) => aiExtracted[i]?.page)
+                            .filter((p) => p != null),
+                        )].sort((a, b) => (a as number) - (b as number));
+                        return pages.length ? ` · strany: ${pages.join(", ")}` : "";
+                      })()}
+                    </span>
+                  ) : null}
                   {aiUnplacedRows.size > 0 ? (
                     <span className="rounded-lg bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-800">
                       ⚠ {aiUnplacedRows.size} bez zaradenia (oranžové) — nahrajú sa, ale v appke sa zobrazia až po doplnení zaradenia
@@ -2570,6 +2872,9 @@ export default function Home() {
                       // Rovnaké položky sú vyznačené červeno v zozname (živo),
                       // ale upload sa NEblokuje — o duplicitách rozhodne zákazník.
                       if (!validateAiDatesForUpload()) return;
+                      // Chybné ceny (chýbajúca jednotková cena / cena 0,01 €)
+                      // nahrávanie ZASTAVIA — appka na jednotkovej cene stojí.
+                      if (!validateAiPricesForUpload()) return;
                       setAiSaveShop(aiShop || aiDetectedShop || "");
                       setAiSaveCountry(aiCountry || bucketPath || aiDetectedCountry || "sk");
                       setAiSaveStatus(null);
@@ -2667,9 +2972,52 @@ export default function Home() {
                             }
 
                             // 2) Zostaviť letákový JSON z aiExtracted
+                            // DÔLEŽITÉ: pre už známe produkty má bulk-save v DB
+                            // ULOŽENÉ zaradenie (opravené používateľom v minulosti)
+                            // a AI odhad ignoruje. Bez tohto kroku sa leták staval
+                            // z AI odhadu → DB a leták sa rozišli (reálny prípad:
+                            // "Mleczna Dolina Masło Ekstra" bolo v DB správne pod
+                            // maslo_82, ale v letáku pod brav_ov_mas = bravčová masť,
+                            // takže ho appka pod Maslom nezobrazila).
+                            // Preto preberáme zaradenie, ktoré vrátil bulk-save.
+                            const resolvedByKey = new Map<
+                              string,
+                              { category?: string; subcategory?: string; placement?: string }
+                            >();
+                            for (const m of (dbJson.merged ?? []) as Array<{
+                              name_key?: string;
+                              category?: string;
+                              subcategory?: string;
+                              placement?: string;
+                            }>) {
+                              if (m?.name_key) {
+                                resolvedByKey.set(m.name_key, {
+                                  category: m.category,
+                                  subcategory: m.subcategory,
+                                  placement: m.placement,
+                                });
+                              }
+                            }
+                            let placementFixes = 0;
+
                             const productMap = new Map<string, FlyerProduct[]>();
                             for (const item of saveItems) {
                               if (!item.name?.trim()) continue;
+                              const resolved = resolvedByKey.get(normalizeNameKey(item.name));
+                              // Preber zaradenie z DB len ak je kompletné a líši sa.
+                              if (
+                                resolved?.category &&
+                                resolved?.subcategory &&
+                                resolved?.placement &&
+                                (resolved.category !== item.categoryKey ||
+                                  resolved.subcategory !== item.subcategoryKey ||
+                                  resolved.placement !== item.placementKey)
+                              ) {
+                                item.categoryKey = resolved.category;
+                                item.subcategoryKey = resolved.subcategory;
+                                item.placementKey = resolved.placement;
+                                placementFixes += 1;
+                              }
                               const cat = item.categoryKey || "";
                               const sub = item.subcategoryKey || "";
                               const plc = item.placementKey || "";
@@ -2782,9 +3130,12 @@ export default function Home() {
                             const dropNote = droppedItems.length > 0
                               ? ` (z toho ${droppedItems.length} bez zaradenia — v appke sa zobrazia až po doplnení)`
                               : "";
+                            const fixNote = placementFixes > 0
+                              ? ` · ${placementFixes} zaradení opravených podľa databázy`
+                              : "";
                             setAiSaveStatus({
                               ok: true,
-                              msg: `✓ ${t("ai_upload_ok", { count: String(flyerCount), path: uploadJson.path || "" })}${dropNote}`,
+                              msg: `✓ ${t("ai_upload_ok", { count: String(flyerCount), path: uploadJson.path || "" })}${dropNote}${fixNote}`,
                             });
                             // Auto-close modal after success
                             setTimeout(() => { setAiSaveModal(false); setAiSaveStatus(null); }, 2500);
@@ -2981,7 +3332,17 @@ export default function Home() {
                             }`}
                           >
                             <span className="flex-1 text-left">{p.name}</span>
-                            <div className="flex items-center gap-2" />
+                            {(() => {
+                              const range = formatDateRange(
+                                p.product["Dátum akcie od"],
+                                p.product["Dátum akcie do"],
+                              );
+                              return range ? (
+                                <span className="shrink-0 whitespace-nowrap text-xs text-[color:var(--muted)]">
+                                  {range}
+                                </span>
+                              ) : null;
+                            })()}
                           </div>
                         ))}
                     </div>
@@ -3489,6 +3850,211 @@ placeholder={t("placeholder_extra_info")}
                   </button>
                 </div>
               ) : null}
+
+              {/* ── Panel viacerých akcií (2–5) jedného produktu ── */}
+              {(dbEditRef || editingLoadedRef) && (
+                <div className="rounded-2xl border border-[color:var(--accent)]/30 bg-[color:var(--accent)]/[0.04] p-3">
+                  {!promoPanel?.open ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openPromoPanel({
+                          name: form.name.trim(),
+                          amount: form.amount.trim(),
+                          unit: form.unit,
+                          categoryKey,
+                          subcategoryKey,
+                          placementKey,
+                        })
+                      }
+                      disabled={!form.name.trim()}
+                      className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-xs font-semibold text-white transition hover:brightness-95 disabled:opacity-50"
+                    >
+                      🔎 Načítať všetky akcie tohto produktu z letákov
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-[color:var(--ink)]">
+                          Akcie: {promoPanel.name} · {promoPanel.amount}
+                          {promoPanel.unit}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPromoPanel(null)}
+                          className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+                        >
+                          ✕ zavrieť
+                        </button>
+                      </div>
+
+                      {promoPanel.loading ? (
+                        <div className="py-2 text-xs text-[color:var(--muted)]">Načítavam…</div>
+                      ) : (
+                        <>
+                          {promoPanel.promos.map((pr, i) => (
+                            <div
+                              key={i}
+                              className="flex flex-wrap items-end gap-2 rounded-xl border border-black/10 bg-[var(--surface)] px-3 py-2"
+                            >
+                              <span className="text-[10px] font-bold text-[color:var(--muted)]">
+                                #{i + 1}
+                              </span>
+                              <label className="flex flex-col text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                                Od
+                                <input
+                                  type="date"
+                                  className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                                  value={skToIso(pr.date_from)}
+                                  onChange={(e) =>
+                                    setPromoPanel((prev) => {
+                                      if (!prev) return prev;
+                                      const next = [...prev.promos];
+                                      next[i] = { ...next[i], date_from: isoToSk(e.target.value) };
+                                      return { ...prev, promos: next };
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="flex flex-col text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                                Do
+                                <input
+                                  type="date"
+                                  className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                                  value={skToIso(pr.date_to)}
+                                  onChange={(e) =>
+                                    setPromoPanel((prev) => {
+                                      if (!prev) return prev;
+                                      const next = [...prev.promos];
+                                      next[i] = { ...next[i], date_to: isoToSk(e.target.value) };
+                                      return { ...prev, promos: next };
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="flex flex-col text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                                Akc. cena
+                                <input
+                                  className="w-20 rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                                  value={pr.price_sale}
+                                  placeholder="0,00"
+                                  onChange={(e) =>
+                                    setPromoPanel((prev) => {
+                                      if (!prev) return prev;
+                                      const next = [...prev.promos];
+                                      next[i] = { ...next[i], price_sale: e.target.value };
+                                      return { ...prev, promos: next };
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="flex flex-col text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                                Bežná
+                                <input
+                                  className="w-20 rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                                  value={pr.price_regular}
+                                  placeholder="0,00"
+                                  onChange={(e) =>
+                                    setPromoPanel((prev) => {
+                                      if (!prev) return prev;
+                                      const next = [...prev.promos];
+                                      next[i] = { ...next[i], price_regular: e.target.value };
+                                      return { ...prev, promos: next };
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="flex min-w-0 flex-1 flex-col text-[10px] font-semibold uppercase text-[color:var(--muted)]">
+                                Info
+                                <input
+                                  className="rounded-md border border-black/15 bg-[var(--surface)] px-2 py-1 text-xs text-[color:var(--ink)]"
+                                  value={pr.note}
+                                  onChange={(e) =>
+                                    setPromoPanel((prev) => {
+                                      if (!prev) return prev;
+                                      const next = [...prev.promos];
+                                      next[i] = { ...next[i], note: e.target.value };
+                                      return { ...prev, promos: next };
+                                    })
+                                  }
+                                />
+                              </label>
+                              <span className="text-[10px] text-[color:var(--muted)]">
+                                {calculateUnitPrice(pr.price_sale, promoPanel.amount, promoPanel.unit) || "—"}/{promoPanel.unit === "g" || promoPanel.unit === "ml" ? (promoPanel.unit === "g" ? "kg" : "l") : promoPanel.unit}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPromoPanel((prev) =>
+                                    prev
+                                      ? { ...prev, promos: prev.promos.filter((_, j) => j !== i) }
+                                      : prev,
+                                  )
+                                }
+                                className="rounded-md bg-red-50 px-2 py-1 text-[11px] font-bold text-red-600 hover:bg-red-100"
+                                title="Zmazať túto akciu"
+                              >
+                                🗑
+                              </button>
+                            </div>
+                          ))}
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={promoPanel.promos.length >= 5}
+                              onClick={() =>
+                                setPromoPanel((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        promos: [
+                                          ...prev.promos,
+                                          {
+                                            date_from: "",
+                                            date_to: "",
+                                            price_sale: "",
+                                            price_regular: "",
+                                            note: "",
+                                            categoryKey: prev.categoryKey,
+                                            subcategoryKey: prev.subcategoryKey,
+                                            placementKey: prev.placementKey,
+                                          },
+                                        ],
+                                      }
+                                    : prev,
+                                )
+                              }
+                              className="rounded-full border border-[color:var(--accent)]/40 px-3 py-1.5 text-xs font-semibold text-[color:var(--accent)] transition hover:bg-[color:var(--accent)]/10 disabled:opacity-40"
+                            >
+                              ＋ Ďalšia akcia {promoPanel.promos.length >= 5 ? "(max 5)" : ""}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={promoPanel.saving}
+                              onClick={savePromoPanel}
+                              className="rounded-full bg-green-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-green-700 disabled:opacity-50"
+                            >
+                              {promoPanel.saving ? "Ukladám…" : `💾 Uložiť akcie (${promoPanel.promos.length})`}
+                            </button>
+                            {promoPanel.msg ? (
+                              <span
+                                className={`text-[11px] font-semibold ${promoPanel.ok ? "text-green-700" : "text-red-600"}`}
+                              >
+                                {promoPanel.msg}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-[10px] text-[color:var(--muted)]">
+                            Uloží celú sadu akcií do letáka (nahradí staré). Appka
+                            zobrazí najlacnejšiu z platných. V DB ostane 1 riadok.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center gap-3 flex-nowrap">
                 {dbEditRef ? (

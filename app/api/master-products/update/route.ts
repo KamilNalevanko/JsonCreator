@@ -269,7 +269,7 @@ async function syncProductIntoFlyers(
     return summary;
   }
 
-  for (const shop of shops) {
+  shopLoop: for (const shop of shops) {
     if (!shop || shop === NO_SHOP_TOKEN) continue;
     const fileBase = sanitizeBase(shop);
     const slotRegex = new RegExp(`^${fileBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(_\\d{1,2})?\\.json$`);
@@ -294,8 +294,21 @@ async function syncProductIntoFlyers(
       continue;
     }
 
-    // Normal edit: update the product in EVERY file where it already exists
-    // (keeps a shop's rotating slots consistent).
+    // Normal edit: uprav produkt LEN v NAJNOVŠOM slote, kde sa nachádza.
+    // Predtým sa upravoval vo VŠETKÝCH slotoch — tým sa novým dátumom "oživil"
+    // aj starý expirovaný leták (produkt v slote 1,3,6 → zle sa prepísali všetky
+    // tri). Slot vyberáme podľa najneskoršieho dátumu DO matchnutého produktu =
+    // najaktuálnejšia inštancia; staré sloty ostávajú nedotknuté.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type Match = { placementNode: any; index: number; amountMatches: boolean };
+    type FileCand = {
+      fileName: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      flyer: any[];
+      matches: Match[];
+      productMaxTo: number;
+    };
+    const candidates: FileCand[] = [];
     for (const fileName of files) {
       const path = `${basePath}/${fileName}`;
       try {
@@ -308,14 +321,8 @@ async function syncProductIntoFlyers(
         const flyer = JSON.parse(await dl.data.text()) as any[];
         if (!Array.isArray(flyer)) continue;
 
-        // Collect matches (node + index) across the whole hierarchy.
-        type Match = {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          placementNode: any;
-          index: number;
-          amountMatches: boolean;
-        };
         const matches: Match[] = [];
+        let productMaxTo = 0;
         for (const cat of flyer) {
           for (const sub of cat?.["Podkategórie"] ?? []) {
             for (const plc of sub?.["Zaradenia"] ?? []) {
@@ -331,12 +338,63 @@ async function syncProductIntoFlyers(
                         .toLowerCase()
                         .trim() === originalUnit));
                 matches.push({ placementNode: plc, index, amountMatches });
+                const d = parseDateToNum(p?.["Dátum akcie do"]);
+                if (d > productMaxTo) productMaxTo = d;
               });
             }
           }
         }
-        if (matches.length === 0) continue;
+        if (matches.length > 0)
+          candidates.push({ fileName, flyer, matches, productMaxTo });
+      } catch (e) {
+        summary.warnings.push(
+          `${fileName}: ${e instanceof Error ? e.message : "chyba"}`,
+        );
+      }
+    }
 
+    if (candidates.length === 0) continue; // v letákoch tohto obchodu nie je
+
+    // Výber „najaktuálnejšieho" slotu:
+    //  1) uprednostni NEEXPIROVANÉ (dátum DO >= dnes) — nikdy nechytíme starý
+    //     expirovaný leták, keď existuje aktuálny,
+    //  2) potom najneskorší dátum DO,
+    //  3) potom vyššie číslo slotu (novší upload).
+    const now = new Date();
+    const todayNum =
+      now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    const slotNum = (fn: string) => {
+      const m = fn.match(/_(\d+)\.json$/);
+      return m ? Number(m[1]) : 0;
+    };
+    const isCurrent = (c: FileCand) =>
+      c.productMaxTo === 0 || c.productMaxTo >= todayNum;
+    candidates.sort((a, b) => {
+      const ca = isCurrent(a) ? 1 : 0;
+      const cb = isCurrent(b) ? 1 : 0;
+      return (
+        cb - ca ||
+        b.productMaxTo - a.productMaxTo ||
+        slotNum(b.fileName) - slotNum(a.fileName)
+      );
+    });
+    const winner = candidates[0];
+    if (candidates.length > 1) {
+      console.log(
+        `[update] ${shop}: produkt v ${candidates.length} slotoch — upravený len najnovší ${winner.fileName}, staršie nechané: ${candidates
+          .slice(1)
+          .map((c) => c.fileName)
+          .join(", ")}`,
+      );
+    }
+
+    // Uprav LEN víťazný slot.
+    {
+      const fileName = winner.fileName;
+      const path = `${basePath}/${fileName}`;
+      const flyer = winner.flyer;
+      const matches = winner.matches;
+      try {
         // Prefer exact amount+unit matches (protects same-name size variants);
         // fall back to a name-only match ONLY when it is unambiguous.
         let targets = matches.filter((m) => m.amountMatches);
@@ -347,7 +405,7 @@ async function syncProductIntoFlyers(
             summary.warnings.push(
               `${fileName}: ${matches.length} rovnomenné produkty, gramáž nesedí — nechané bez zmeny`,
             );
-            continue;
+            continue shopLoop;
           }
         }
 

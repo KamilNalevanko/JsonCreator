@@ -677,14 +677,62 @@ export async function POST(req: Request) {
       (process.env.VISION_AUTO_BATCH_BY_DENSITY || "false").toLowerCase() ===
       "true";
 
-    // Jednotkové/porovnávacie ceny v zátvorkách "(=1 kg KC: 2,34 / A: 2,69)"
-    // nie sú samostatné ponuky — bez ich odfiltrovania vychádzal expected
-    // ~2x nadsadený (falošné "extrahovaných 12 z ~27" varovania) a coverage
-    // re-runy sa míňali aj na strany, ktoré boli v skutočnosti kompletné.
-    const priceLikeCount = (text: string) =>
-      ((text || "").replace(/\(=[^)]*\)/g, "").match(/\b\d{1,3}[,.]\d{2}\b/g) || []).length;
+    // Odhad počtu ponúk na strane = počet "cenových" čísel / 2 (akciová +
+    // prečiarknutá cena na kachlík). Aby odhad nebol nafúknutý, treba vyhodiť
+    // všetko, čo cena ponuky NIE JE:
+    //  - jednotkové ceny v zátvorkách  "(=1 kg KC: 2,34 / A: 2,69)"   [SK/Kaufland]
+    //  - jednotkové ceny bez zátvoriek "1 kg 96,94 Kč", "100 g 13,86 Kč" [CZ/Penny]
+    //  - značka najnižšej ceny za 30 dní "< 23,90 Kč"                  [CZ]
+    //  - šablónové placeholdery "00,00" / "00 %" (Penny ich má 2-3 na kachlík)
+    // Bez tohto vychádzal expected pri Penny 3-4x nadsadený → coverage
+    // re-analyzoval skoro každú stranu (10+ min) a model, tlačený hláškou
+    // "táto strana má ~81 ponúk", si produkty DOMÝŠĽAL a zdvojoval.
+    const priceLikeCount = (text: string) => {
+      const cleaned = (text || "")
+        .replace(/\(=[^)]*\)/g, " ")
+        // Jednotková cena bez zátvoriek MUSÍ končiť menou ("1 kg 96,94 Kč").
+        // Bez tejto podmienky regex spáril gramáž s reálnou cenou na ďalšom
+        // riadku (Kaufland: "155 g" + "0,33") a zmazal skutočnú cenu.
+        .replace(
+          /\b\d+(?:[.,]\d+)?\s*(?:kg|g|l|ml|ks)\s+\d{1,4}[,.]\d{2}\s*(?:Kč|Kc|€|EUR|zł|zl)/gi,
+          " ",
+        )
+        .replace(/[<>]\s*\d{1,4}[,.]\d{2}/g, " ")
+        .replace(/\b0+[,.]0+\b/g, " ");
+      return (cleaned.match(/\b\d{1,3}[,.]\d{2}\b/g) || []).length;
+    };
     const isDenseOfferPage = (text: string) =>
       priceLikeCount(text) >= 10 || text.length > 4200;
+
+    // ── Odhad počtu ponúk na strane ────────────────────────────────────────
+    // Používa sa na detekciu "slabo extrahovaných" strán. MUSÍ byť realistický:
+    // nadsadený odhad tlačí model pri re-analýze vymýšľať neexistujúce varianty
+    // (reálny prípad Penny CZ: "Zakysaná smetana 20 %", ktorá v letáku nie je).
+    //
+    // Penny/CZ letáky majú na každej dlaždici 4–6 cenových tokenov: akciovú
+    // cenu, prečiarknutú, percento a prázdne šablónové "00,00" placeholdery →
+    // delenie dvomi nadhodnotilo počet ponúk ~3x. Preto:
+    //  • placeholdery (00,00 / 0,00) sa nepočítajú,
+    //  • na stranách s placeholdermi (šablónový layout) použijeme počet
+    //    JEDNOTKOVÝCH cien ("1 kg 96,94 Kč", "100 g 13,86 Kč") — tie sú
+    //    spoľahlivo jedna na dlaždicu — a poistku real/4,
+    //  • inak (Kaufland a spol.) ostáva pôvodné real/2.
+    const placeholderPriceCount = (text: string) =>
+      ((text || "").match(/\b0{1,3}[,.]0{2}\b/g) || []).length;
+    const realPriceCount = (text: string) =>
+      ((text || "").replace(/\(=[^)]*\)/g, "").match(/\b\d{1,3}[,.]\d{2}\b/g) || [])
+        .filter((x) => !/^0{1,3}[,.]0{2}$/.test(x)).length;
+    const unitPriceCount = (text: string) =>
+      ((text || "").match(/\b\d+(?:[,.]\d+)?\s*(?:kg|g|l|ml|ks|m)\s*\d{1,3}[,.]\d{2}/gi) || [])
+        .length;
+    const estimateOfferCount = (text: string) => {
+      const real = realPriceCount(text);
+      if (placeholderPriceCount(text) >= 5) {
+        // šablónový layout (Penny) — jednotkové ceny sú najpresnejší signál
+        return Math.max(unitPriceCount(text), Math.round(real / 4));
+      }
+      return Math.round(real / 2);
+    };
 
     const batches: {
       pageNum: number;
@@ -922,6 +970,7 @@ TASK: Extract only food, drinks and alcohol. One visible offer = one record. Inc
 NAME (short, clean):
 - BRAND FIRST (always): actively look for the product's brand on its package before naming it — check the logo even on small/dark/glossy packs; most packaged products do carry a brand, so make the effort and try not to leave it missing. When a brand is readable, the name MUST start with it, then the product type. Even if the flyer writes the product type first, REORDER so the brand leads: write "Brand + product type", never "product type + Brand". Examples: "Lindt Lindor čokoládové pralinky", "Davidoff instantná káva". Add the sub-brand/line if printed together (e.g. "Lindt Lindor", "Figaro Tatiana", "Haribo Goldbären"). Write the brand exactly as printed; do not translate it.
 - Use only a brand you can actually read for that product. Never invent one, guess it, or copy it from a neighbouring tile (e.g. lollipops are not automatically "Skittles"). If you truly cannot read any brand, leave it out — but only as a last resort, after genuinely looking.
+- NEVER invent products or variants. Output one record per PRINTED tile only: do not add a second version with a different percentage/flavour/size unless that variant is genuinely printed as its own offer with its own price, and never emit the same tile twice.
 - NEVER output a record with an empty "name". Some pages (typically fresh fruit/vegetable spreads) list all names in one text block and all prices in another — pair each name with its price by their POSITION in the image. If you genuinely cannot read a product's name even from the image, OMIT that record entirely (do not emit a nameless price).
 - Keep the product term in the flyer's language; do not translate. Prefer text attached to the same pack; prefer a short clean name over a long uncertain one.
 - Exclude retailer names, loyalty programs, slogans, headers, campaign/award/QR/website text, and sale/package details.${privateLabelHint}
@@ -1036,8 +1085,11 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
     );
 
     // Process batches with limited concurrency. Too much parallel vision work can cause rate limits and noisier results.
+    // Fast mode 4 (bolo 3): pri hustých CZ letákoch (Penny, 31 strán = 31 dávok)
+    // to skráti čakanie o ~25 % a stále sa zmestíme do TPM limitu.
+    // Dá sa preladiť cez VISION_MAX_CONCURRENT (napr. 3 pri rate-limit chybách).
     const MAX_CONCURRENT = Number(
-      process.env.VISION_MAX_CONCURRENT || (isAccurateMode ? 2 : 3),
+      process.env.VISION_MAX_CONCURRENT || (isAccurateMode ? 2 : 4),
     );
     const batchResults: (ParsedResponse | null)[] = new Array(
       batches.length,
@@ -1309,9 +1361,7 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
       for (const pg of pageImages) {
         // Odhad z PLNÉHO textu — orezaný textData na dlhých stranách podhodnotil
         // počet ponúk.
-        const expected = Math.round(
-          priceLikeCount(pg.fullTextData || pg.textData) / 2,
-        );
+        const expected = estimateOfferCount(pg.fullTextData || pg.textData);
         const got = extractedPerPage.get(pg.pageNum) || 0;
         // Prah 0.6 (predtým 0.5): strana 6 so 4 z ~8 ponúk prešla tesne bez
         // re-analýzy a Kivi + Avokádo sa stratili. Presnejší expected (plný
@@ -1338,9 +1388,21 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
         }
       };
 
-      for (const low of lowPages.slice(0, COVERAGE_MAX_RETRIES)) {
+      // Re-analýzy bežia PARALELNE (predtým sekvenčne — pri 17 slabých stranách
+      // to bolo 5+ minút čistého čakania a tvorilo väčšinu z 10-minútovej
+      // analýzy Penny). Najprv sa paralelne vyžiadajú výsledky, potom sa
+      // sekvenčne zlúčia, takže poradie logov aj výsledok ostávajú rovnaké.
+      type CoverageLow = { pageNum: number; expected: number; got: number };
+      type CoverageResult = {
+        low: CoverageLow;
+        parsed: ParsedResponse | null;
+        failed: boolean;
+        skipped: boolean;
+      };
+
+      const runCoveragePage = async (low: CoverageLow): Promise<CoverageResult> => {
         const pg = pageImages.find((p) => p.pageNum === low.pageNum);
-        if (!pg) continue;
+        if (!pg) return { low, parsed: null, failed: false, skipped: true };
         console.log(
           `[coverage] Page ${low.pageNum}: extracted ${low.got}, expected ~${low.expected} — re-analyzing page alone`,
         );
@@ -1386,7 +1448,8 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
                   content: [
                     {
                       type: "text",
-                      text: `Re-analysis of a single flyer page. This page contains approximately ${low.expected} distinct offers — extract EVERY one of them, including small tiles and corner offers. Do not stop early.`,
+                      text: `Re-analysis of a single flyer page. Extract EVERY distinct offer that is actually PRINTED on this page, including small tiles and corner offers.
+CRITICAL: never invent products and never output a variant that is not printed (e.g. do NOT add a "20 %" version next to a printed "18 %" one). Do not duplicate the same tile. If this page has only a few offers, return only those — an accurate short list is correct, a padded list is a failure.`,
                     },
                     {
                       type: "text",
@@ -1414,50 +1477,75 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
             const txt = response.choices?.[0]?.message?.content?.trim() ?? "";
             return txt ? parseLooseJson(txt) : null;
           });
-
-          const rerunProducts = parsed?.products;
-          if (Array.isArray(rerunProducts) && rerunProducts.length > 0) {
-            // Re-run číta TÚ ISTÚ stranu znova a má IBA DOPĹŇAŤ, nie mazať
-            // ani zlučovať. Preskočí sa jedine položka, ktorá už na strane
-            // existuje s ÚPLNE rovnakým názvom + gramážou + jednotkou
-            // (diakriticky necitlivo — Sojová/Sójová). Nič múdrejšie:
-            // rozdielne značky/názvy ostávajú OBE a rozhodne používateľ.
-            const nrmName = (v?: string) =>
-              (v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-            const nrmAmt = (v?: string) =>
-              String(v || "").toLowerCase().replace(/,/g, ".").replace(/\s+/g, " ").trim();
-            const nrmUnit = (v?: string) => String(v || "").toLowerCase().trim();
-            const exactKey = (p: { name?: string; amount?: string; unit?: string }) =>
-              `${nrmName(p.name)}|${nrmAmt(p.amount)}|${nrmUnit(p.unit)}`;
-            const exactKeys = new Set(
-              allProducts.filter((p) => p.page === low.pageNum).map(exactKey),
-            );
-            const fresh = rerunProducts.filter((rp) => !exactKeys.has(exactKey(rp)));
-            for (const p of fresh) p.page = low.pageNum;
-            allProducts.push(...fresh);
-            console.log(
-              `[coverage] Page ${low.pageNum}: re-run found ${rerunProducts.length} products, ${fresh.length} new (merged)`,
-            );
-            // Aj po re-analýze je strana stále slabá → povedz to používateľovi
-            // (predtým sa také strany tvárili ako v poriadku — napr. strana 5
-            // s ovocím, kde re-run vrátil len zlomok ponúk).
-            const totalAfter = low.got + fresh.length;
-            if (totalAfter < low.expected * 0.6) {
-              coverageWarnings.push(
-                `Strana ${low.pageNum}: aj po re-analýze len ${totalAfter} z ~${low.expected} ponúk — skontroluj ručne.`,
-              );
-            }
-          } else {
-            coverageWarnings.push(
-              `Strana ${low.pageNum}: extrahovaných ${low.got} z ~${low.expected} ponúk — skontroluj ručne.`,
-            );
-          }
+          return { low, parsed, failed: false, skipped: false };
         } catch (e) {
           console.error(
             `[coverage] Page ${low.pageNum} re-run failed: ${(e as Error).message}`,
           );
+          return { low, parsed: null, failed: true, skipped: false };
+        }
+      };
+
+      // Paralelný beh v dávkach po MAX_CONCURRENT.
+      const coverageTargets = lowPages.slice(0, COVERAGE_MAX_RETRIES);
+      const coverageResults: CoverageResult[] = [];
+      for (let i = 0; i < coverageTargets.length; i += MAX_CONCURRENT) {
+        const chunk = coverageTargets.slice(i, i + MAX_CONCURRENT);
+        coverageResults.push(...(await Promise.all(chunk.map(runCoveragePage))));
+      }
+
+      // Zlúčenie výsledkov — sekvenčne, aby bolo deterministické.
+      for (const res of coverageResults) {
+        if (res.skipped) continue;
+        const low = res.low;
+        if (res.failed) {
           coverageWarnings.push(
             `Strana ${low.pageNum}: re-analýza zlyhala — skontroluj ručne.`,
+          );
+          continue;
+        }
+        const rerunProducts = res.parsed?.products;
+        if (Array.isArray(rerunProducts) && rerunProducts.length > 0) {
+          // Re-run číta TÚ ISTÚ stranu znova a má IBA DOPĹŇAŤ, nie mazať
+          // ani zlučovať. Preskočí sa jedine položka, ktorá už na strane
+          // existuje s ÚPLNE rovnakým názvom + gramážou + jednotkou
+          // (diakriticky necitlivo — Sojová/Sójová). Nič múdrejšie:
+          // rozdielne značky/názvy ostávajú OBE a rozhodne používateľ.
+          const nrmName = (v?: string) =>
+            (v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+          const nrmAmt = (v?: string) =>
+            String(v || "").toLowerCase().replace(/,/g, ".").replace(/\s+/g, " ").trim();
+          const nrmUnit = (v?: string) => String(v || "").toLowerCase().trim();
+          const exactKey = (p: { name?: string; amount?: string; unit?: string }) =>
+            `${nrmName(p.name)}|${nrmAmt(p.amount)}|${nrmUnit(p.unit)}`;
+          const exactKeys = new Set(
+            allProducts.filter((p) => p.page === low.pageNum).map(exactKey),
+          );
+          const fresh = rerunProducts.filter((rp) => !exactKeys.has(exactKey(rp)));
+          for (const p of fresh) p.page = low.pageNum;
+          allProducts.push(...fresh);
+          console.log(
+            `[coverage] Page ${low.pageNum}: re-run found ${rerunProducts.length} products, ${fresh.length} new (merged)`,
+          );
+          // Aj po re-analýze je strana stále slabá → povedz to používateľovi
+          // (predtým sa také strany tvárili ako v poriadku — napr. strana 5
+          // s ovocím, kde re-run vrátil len zlomok ponúk).
+          const totalAfter = low.got + fresh.length;
+          if (totalAfter < low.expected * 0.6) {
+            coverageWarnings.push(
+              `Strana ${low.pageNum}: aj po re-analýze len ${totalAfter} z ~${low.expected} ponúk — skontroluj ručne.`,
+            );
+          }
+        } else if (low.got === 0) {
+          // Prvý beh aj re-analýza vrátili 0 → strana takmer isto neobsahuje
+          // potraviny (Penny str. 24-25: vedrá, plasty; marketingové strany).
+          // Nezaťažujeme používateľa červeným varovaním, len do konzoly.
+          console.log(
+            `[coverage] Page ${low.pageNum}: 0 produktov aj po re-analýze — zrejme nepotravinová strana, bez varovania`,
+          );
+        } else {
+          coverageWarnings.push(
+            `Strana ${low.pageNum}: extrahovaných ${low.got} z ~${low.expected} ponúk — skontroluj ručne.`,
           );
         }
       }

@@ -17,6 +17,7 @@
   "dependencies": {
     "@next/swc-win32-x64-msvc": "16.1.6",
     "@supabase/supabase-js": "^2.95.3",
+    "firebase-admin": "^14.2.0",
     "mupdf": "^1.27.0",
     "next": "16.1.6",
     "openai": "^6.26.0",
