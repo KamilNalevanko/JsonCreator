@@ -246,6 +246,15 @@ export async function POST(req: Request) {
       else dbUpdated = true;
     }
 
+    // Nový/upravený produkt v DB → HNEĎ skús poslať watchdog push tým, čo ho
+    // sledujú (nečaká sa na denný cron o 08:00). Funkcia je dedup-safe, takže
+    // sa nič neposiela dvakrát. Fire & forget — neblokuje odpoveď editora.
+    if (dbUpdated) {
+      const fnUrl = process.env.WATCHDOG_PUSH_URL ||
+        "https://dkvfpvhaozcxosoiojce.functions.supabase.co/watchdog-push";
+      fetch(fnUrl, { method: "POST" }).catch(() => {});
+    }
+
     return NextResponse.json({
       ok: true,
       removed,

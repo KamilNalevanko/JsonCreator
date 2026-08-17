@@ -23,6 +23,29 @@ function currency(country: string): string {
   return country === "cs" ? "Kč" : country === "pl" ? "zł" : "€";
 }
 
+// Pekné názvy obchodov (rovnaké ako na dlaždiciach v appke, zo stores_*.json).
+// Keď pribudne obchod, doplň sem a redeployni funkciu.
+const SHOP_NAMES: Record<string, string> = {
+  "billa": "Billa", "coop-jednota": "COOP Jednota",
+  "coop-jednota-supermarket": "COOP Jednota Supermarket",
+  "coop-tempo": "COOP Tempo", "fresh": "Fresh", "kaufland": "Kaufland",
+  "lidl": "Lidl", "milk-agro": "Milk Agro", "moj-obchod": "Môj Obchod",
+  "tesco-hypermarket": "Tesco Hypermarket", "tesco-supermarket": "Tesco Supermarket",
+  "biedronka": "Biedronka", "albert-supermarket": "Albert Supermarket",
+  "albert-hypermarket": "Albert Hypermarket", "bala": "Bala",
+  "billa-mala": "Billa malá", "billa-velka": "Billa veľká", "globus": "Globus",
+  "peny": "Peny", "auchan-hypermarket": "Auchan Hipermarket",
+  "auchan-supermarket": "Auchan Supermarket", "aldi": "Aldi", "dino": "Dino",
+  "stokrotka-express": "Stokrotka Express", "stokrotka-market": "Stokrotka Market",
+  "stokrotka-supermarket": "Stokrotka Supermarket", "netto": "Netto",
+  "carrefour-express": "Carrefour Express", "carrefour-market": "Carrefour Market",
+  "carrefour": "Carrefour", "zabka": "Żabka",
+};
+
+function prettyShop(shop: string): string {
+  return SHOP_NAMES[shop] ?? shop;
+}
+
 function parseDMY(s?: string | null): number | null {
   if (!s) return null;
   const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s.trim());
