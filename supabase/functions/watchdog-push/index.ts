@@ -260,7 +260,7 @@ Deno.serve(async () => {
           const resp = await sendFcm(
             sub.token,
             "Strážny pes: nová akcia",
-            `${r.name} v akcii v ${r.shop}${priceLine}`,
+            `${r.name} v akcii v ${prettyShop(r.shop)}${priceLine}`,
             {
               country: sub.country,
               category: r.category ?? "",
