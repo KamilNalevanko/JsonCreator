@@ -151,19 +151,44 @@ Deno.serve(async () => {
       return Response.json({ ok: true, sent: 0 });
     }
 
-    // Načítaj aktívne akcie raz na krajinu.
-    const countries = [...new Set(subs.map((s) => s.country))];
+    // Zozbieraj len SLEDOVANÉ kľúče podľa krajiny (name_key produktov a placement
+    // zaradení) — a stiahni IBA tie riadky. Predtým sa ťahalo `.eq(country)` bez
+    // filtra, čo PostgREST oreže na 1000 riadkov (v SK je >21k produktov), takže
+    // sledované produkty tam často vôbec neboli → nič sa neposlalo.
+    const SEL =
+      "name,name_key,shop,category,subcategory,placement,date_from,date_to,price_sale,price_sale_unit,unit";
+    const nameKeysByCountry: Record<string, Set<string>> = {};
+    const placeKeysByCountry: Record<string, Set<string>> = {};
+    for (const sub of subs) {
+      const c = sub.country;
+      (nameKeysByCountry[c] ??= new Set());
+      (placeKeysByCountry[c] ??= new Set());
+      const ws = Array.isArray(sub.watches) ? sub.watches : [];
+      for (const w of ws) {
+        if (w?.type === "product" && w?.productNameKey) {
+          nameKeysByCountry[c].add(w.productNameKey);
+        } else if (w?.placementKey) {
+          placeKeysByCountry[c].add(w.placementKey);
+        }
+      }
+    }
+
     const promosByCountry: Record<string, any[]> = {};
-    for (const c of countries) {
-      const { data: rows } = await sb
-        .from("master_products_v2")
-        .select(
-          "name,name_key,shop,category,subcategory,placement,date_from,date_to,price_sale,price_sale_unit,unit",
-        )
-        .eq("country", c);
-      promosByCountry[c] = (rows ?? []).filter((r) =>
-        isActive(r.date_from, r.date_to)
-      );
+    for (const c of Object.keys(nameKeysByCountry)) {
+      const rows: any[] = [];
+      const nk = [...nameKeysByCountry[c]];
+      const pk = [...placeKeysByCountry[c]];
+      for (let i = 0; i < nk.length; i += 50) {
+        const { data } = await sb.from("master_products_v2").select(SEL)
+          .eq("country", c).in("name_key", nk.slice(i, i + 50));
+        if (data) rows.push(...data);
+      }
+      for (let i = 0; i < pk.length; i += 50) {
+        const { data } = await sb.from("master_products_v2").select(SEL)
+          .eq("country", c).in("placement", pk.slice(i, i + 50));
+        if (data) rows.push(...data);
+      }
+      promosByCountry[c] = rows.filter((r) => isActive(r.date_from, r.date_to));
     }
 
     // Uprac starý log, nech watchdog_push_log nerastie donekonečna.
