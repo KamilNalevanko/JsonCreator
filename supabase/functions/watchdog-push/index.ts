@@ -19,6 +19,15 @@ const FIREBASE_SA = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!);
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+// Jednotková cena sa počíta na kg/l (pre g/ml sa násobí ×1000), preto label
+// jednotky treba prepočítať: g→kg, ml→l. Inak vznikne nezmysel „1,98 €/g".
+function unitLabel(u: string | null | undefined): string {
+  const x = (u ?? "").toString().toLowerCase().trim();
+  if (x === "g") return "kg";
+  if (x === "ml") return "l";
+  return x;
+}
+
 function currency(country: string): string {
   return country === "cs" ? "Kč" : country === "pl" ? "zł" : "€";
 }
@@ -60,6 +69,27 @@ function isActive(from?: string | null, to?: string | null): boolean {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   return today >= f && today <= t;
+}
+
+// --- Fuzzy zhoda názvu produktu (AI robí nekonzistentné názvy) -------------
+// Názov delíme na slová (min. 3 znaky, bez čistých čísel). Zhoda = presná, ALEBO
+// všetky slová kratšieho názvu sú obsiahnuté v dlhšom. Takže „italiamo cestoviny"
+// nájde „Italiamo Cestoviny 500g" aj „Cestoviny Italiamo bezvaječné".
+function tokens(s: string): string[] {
+  return (s || "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/i)
+    .filter((w) => w.length >= 3 && !/^\d+$/.test(w));
+}
+
+function nameMatches(watchKey: string, prodKey: string): boolean {
+  if (watchKey === prodKey) return true;
+  const wt = tokens(watchKey);
+  const pt = tokens(prodKey);
+  if (wt.length === 0 || pt.length === 0) return false;
+  const allWatchInProd = wt.every((w) => prodKey.includes(w));
+  const allProdInWatch = pt.every((p) => watchKey.includes(p));
+  return allWatchInProd || allProdInWatch;
 }
 
 // ---- FCM v1: OAuth access token zo service account (RS256 JWT) --------------
@@ -198,20 +228,43 @@ Deno.serve(async () => {
 
     const promosByCountry: Record<string, any[]> = {};
     for (const c of Object.keys(nameKeysByCountry)) {
-      const rows: any[] = [];
+      const byKey = new Map<string, any>();
+      const addRow = (r: any) => {
+        const k = `${r.name_key}|${r.shop}|${r.date_from}|${r.date_to}`;
+        if (!byKey.has(k)) byKey.set(k, r);
+      };
       const nk = [...nameKeysByCountry[c]];
       const pk = [...placeKeysByCountry[c]];
+
+      // 1) presná zhoda name_key (rýchle, isté)
       for (let i = 0; i < nk.length; i += 50) {
         const { data } = await sb.from("master_products_v2").select(SEL)
           .eq("country", c).in("name_key", nk.slice(i, i + 50));
-        if (data) rows.push(...data);
+        (data ?? []).forEach(addRow);
       }
+      // 2) FUZZY: dotiahni kandidátov, čo obsahujú najvýraznejšie slovo sledovaného
+      //    názvu (kvôli AI premenovaniam) — presné filtrovanie robí nameMatches nižšie.
+      const anchors = new Set<string>();
+      for (const key of nk) {
+        const t = tokens(key).sort((a, b) => b.length - a.length);
+        if (t[0]) anchors.add(t[0]);
+      }
+      const anchorArr = [...anchors];
+      for (let i = 0; i < anchorArr.length; i += 40) {
+        const orExpr = anchorArr.slice(i, i + 40)
+          .map((a) => `name_key.ilike.*${a}*`).join(",");
+        const { data } = await sb.from("master_products_v2").select(SEL)
+          .eq("country", c).or(orExpr).limit(2000);
+        (data ?? []).forEach(addRow);
+      }
+      // 3) zaradenia (placement) — presne
       for (let i = 0; i < pk.length; i += 50) {
         const { data } = await sb.from("master_products_v2").select(SEL)
           .eq("country", c).in("placement", pk.slice(i, i + 50));
-        if (data) rows.push(...data);
+        (data ?? []).forEach(addRow);
       }
-      promosByCountry[c] = rows.filter((r) => isActive(r.date_from, r.date_to));
+      promosByCountry[c] =
+        [...byKey.values()].filter((r) => isActive(r.date_from, r.date_to));
     }
 
     // Uprac starý log, nech watchdog_push_log nerastie donekonečna.
@@ -225,19 +278,14 @@ Deno.serve(async () => {
       const watches = Array.isArray(sub.watches) ? sub.watches : [];
       outer:
       for (const w of watches) {
+        // Obchod NEfiltrujeme: produkt upozorní HOCIKDE sa predáva, zaradenie
+        // upozorní na HOCIČO nové, čo v ňom pribudne (podľa priania zákazníka).
+        // Produkt = fuzzy zhoda názvu (AI nekonzistencia), zaradenie = presne.
         const matches = rows.filter((r) => {
           if (w.type === "product") {
-            if (r.name_key !== w.productNameKey) return false;
-          } else {
-            if (r.placement !== w.placementKey) return false;
+            return nameMatches(w.productNameKey, r.name_key);
           }
-          if (
-            Array.isArray(w.shops) && w.shops.length > 0 &&
-            !w.shops.includes(r.shop)
-          ) {
-            return false;
-          }
-          return true;
+          return r.placement === w.placementKey;
         });
 
         for (const r of matches) {
@@ -253,7 +301,7 @@ Deno.serve(async () => {
           const priceLine = r.price_sale
             ? ` — ${r.price_sale} ${cur}${
               r.price_sale_unit
-                ? ` (${r.price_sale_unit} ${cur}${r.unit ? "/" + r.unit : ""})`
+                ? ` (${r.price_sale_unit} ${cur}${r.unit ? "/" + unitLabel(r.unit) : ""})`
                 : ""
             }`
             : "";
