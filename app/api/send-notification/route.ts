@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     const country = (body?.country || "").toString().toLowerCase().trim();
     const title = (body?.title || "").toString().trim();
     const message = (body?.message || body?.body || "").toString().trim();
+    // Testovací režim: ak je zadaný device token, notifikácia ide LEN na toto
+    // jedno zariadenie (napr. tvoj telefón), nie na broadcast topic všetkým.
+    const deviceToken = (body?.token || "").toString().trim();
 
     if (!country || !["sk", "cz", "pl", "cs"].includes(country)) {
       return NextResponse.json(
@@ -52,10 +55,20 @@ export async function POST(req: Request) {
       );
     }
 
-    // Voliteľný deep-link cieľ — po tapnutí hodí užívateľa do zaradenia/produktu
-    // (rovnaké kľúče ako strážny pes). Ak nič nezadáš, notifikácia len otvorí appku.
+    // Voliteľné data: deep-link cieľ (category/subcategory/placement/product/shop)
+    // ALEBO recept (type=recipe, recipe=celý text, recipeId). Appka podľa `type`
+    // rozpozná recept a uloží ho do obálky.
     const data: Record<string, string> = { country: normalizeCountry(country) };
-    for (const k of ["category", "subcategory", "placement", "product", "shop"]) {
+    for (const k of [
+      "category",
+      "subcategory",
+      "placement",
+      "product",
+      "shop",
+      "type",
+      "recipe",
+      "recipeId",
+    ]) {
       const v = body?.[k];
       if (v !== undefined && v !== null && v.toString().trim() !== "") {
         data[k] = v.toString();
@@ -64,20 +77,29 @@ export async function POST(req: Request) {
 
     const topic = `deals_${normalizeCountry(country)}`;
     const messaging = getMessaging(getAdminApp());
-    const id = await messaging.send({
-      topic,
+
+    // Spoločná časť správy; cieľ (token vs topic) sa líši.
+    const common = {
       notification: { title, body: message },
       data,
       android: {
-        priority: "high",
+        priority: "high" as const,
         notification: { channelId: "watchdog_alerts", sound: "default" },
       },
       apns: {
         payload: { aps: { sound: "default", badge: 1 } },
       },
-    });
+    };
 
-    return NextResponse.json({ ok: true, topic, id });
+    if (deviceToken) {
+      // TEST: len na jedno zariadenie.
+      const id = await messaging.send({ token: deviceToken, ...common });
+      return NextResponse.json({ ok: true, target: "device", test: true, id });
+    }
+
+    // OSTRO: broadcast na topic všetkým používateľom danej krajiny.
+    const id = await messaging.send({ topic, ...common });
+    return NextResponse.json({ ok: true, target: "topic", topic, id });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Neznáma chyba";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
