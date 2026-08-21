@@ -512,7 +512,13 @@ export default function NotifikacieModal({
             <input
               type="checkbox"
               checked={recipeMode}
-              onChange={(e) => setRecipeMode(e.target.checked)}
+              onChange={(e) => {
+                setRecipeMode(e.target.checked);
+                // Predvyplň vzor ako editovateľný text (nech nezmizne pri písaní).
+                if (e.target.checked && !recipeText.trim()) {
+                  setRecipeText(RECIPE_TEMPLATE);
+                }
+              }}
               className="h-4 w-4"
             />
             🍲 Poslať recept (uloží sa do obálky → dá sa uložiť do receptov)
