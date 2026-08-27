@@ -23,6 +23,8 @@ const BUCKET = "cap-data";
 // stále ~300 KB na stranu.
 const TARGET_WIDTH = 1200;
 const JPEG_QUALITY = 72;
+// Koľko letákov na obchod držíme: nový + predchádzajúci („aktuálny").
+const MAX_FLYERS_PER_SHOP = 2;
 
 const sanitize = (v: string) =>
   (v || "").toLowerCase().replace(/[^a-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
@@ -110,26 +112,54 @@ export async function POST(req: Request) {
       uploaded.push(path);
     }
 
-    // Zisti predošlý leták, nech ho po úspešnom nahratí vieme upratať.
-    let previousId = "";
+    // Načítaj doterajší index — držíme DVA letáky: nový a predchádzajúci
+    // („nový leták a pod ním aktuálny"). Starší sa zahodí.
+    type FlyerEntry = {
+      id: string;
+      pages: number;
+      dateFrom: string | null;
+      dateTo: string | null;
+      uploadedAt: string;
+    };
+    let existing: FlyerEntry[] = [];
     try {
       const old = await sb.storage.from(BUCKET).download(`${base}/index.json`);
       if (old.data) {
-        previousId = (JSON.parse(await old.data.text())?.flyerId || "").toString();
+        const parsed = JSON.parse(await old.data.text());
+        if (Array.isArray(parsed?.flyers)) {
+          existing = parsed.flyers as FlyerEntry[];
+        } else if (parsed?.flyerId) {
+          // starý formát (jeden leták) — prenesieme ho
+          existing = [
+            {
+              id: String(parsed.flyerId),
+              pages: Number(parsed.pages) || 0,
+              dateFrom: parsed.dateFrom ?? null,
+              dateTo: parsed.dateTo ?? null,
+              uploadedAt: parsed.uploadedAt ?? "",
+            },
+          ];
+        }
       }
     } catch {
       /* prvý leták pre tento obchod */
     }
 
+    const flyers: FlyerEntry[] = [
+      {
+        id: flyerId,
+        pages: pageCount,
+        dateFrom: dateFrom || null,
+        dateTo: dateTo || null,
+        uploadedAt: new Date().toISOString(),
+      },
+      ...existing.filter((f) => f.id !== flyerId),
+    ];
+    const keep = flyers.slice(0, MAX_FLYERS_PER_SHOP);
+    const drop = flyers.slice(MAX_FLYERS_PER_SHOP);
+
     // Index — appka číta tento drobný súbor a podľa neho vie, čo zobraziť.
-    const index = {
-      flyerId,
-      pages: pageCount,
-      width: TARGET_WIDTH,
-      dateFrom: dateFrom || null,
-      dateTo: dateTo || null,
-      uploadedAt: new Date().toISOString(),
-    };
+    const index = { flyers: keep, width: TARGET_WIDTH };
     const idx = await sb.storage
       .from(BUCKET)
       .upload(`${base}/index.json`, JSON.stringify(index, null, 2), {
@@ -144,19 +174,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // Starý leták zmaž až TERAZ — kým sa nový nenahral celý, nechávame ho tam,
-    // aby appka nikdy neostala bez letáka.
+    // Prebytočné letáky zmaž až TERAZ — kým sa nový nenahral celý, staré
+    // necháme na mieste, aby appka nikdy neostala bez letáka.
     let removed = 0;
-    if (previousId && previousId !== flyerId) {
-      const list = await sb.storage.from(BUCKET).list(`${base}/${previousId}`, {
+    for (const f of drop) {
+      const list = await sb.storage.from(BUCKET).list(`${base}/${f.id}`, {
         limit: 1000,
       });
-      const paths = (list.data ?? []).map(
-        (f) => `${base}/${previousId}/${f.name}`,
-      );
+      const paths = (list.data ?? []).map((x) => `${base}/${f.id}/${x.name}`);
       if (paths.length) {
         await sb.storage.from(BUCKET).remove(paths);
-        removed = paths.length;
+        removed += paths.length;
       }
     }
 

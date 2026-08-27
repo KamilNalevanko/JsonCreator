@@ -7,6 +7,7 @@ import {
   calculateUnitPrice,
   normalizeNameKey,
 } from "../lib/normalize";
+import NotifikacieModal from "./components/NotifikacieModal";
 import hierarchyData from "../assets/hierarchia.json";
 import skLabels from "../assets/langs/sk.json";
 import czLabels from "../assets/langs/cs.json";
@@ -531,6 +532,11 @@ export default function Home() {
 
   const [isAiSaving, setIsAiSaving] = useState(false);
   const [isAiExtracting, setIsAiExtracting] = useState(false);
+  // Nahratie letáka na PREZERANIE v appke (rozreže PDF na strany).
+  const [isFlyerUploading, setIsFlyerUploading] = useState(false);
+  const [flyerUploadMsg, setFlyerUploadMsg] = useState<
+    { ok: boolean; text: string } | null
+  >(null);
   const [aiElapsedSec, setAiElapsedSec] = useState(0);
   const [shop, setShop] = useState("billa");
   const [categoryKey, setCategoryKey] = useState(
@@ -561,6 +567,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [showNotifModal, setShowNotifModal] = useState(false);
   const [bucketPath, setBucketPath] = useState("sk");
   const [editingLoadedRef, setEditingLoadedRef] = useState<LoadedProductRef | null>(null);
   const [dbEditRef, setDbEditRef] = useState<LoadedProductRef | null>(null);
@@ -935,6 +942,43 @@ export default function Home() {
         acc.replace(new RegExp(`\\{${varKey}\\}`, "g"), value),
       template
     );
+  };
+
+
+  // Nahrá vybrané PDF ako leták NA PREZERANIE: server ho rozreže na strany
+  // v mobilnom rozlíšení a uloží do Supabase. S AI analýzou to nesúvisí —
+  // dá sa spustiť samostatne.
+  const handleFlyerPagesUpload = async () => {
+    if (!aiPdfFile || !aiCountry || !aiShop) {
+      setFlyerUploadMsg({ ok: false, text: "Vyber PDF, krajinu aj obchod." });
+      return;
+    }
+    setIsFlyerUploading(true);
+    setFlyerUploadMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", aiPdfFile);
+      fd.append("country", aiCountry);
+      fd.append("shop", aiShop);
+      const res = await fetch("/api/flyer-pages", { method: "POST", body: fd });
+      const json = await res.json().catch(() => ({}));
+      if (json?.ok) {
+        setFlyerUploadMsg({
+          ok: true,
+          text: `Leták nahraný ✅ ${json.pages} strán` +
+            (json.removedOldPages ? ` (starý zmazaný)` : ""),
+        });
+      } else {
+        setFlyerUploadMsg({ ok: false, text: `Chyba: ${json?.error || "neznáma"}` });
+      }
+    } catch (e) {
+      setFlyerUploadMsg({
+        ok: false,
+        text: `Chyba siete: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    } finally {
+      setIsFlyerUploading(false);
+    }
   };
 
   const handleAiExtract = async () => {
@@ -2463,7 +2507,18 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen">
-      
+      <NotifikacieModal
+        open={showNotifModal}
+        onClose={() => setShowNotifModal(false)}
+        defaultCountry={
+          (["sk", "cz", "pl"].includes(bucketPath) ? bucketPath : "sk") as
+            | "sk"
+            | "cz"
+            | "pl"
+        }
+        shopsByCountry={shopOptionsByFolder}
+        labelFor={locLabelFor}
+      />
 
       <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-6 pb-12 pt-2">
         <header className="flex flex-col gap-2">
@@ -2473,7 +2528,14 @@ export default function Home() {
         <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
           <div className="relative rounded-3xl bg-[color:var(--form)] p-5 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
             <div className="absolute top-4 right-6 z-10 flex flex-col items-end gap-2">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNotifModal(true)}
+                  className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
+                >
+                  📣 Poslať notifikáciu
+                </button>
                 <button
                   type="button"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -2519,12 +2581,6 @@ export default function Home() {
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--ink)]">
                 Počet produktov pre reťazec <span>{loadedProductsList.length}</span>
               </div>
-              <a
-                href="/notifikacie"
-                className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-white hover:bg-blue-500"
-              >
-                📣 Poslať notifikáciu
-              </a>
             </div>
 
             <div className="mt-16 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
@@ -2639,6 +2695,22 @@ export default function Home() {
                 >
                   {isAiExtracting ? t("btn_processing") : t("btn_analyze_pdf")}
                 </button>
+                <button
+                  type="button"
+                  onClick={handleFlyerPagesUpload}
+                  disabled={isFlyerUploading || !aiPdfFile || !aiCountry || !aiShop}
+                  title="Rozreže PDF na strany a nahrá ho do appky na prezeranie"
+                  className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-emerald-500 disabled:opacity-60"
+                >
+                  {isFlyerUploading ? "Nahrávam leták…" : "📖 Nahrať leták na prezeranie"}
+                </button>
+                {flyerUploadMsg ? (
+                  <span
+                    className={`text-xs font-medium ${flyerUploadMsg.ok ? "text-emerald-600" : "text-red-600"}`}
+                  >
+                    {flyerUploadMsg.text}
+                  </span>
+                ) : null}
                 {isAiExtracting ? (
                   <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
                 ) : aiElapsedSec > 0 ? (
