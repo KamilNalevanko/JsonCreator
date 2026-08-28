@@ -963,10 +963,27 @@ export default function Home() {
       const res = await fetch("/api/flyer-pages", { method: "POST", body: fd });
       const json = await res.json().catch(() => ({}));
       if (json?.ok) {
+        // Upozornenie na nový leták — pošle sa LEN tým, čo majú tento obchod
+        // zaškrtnutý v appke. Keď zlyhá, leták je aj tak nahraný.
+        let notifyNote = "";
+        try {
+          const nres = await fetch("/api/flyer-notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ country: aiCountry, shop: aiShop }),
+          });
+          const njson = await nres.json().catch(() => ({}));
+          notifyNote = njson?.error
+            ? ` — upozornenie sa neposlalo: ${njson.error}`
+            : ` — upozornenie poslané ${njson?.sent ?? 0} používateľom`;
+        } catch (e) {
+          notifyNote = ` — upozornenie sa neposlalo: ${e instanceof Error ? e.message : String(e)}`;
+        }
         setFlyerUploadMsg({
           ok: true,
           text: `Leták nahraný ✅ ${json.pages} strán` +
-            (json.removedOldPages ? ` (starý zmazaný)` : ""),
+            (json.removedOldPages ? ` (starý zmazaný)` : "") +
+            notifyNote,
         });
       } else {
         setFlyerUploadMsg({ ok: false, text: `Chyba: ${json?.error || "neznáma"}` });

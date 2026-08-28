@@ -19,12 +19,13 @@ import { createClient } from "@supabase/supabase-js";
 export const maxDuration = 300;
 
 const BUCKET = "cap-data";
-// Šírka strany v pixeloch pre mobil. 1200 px = ostré aj po priblížení, ale
-// stále ~300 KB na stranu.
-const TARGET_WIDTH = 1200;
-const JPEG_QUALITY = 72;
-// Koľko letákov na obchod držíme: nový + predchádzajúci („aktuálny").
-const MAX_FLYERS_PER_SHOP = 2;
+// Šírka strany v pixeloch pre mobil. 1100 px + kvalita 66 je kompromis: ceny
+// sú po priblížení stále čitateľné, ale strana má ~230 KB namiesto ~370 KB
+// (o tretinu menej miesta aj prenesených dát pri 3-4 letákoch na obchod).
+const TARGET_WIDTH = 1100;
+const JPEG_QUALITY = 66;
+// Koľko letákov na obchod držíme (najnovší + staršie).
+const MAX_FLYERS_PER_SHOP = 4;
 
 const sanitize = (v: string) =>
   (v || "").toLowerCase().replace(/[^a-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
