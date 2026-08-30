@@ -19,11 +19,11 @@ import { createClient } from "@supabase/supabase-js";
 export const maxDuration = 300;
 
 const BUCKET = "cap-data";
-// Šírka strany v pixeloch pre mobil. 1100 px + kvalita 66 je kompromis: ceny
-// sú po priblížení stále čitateľné, ale strana má ~230 KB namiesto ~370 KB
-// (o tretinu menej miesta aj prenesených dát pri 3-4 letákoch na obchod).
-const TARGET_WIDTH = 1100;
-const JPEG_QUALITY = 66;
+// Šírka strany v pixeloch. 1600 px + kvalita 80 znesie poriadne priblíženie
+// (drobné popisy pri cenách sú čitateľné) za cenu ~500 KB na stranu. Miesto
+// aj prenos rieši Cloudflare R2, kde je prenos dát zadarmo.
+const TARGET_WIDTH = 1600;
+const JPEG_QUALITY = 80;
 // Koľko letákov na obchod držíme (najnovší + staršie).
 const MAX_FLYERS_PER_SHOP = 4;
 
