@@ -90,8 +90,15 @@ async function cleanup(env, dryRun) {
         }
       }
 
+      // Letáky zapísané v indexe, ktorých strany už na úložisku nie sú
+      // (napr. zmazané ručne) — inak appka ukáže prázdnu kartu.
+      const ghostIds = keep
+        .filter((f) => !shopKeys.some((k) => k.startsWith(`${base}/${f.id}/`)))
+        .map((f) => f.id);
+      const finalKeep = keep.filter((f) => !ghostIds.includes(f.id));
+
       const toDelete = [...dropped.map((f) => f.id), ...orphans];
-      if (!toDelete.length) continue;
+      if (!toDelete.length && !ghostIds.length) continue;
 
       let files = 0;
       for (const id of toDelete) {
@@ -105,16 +112,20 @@ async function cleanup(env, dryRun) {
         }
       }
 
-      if (!dryRun && dropped.length) {
+      if (!dryRun && (dropped.length || ghostIds.length)) {
         await bucket.put(
           `${base}/index.json`,
-          JSON.stringify({ flyers: keep, width }, null, 2),
+          JSON.stringify({ flyers: finalKeep, width }, null, 2),
           { httpMetadata: { contentType: "application/json", cacheControl: "public, max-age=300" } },
         );
       }
 
       removedFiles += files;
-      detail.push({ shop: `${country}/${shop}`, removedFlyers: toDelete, removedFiles: files });
+      detail.push({
+        shop: `${country}/${shop}`,
+        removedFlyers: [...toDelete, ...ghostIds],
+        removedFiles: files,
+      });
     }
   }
 

@@ -110,8 +110,18 @@ export async function POST(req: Request) {
           }
         }
 
+        // Letáky, ktoré sú v indexe, ale ich strany už na úložisku nie sú
+        // (napr. zmazané ručne cez Cloudflare) — treba ich z indexu vyhodiť,
+        // inak appka ukazuje prázdnu kartu.
+        const ghostIds = keep
+          .filter(
+            (f) => !allKeys.some((k: string) => k.startsWith(`${base}/${f.id}/`)),
+          )
+          .map((f) => f.id);
+        const finalKeep = keep.filter((f) => !ghostIds.includes(f.id));
+
         const toDelete = [...dropped.map((f) => f.id), ...orphanIds];
-        if (!toDelete.length) continue;
+        if (!toDelete.length && !ghostIds.length) continue;
 
         let removedFiles = 0;
         for (const id of toDelete) {
@@ -120,16 +130,20 @@ export async function POST(req: Request) {
           if (!dryRun) await deleteFlyerObjects(paths);
         }
 
-        if (!dryRun && dropped.length) {
+        if (!dryRun && (dropped.length || ghostIds.length)) {
           await putFlyerObject(
             `${base}/index.json`,
-            JSON.stringify({ flyers: keep, width }, null, 2),
+            JSON.stringify({ flyers: finalKeep, width }, null, 2),
             "application/json",
           );
         }
 
         totalFiles += removedFiles;
-        report.push({ shop: `${country}/${shop}`, removedFlyers: toDelete, removedFiles });
+        report.push({
+          shop: `${country}/${shop}`,
+          removedFlyers: [...toDelete, ...ghostIds],
+          removedFiles,
+        });
       }
     }
 

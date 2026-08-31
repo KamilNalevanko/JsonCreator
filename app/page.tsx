@@ -596,6 +596,8 @@ export default function Home() {
   const infoSuggestionsBoxRef = useRef<HTMLDivElement | null>(null);
   const dateFromInputRef = useRef<HTMLInputElement | null>(null);
   const dateToInputRef = useRef<HTMLInputElement | null>(null);
+  const flyerDateFromRef = useRef<HTMLInputElement | null>(null);
+  const flyerDateToRef = useRef<HTMLInputElement | null>(null);
   const aiFileInputRef = useRef<HTMLInputElement | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
   const suggestionItemRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -2776,23 +2778,51 @@ export default function Home() {
                 <span className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--muted)]">
                   Letáky na prezeranie
                 </span>
-                <label className="flex items-center gap-1 text-xs font-semibold text-[color:var(--ink)]">
+                <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--ink)]">
                   Leták platí od
-                  <input
-                    type="date"
-                    value={flyerDateFrom}
-                    onChange={e => setFlyerDateFrom(e.target.value)}
-                    className={`rounded-full border ${flyerDateFrom ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm`}
-                  />
+                  <span className="relative inline-block">
+                    <input
+                      ref={flyerDateFromRef}
+                      type="date"
+                      value={flyerDateFrom}
+                      onChange={e => setFlyerDateFrom(e.target.value)}
+                      className={`rounded-xl border ${flyerDateFrom ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 pr-9 text-sm text-[color:var(--ink)] shadow-sm outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-300`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { flyerDateFromRef.current?.showPicker?.(); flyerDateFromRef.current?.focus(); }}
+                      aria-label="Otvoriť kalendár"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                    </button>
+                  </span>
                 </label>
-                <label className="flex items-center gap-1 text-xs font-semibold text-[color:var(--ink)]">
+                <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--ink)]">
                   do
-                  <input
-                    type="date"
-                    value={flyerDateTo}
-                    onChange={e => setFlyerDateTo(e.target.value)}
-                    className={`rounded-full border ${flyerDateTo ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm`}
-                  />
+                  <span className="relative inline-block">
+                    <input
+                      ref={flyerDateToRef}
+                      type="date"
+                      value={flyerDateTo}
+                      onChange={e => setFlyerDateTo(e.target.value)}
+                      className={`rounded-xl border ${flyerDateTo ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 pr-9 text-sm text-[color:var(--ink)] shadow-sm outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-300`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { flyerDateToRef.current?.showPicker?.(); flyerDateToRef.current?.focus(); }}
+                      aria-label="Otvoriť kalendár"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                    </button>
+                  </span>
                 </label>
                 <button
                   type="button"
