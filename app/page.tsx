@@ -8,6 +8,7 @@ import {
   normalizeNameKey,
 } from "../lib/normalize";
 import NotifikacieModal from "./components/NotifikacieModal";
+import LetakyModal from "./components/LetakyModal";
 import hierarchyData from "../assets/hierarchia.json";
 import skLabels from "../assets/langs/sk.json";
 import czLabels from "../assets/langs/cs.json";
@@ -534,6 +535,7 @@ export default function Home() {
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   // Nahratie letáka na PREZERANIE v appke (rozreže PDF na strany).
   const [isFlyerUploading, setIsFlyerUploading] = useState(false);
+  const [showLetakyModal, setShowLetakyModal] = useState(false);
   // Platnosť akcie — appka podľa nej rozlišuje aktuálny a nový leták a po
   // skončení akcie leták prestane zobrazovať.
   const [flyerDateFrom, setFlyerDateFrom] = useState("");
@@ -2584,6 +2586,9 @@ export default function Home() {
         shopsByCountry={shopOptionsByFolder}
         labelFor={locLabelFor}
       />
+      {showLetakyModal ? (
+        <LetakyModal onClose={() => setShowLetakyModal(false)} />
+      ) : null}
 
       <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-6 pb-12 pt-2">
         <header className="flex flex-col gap-2">
@@ -2848,6 +2853,14 @@ export default function Home() {
                   className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-emerald-500 disabled:opacity-60"
                 >
                   🧹 Upratať staré letáky
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLetakyModal(true)}
+                  title="Prehľad nahratých letákov — dá sa v ňom aj mazať"
+                  className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-emerald-500"
+                >
+                  📚 Letáky v appke
                 </button>
                 {flyerUploadMsg ? (
                   <span
