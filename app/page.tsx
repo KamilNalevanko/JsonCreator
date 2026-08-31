@@ -534,6 +534,10 @@ export default function Home() {
   const [isAiExtracting, setIsAiExtracting] = useState(false);
   // Nahratie letáka na PREZERANIE v appke (rozreže PDF na strany).
   const [isFlyerUploading, setIsFlyerUploading] = useState(false);
+  // Platnosť akcie — appka podľa nej rozlišuje aktuálny a nový leták a po
+  // skončení akcie leták prestane zobrazovať.
+  const [flyerDateFrom, setFlyerDateFrom] = useState("");
+  const [flyerDateTo, setFlyerDateTo] = useState("");
   const [flyerUploadMsg, setFlyerUploadMsg] = useState<
     { ok: boolean; text: string } | null
   >(null);
@@ -953,6 +957,14 @@ export default function Home() {
       setFlyerUploadMsg({ ok: false, text: "Vyber PDF, krajinu aj obchod." });
       return;
     }
+    if (!flyerDateFrom || !flyerDateTo) {
+      setFlyerUploadMsg({ ok: false, text: "Zadaj platnosť letáka (od aj do)." });
+      return;
+    }
+    if (flyerDateTo < flyerDateFrom) {
+      setFlyerUploadMsg({ ok: false, text: "Dátum „do“ je skôr ako „od“." });
+      return;
+    }
     setIsFlyerUploading(true);
     setFlyerUploadMsg(null);
     try {
@@ -960,6 +972,8 @@ export default function Home() {
       fd.append("file", aiPdfFile);
       fd.append("country", aiCountry);
       fd.append("shop", aiShop);
+      fd.append("date_from", flyerDateFrom);
+      fd.append("date_to", flyerDateTo);
       const res = await fetch("/api/flyer-pages", { method: "POST", body: fd });
       const json = await res.json().catch(() => ({}));
       if (json?.ok) {
@@ -970,7 +984,12 @@ export default function Home() {
           const nres = await fetch("/api/flyer-notify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ country: aiCountry, shop: aiShop }),
+            body: JSON.stringify({
+              country: aiCountry,
+              shop: aiShop,
+              dateFrom: flyerDateFrom,
+              dateTo: flyerDateTo,
+            }),
           });
           const njson = await nres.json().catch(() => ({}));
           notifyNote = njson?.error
@@ -2739,10 +2758,53 @@ export default function Home() {
                 >
                   {isAiExtracting ? t("btn_processing") : t("btn_analyze_pdf")}
                 </button>
+                {isAiExtracting ? (
+                  <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
+                ) : aiElapsedSec > 0 ? (
+                  <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ analýza trvala {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
+                ) : null}
+                {aiExtractStatus ? (
+                  <span className="text-xs font-medium text-[color:var(--ink)]">{aiExtractStatus}</span>
+                ) : null}
+              </div>
+              {aiExtractError ? (
+                <div className="mt-2 text-xs text-red-600">{aiExtractError}</div>
+              ) : null}
+              {/* Letáky na prezeranie — samostatný riadok, aby sa nemiešali
+                  s AI importom cien. */}
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--muted)]">
+                  Letáky na prezeranie
+                </span>
+                <label className="flex items-center gap-1 text-xs font-semibold text-[color:var(--ink)]">
+                  Leták platí od
+                  <input
+                    type="date"
+                    value={flyerDateFrom}
+                    onChange={e => setFlyerDateFrom(e.target.value)}
+                    className={`rounded-full border ${flyerDateFrom ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm`}
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-xs font-semibold text-[color:var(--ink)]">
+                  do
+                  <input
+                    type="date"
+                    value={flyerDateTo}
+                    onChange={e => setFlyerDateTo(e.target.value)}
+                    className={`rounded-full border ${flyerDateTo ? "border-black/10" : "border-red-400 ring-1 ring-red-300"} bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[color:var(--ink)] shadow-sm`}
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={handleFlyerPagesUpload}
-                  disabled={isFlyerUploading || !aiPdfFile || !aiCountry || !aiShop}
+                  disabled={
+                    isFlyerUploading ||
+                    !aiPdfFile ||
+                    !aiCountry ||
+                    !aiShop ||
+                    !flyerDateFrom ||
+                    !flyerDateTo
+                  }
                   title="Rozreže PDF na strany a nahrá ho do appky na prezeranie"
                   className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:opacity-50"
                 >
@@ -2764,18 +2826,8 @@ export default function Home() {
                     {flyerUploadMsg.text}
                   </span>
                 ) : null}
-                {isAiExtracting ? (
-                  <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
-                ) : aiElapsedSec > 0 ? (
-                  <span className="text-xs font-medium tabular-nums text-[color:var(--ink)]">⏱ analýza trvala {Math.floor(aiElapsedSec / 60)}:{String(aiElapsedSec % 60).padStart(2, "0")}</span>
-                ) : null}
-                {aiExtractStatus ? (
-                  <span className="text-xs font-medium text-[color:var(--ink)]">{aiExtractStatus}</span>
-                ) : null}
               </div>
-              {aiExtractError ? (
-                <div className="mt-2 text-xs text-red-600">{aiExtractError}</div>
-              ) : null}
+
 
               {aiExtracted.length > 0 ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2">

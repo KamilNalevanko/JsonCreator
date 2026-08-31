@@ -19,6 +19,12 @@ const MAX_AGE_DAYS = 35;
 const MAX_FLYERS_PER_SHOP = 3;
 const COUNTRIES = ["sk", "cz", "pl"];
 
+/** Leták, ktorému skončila platnosť akcie — appka ho aj tak nezobrazuje. */
+function isExpired(entry) {
+  if (!entry.dateTo) return false;
+  return entry.dateTo < new Date().toISOString().slice(0, 10);
+}
+
 function ageInDays(entry) {
   const stamp = Date.parse(entry.uploadedAt || "");
   const ms = Number.isNaN(stamp) ? Number(entry.id) : stamp;
@@ -67,9 +73,10 @@ async function cleanup(env, dryRun) {
       if (!flyers.length) continue;
 
       const sorted = [...flyers].sort((a, b) => ageInDays(a) - ageInDays(b));
+      // Po skončení akcie leták zmizne — rovnako ako pri produktoch.
       const keep = sorted
         .slice(0, MAX_FLYERS_PER_SHOP)
-        .filter((f, i) => i === 0 || ageInDays(f) <= MAX_AGE_DAYS);
+        .filter((f, i) => i === 0 || (!isExpired(f) && ageInDays(f) <= MAX_AGE_DAYS));
       const keepIds = new Set(keep.map((f) => f.id));
       const dropped = sorted.filter((f) => !keepIds.has(f.id));
 

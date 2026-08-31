@@ -35,6 +35,13 @@ type FlyerEntry = {
   uploadedAt: string;
 };
 
+/** Leták, ktorému skončila platnosť akcie — appka ho aj tak nezobrazuje. */
+function isExpired(entry: FlyerEntry): boolean {
+  if (!entry.dateTo) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return entry.dateTo < today;
+}
+
 function ageInDays(entry: FlyerEntry): number {
   const stamp = Date.parse(entry.uploadedAt || "");
   const ms = Number.isNaN(stamp) ? Number(entry.id) : stamp;
@@ -82,9 +89,12 @@ export async function POST(req: Request) {
 
         // Najnovší ostáva vždy, aj keby bol starý — obchod nesmie ostať prázdny.
         const sorted = [...flyers].sort((a, b) => ageInDays(a) - ageInDays(b));
+        // Po skončení akcie leták zmizne — rovnako ako pri produktoch. Bez
+        // dátumu platnosti rozhoduje vek (staré letáky z čias, keď sa dátumy
+        // ešte nezadávali).
         const keep = sorted
           .slice(0, MAX_FLYERS_PER_SHOP)
-          .filter((f, i) => i === 0 || ageInDays(f) <= MAX_AGE_DAYS);
+          .filter((f, i) => i === 0 || (!isExpired(f) && ageInDays(f) <= MAX_AGE_DAYS));
         const keepIds = new Set(keep.map((f) => f.id));
         const dropped = sorted.filter((f) => !keepIds.has(f.id));
 

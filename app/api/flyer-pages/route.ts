@@ -62,52 +62,26 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-
-    const buffer = new Uint8Array(await file.arrayBuffer());
-    const mupdf = (await import("mupdf")).default;
-    const doc = mupdf.Document.openDocument(buffer, "application/pdf");
-    const pageCount = doc.countPages();
-    if (!pageCount) {
+    // Dátumy sú povinné — appka podľa nich rozlišuje aktuálny a budúci leták
+    // a po skončení akcie ho prestane zobrazovať.
+    const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (!isDate(dateFrom) || !isDate(dateTo)) {
       return NextResponse.json(
-        { ok: false, error: "PDF nemá žiadne strany." },
+        { ok: false, error: "Zadaj platnosť letáka (od aj do)." },
+        { status: 400 },
+      );
+    }
+    if (dateTo < dateFrom) {
+      return NextResponse.json(
+        { ok: false, error: "Dátum „do\" je skôr ako „od\"." },
         { status: 400 },
       );
     }
 
     const base = `letaky/${country}/${shop}`;
-    const flyerId = `${Date.now()}`;
 
-    // Vyrenderuj a nahraj stranu po strane (nedržíme celé PDF v pamäti naraz).
-    const uploaded: string[] = [];
-    for (let i = 0; i < pageCount; i++) {
-      const page = doc.loadPage(i);
-      const bounds = page.getBounds();
-      const widthPt = Math.abs(bounds[2] - bounds[0]) || 595;
-      const scale = TARGET_WIDTH / widthPt;
-      const pixmap = page.toPixmap(
-        mupdf.Matrix.scale(scale, scale),
-        mupdf.ColorSpace.DeviceRGB,
-        false, // bez alfa (JPEG)
-        true, // aj anotácie
-      );
-      const jpeg = pixmap.asJPEG(JPEG_QUALITY, false);
-      pixmap.destroy();
-
-      const path = `${base}/${flyerId}/p${i + 1}.jpg`;
-      try {
-        await putFlyerObject(path, Buffer.from(jpeg), "image/jpeg");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return NextResponse.json(
-          { ok: false, error: `Strana ${i + 1}: ${msg}` },
-          { status: 500 },
-        );
-      }
-      uploaded.push(path);
-    }
-
-    // Načítaj doterajší index — držíme DVA letáky: nový a predchádzajúci
-    // („nový leták a pod ním aktuálny"). Starší sa zahodí.
+    // Doterajší index načítame HNEĎ — kvôli kontrole duplicity a preto, aby
+    // sme zbytočne nerenderovali 70 strán a až potom zistili problém.
     type FlyerEntry = {
       id: string;
       pages: number;
@@ -137,6 +111,63 @@ export async function POST(req: Request) {
       }
     } catch {
       /* prvý leták pre tento obchod */
+    }
+
+    const duplicate = existing.find(
+      (f) => f.dateFrom === dateFrom && f.dateTo === dateTo,
+    );
+    if (duplicate) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            `Tento obchod už má leták s platnosťou ${dateFrom} – ${dateTo}. ` +
+            `Zmaž ho alebo zadaj iné dátumy.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    const mupdf = (await import("mupdf")).default;
+    const doc = mupdf.Document.openDocument(buffer, "application/pdf");
+    const pageCount = doc.countPages();
+    if (!pageCount) {
+      return NextResponse.json(
+        { ok: false, error: "PDF nemá žiadne strany." },
+        { status: 400 },
+      );
+    }
+
+    const flyerId = `${Date.now()}`;
+
+    // Vyrenderuj a nahraj stranu po strane (nedržíme celé PDF v pamäti naraz).
+    const uploaded: string[] = [];
+    for (let i = 0; i < pageCount; i++) {
+      const page = doc.loadPage(i);
+      const bounds = page.getBounds();
+      const widthPt = Math.abs(bounds[2] - bounds[0]) || 595;
+      const scale = TARGET_WIDTH / widthPt;
+      const pixmap = page.toPixmap(
+        mupdf.Matrix.scale(scale, scale),
+        mupdf.ColorSpace.DeviceRGB,
+        false, // bez alfa (JPEG)
+        true, // aj anotácie
+      );
+      const jpeg = pixmap.asJPEG(JPEG_QUALITY, false);
+      pixmap.destroy();
+
+      const path = `${base}/${flyerId}/p${i + 1}.jpg`;
+      try {
+        await putFlyerObject(path, Buffer.from(jpeg), "image/jpeg");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return NextResponse.json(
+          { ok: false, error: `Strana ${i + 1}: ${msg}` },
+          { status: 500 },
+        );
+      }
+      uploaded.push(path);
     }
 
     const flyers: FlyerEntry[] = [

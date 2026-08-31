@@ -104,6 +104,8 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const shop = (body?.shop || "").toString().trim();
     const country = normalizeCountry((body?.country || "").toString());
+    const dateFrom = (body?.dateFrom || "").toString().trim();
+    const dateTo = (body?.dateTo || "").toString().trim();
     if (!shop || !country) {
       return NextResponse.json({ error: "Chýba shop alebo country." }, { status: 400 });
     }
@@ -119,6 +121,13 @@ export async function POST(req: Request) {
 
     const t = TEXTS[country] ?? TEXTS.sk;
     const name = prettyShop(shop);
+    // Do textu pridáme platnosť akcie — je to prvé, čo zákazníka zaujíma.
+    const day = (iso: string) => {
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? "" : `${d.getDate()}. ${d.getMonth() + 1}.`;
+    };
+    const range = dateFrom && dateTo ? `${day(dateFrom)} – ${day(dateTo)}` : "";
+    const bodyText = range ? `${t.body} Platí ${range}` : t.body;
     const messaging = getMessaging(getAdminApp());
 
     let sent = 0;
@@ -129,7 +138,7 @@ export async function POST(req: Request) {
       const chunk = tokens.slice(i, i + BATCH);
       const res = await messaging.sendEachForMulticast({
         tokens: chunk,
-        notification: { title: t.title(name), body: t.body },
+        notification: { title: t.title(name), body: bodyText },
         data: { type: "flyer", shop, country },
         android: { priority: "high", notification: { channelId: "watchdog_channel" } },
         apns: { payload: { aps: { sound: "default", badge: 1 } } },
