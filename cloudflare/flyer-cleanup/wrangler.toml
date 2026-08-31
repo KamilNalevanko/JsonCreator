@@ -1,0 +1,14 @@
+name = "cap-flyer-cleanup"
+main = "worker.js"
+compatibility_date = "2026-08-31"
+
+# Prístup k bucketu s letákmi — cez binding, takže Worker nepotrebuje
+# žiadny prístupový kľúč.
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "cap-letaky"
+
+# Upratovanie beží každý pondelok a štvrtok o 04:20 UTC (nočná hodina, keď
+# appku nikto nepoužíva).
+[triggers]
+crons = ["20 4 * * 1,4"]
