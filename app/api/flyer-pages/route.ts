@@ -30,7 +30,7 @@ export const maxDuration = 300;
 const TARGET_WIDTH = 1600;
 const JPEG_QUALITY = 80;
 // Koľko letákov na obchod držíme (najnovší + staršie).
-const MAX_FLYERS_PER_SHOP = 4;
+const MAX_FLYERS_PER_SHOP = 3;
 
 const sanitize = (v: string) =>
   (v || "").toLowerCase().replace(/[^a-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
