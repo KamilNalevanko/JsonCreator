@@ -998,6 +998,33 @@ export default function Home() {
     }
   };
 
+  const handleFlyerCleanup = async () => {
+    setIsFlyerUploading(true);
+    setFlyerUploadMsg(null);
+    try {
+      const res = await fetch("/api/flyer-cleanup", { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (json?.ok) {
+        setFlyerUploadMsg({
+          ok: true,
+          text:
+            json.removedFiles > 0
+              ? `Upratané ✅ zmazaných ${json.removedFiles} strán v ${json.shopsTouched} obchodoch`
+              : "Upratané ✅ nič staré sa nenašlo",
+        });
+      } else {
+        setFlyerUploadMsg({ ok: false, text: `Chyba: ${json?.error || "neznáma"}` });
+      }
+    } catch (e) {
+      setFlyerUploadMsg({
+        ok: false,
+        text: `Chyba siete: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    } finally {
+      setIsFlyerUploading(false);
+    }
+  };
+
   const handleAiExtract = async () => {
     setAiExtractError("");
     setAiExtractStatus("");
@@ -2720,6 +2747,15 @@ export default function Home() {
                   className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-emerald-500 disabled:opacity-60"
                 >
                   {isFlyerUploading ? "Nahrávam leták…" : "📖 Nahrať leták na prezeranie"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFlyerCleanup}
+                  disabled={isFlyerUploading}
+                  title="Zmaže staré a neplatné letáky zo všetkých obchodov"
+                  className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-emerald-500 disabled:opacity-60"
+                >
+                  🧹 Upratať staré letáky
                 </button>
                 {flyerUploadMsg ? (
                   <span

@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import {
+  deleteFlyerObjects,
+  listFlyerObjects,
+  putFlyerObject,
+  readFlyerText,
+  usingR2,
+} from "../_lib/flyer-storage";
 
 // ---------------------------------------------------------------------------
 // Nahratie letáka na PREZERANIE v appke.
@@ -18,7 +24,6 @@ import { createClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
-const BUCKET = "cap-data";
 // Šírka strany v pixeloch. 1600 px + kvalita 80 znesie poriadne priblíženie
 // (drobné popisy pri cenách sú čitateľné) za cenu ~500 KB na stranu. Miesto
 // aj prenos rieši Cloudflare R2, kde je prenos dát zadarmo.
@@ -32,16 +37,6 @@ const sanitize = (v: string) =>
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceRole) {
-      return NextResponse.json(
-        { ok: false, error: "Chýba SUPABASE konfigurácia." },
-        { status: 500 },
-      );
-    }
-
     const form = await req.formData();
     const file = form.get("file");
     const country = sanitize((form.get("country") || "").toString());
@@ -79,7 +74,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const sb = createClient(supabaseUrl, serviceRole);
     const base = `letaky/${country}/${shop}`;
     const flyerId = `${Date.now()}`;
 
@@ -100,13 +94,12 @@ export async function POST(req: Request) {
       pixmap.destroy();
 
       const path = `${base}/${flyerId}/p${i + 1}.jpg`;
-      const up = await sb.storage.from(BUCKET).upload(path, jpeg, {
-        contentType: "image/jpeg",
-        upsert: true,
-      });
-      if (up.error) {
+      try {
+        await putFlyerObject(path, Buffer.from(jpeg), "image/jpeg");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         return NextResponse.json(
-          { ok: false, error: `Strana ${i + 1}: ${up.error.message}` },
+          { ok: false, error: `Strana ${i + 1}: ${msg}` },
           { status: 500 },
         );
       }
@@ -124,9 +117,9 @@ export async function POST(req: Request) {
     };
     let existing: FlyerEntry[] = [];
     try {
-      const old = await sb.storage.from(BUCKET).download(`${base}/index.json`);
-      if (old.data) {
-        const parsed = JSON.parse(await old.data.text());
+      const oldText = await readFlyerText(`${base}/index.json`);
+      if (oldText) {
+        const parsed = JSON.parse(oldText);
         if (Array.isArray(parsed?.flyers)) {
           existing = parsed.flyers as FlyerEntry[];
         } else if (parsed?.flyerId) {
@@ -161,16 +154,16 @@ export async function POST(req: Request) {
 
     // Index — appka číta tento drobný súbor a podľa neho vie, čo zobraziť.
     const index = { flyers: keep, width: TARGET_WIDTH };
-    const idx = await sb.storage
-      .from(BUCKET)
-      .upload(`${base}/index.json`, JSON.stringify(index, null, 2), {
-        contentType: "application/json",
-        upsert: true,
-        cacheControl: "0",
-      });
-    if (idx.error) {
+    try {
+      await putFlyerObject(
+        `${base}/index.json`,
+        JSON.stringify(index, null, 2),
+        "application/json",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       return NextResponse.json(
-        { ok: false, error: `Index: ${idx.error.message}` },
+        { ok: false, error: `Index: ${msg}` },
         { status: 500 },
       );
     }
@@ -179,14 +172,8 @@ export async function POST(req: Request) {
     // necháme na mieste, aby appka nikdy neostala bez letáka.
     let removed = 0;
     for (const f of drop) {
-      const list = await sb.storage.from(BUCKET).list(`${base}/${f.id}`, {
-        limit: 1000,
-      });
-      const paths = (list.data ?? []).map((x) => `${base}/${f.id}/${x.name}`);
-      if (paths.length) {
-        await sb.storage.from(BUCKET).remove(paths);
-        removed += paths.length;
-      }
+      const paths = await listFlyerObjects(`${base}/${f.id}`);
+      removed += await deleteFlyerObjects(paths);
     }
 
     return NextResponse.json({
@@ -195,6 +182,7 @@ export async function POST(req: Request) {
       pages: pageCount,
       uploaded: uploaded.length,
       removedOldPages: removed,
+      storage: usingR2 ? "r2" : "supabase",
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Neznáma chyba";
