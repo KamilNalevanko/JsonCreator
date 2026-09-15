@@ -615,6 +615,9 @@ export default function Home() {
   const [flyerSearchError, setFlyerSearchError] = useState("");
   const [flyerSearchOnlyOrphans, setFlyerSearchOnlyOrphans] = useState(false);
   const [flyerDeletingKey, setFlyerDeletingKey] = useState("");
+  const [flyerEditKey, setFlyerEditKey] = useState("");
+  const [flyerEditDraft, setFlyerEditDraft] = useState<FlyerSearchHit | null>(null);
+  const [flyerSavingKey, setFlyerSavingKey] = useState("");
   const [showInfoSuggestions, setShowInfoSuggestions] = useState(false);
   const [filteredInfoSuggestions, setFilteredInfoSuggestions] = useState<string[]>([]);
   const [activeInfoSuggestionIndex, setActiveInfoSuggestionIndex] = useState<number>(-1);
@@ -2491,6 +2494,76 @@ export default function Home() {
     return [...hits].sort((a, b) => b.slot.localeCompare(a.slot, "sk"));
   }, [flyerSearchItems, flyerSearchTerm, flyerSearchOnlyOrphans]);
 
+  const startFlyerEdit = (hit: FlyerSearchHit) => {
+    setFlyerEditKey(flyerHitKey(hit));
+    setFlyerEditDraft({ ...hit });
+    setFlyerSearchError("");
+  };
+
+  const cancelFlyerEdit = () => {
+    setFlyerEditKey("");
+    setFlyerEditDraft(null);
+  };
+
+  const saveFlyerEdit = async (original: FlyerSearchHit) => {
+    if (!flyerEditDraft) return;
+    if (!flyerEditDraft.name.trim()) {
+      setFlyerSearchError("Názov nesmie byť prázdny.");
+      return;
+    }
+    const key = flyerHitKey(original);
+    setFlyerSavingKey(key);
+    setFlyerSearchError("");
+    try {
+      const res = await fetch("/api/flyer-products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: bucketPath,
+          shop,
+          slot: original.slot,
+          // Cieľ hľadáme podľa PÔVODNÝCH hodnôt — po zmene ceny by sa už
+          // ten istý záznam nenašiel.
+          product: {
+            name: original.name,
+            amount: original.amount,
+            unit: original.unit,
+            priceSale: original.priceSale,
+            dateFrom: original.dateFrom,
+            dateTo: original.dateTo,
+          },
+          changes: {
+            name: flyerEditDraft.name,
+            amount: flyerEditDraft.amount,
+            unit: flyerEditDraft.unit,
+            priceRegular: flyerEditDraft.priceRegular,
+            priceSale: flyerEditDraft.priceSale,
+            info: flyerEditDraft.info,
+            dateFrom: flyerEditDraft.dateFrom,
+            dateTo: flyerEditDraft.dateTo,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        setFlyerSearchError(data?.error || "Uloženie zlyhalo.");
+        return;
+      }
+      cancelFlyerEdit();
+      // Znovu zo servera — jednotkové ceny dopočítava API, nie prehliadač.
+      await loadFlyerSearch(true);
+      setStatus(
+        data.warning
+          ? `Upravené v letáku (${original.slot}). ${data.warning}`
+          : `Upravené v letáku (${original.slot}). Appky to stiahnu pri ďalšom načítaní.`,
+      );
+    } catch {
+      setFlyerSearchError("Uloženie zlyhalo.");
+    } finally {
+      setFlyerSavingKey("");
+    }
+  };
+
   const deleteFlyerHit = async (hit: FlyerSearchHit) => {
     const label = `${hit.name}${hit.amount ? ` (${hit.amount} ${hit.unit})` : ""} — ${hit.priceSale} €`;
     if (!window.confirm(`Zmazať z letáka?\n\n${label}\n${hit.slot}\n\nZ databázy sa nemaže nič.`)) {
@@ -2824,6 +2897,104 @@ export default function Home() {
                   {filteredFlyerHits.slice(0, 200).map((hit) => {
                     const key = flyerHitKey(hit);
                     const range = formatDateRange(hit.dateFrom, hit.dateTo);
+                    const editing = flyerEditKey === key && flyerEditDraft !== null;
+                    const draft = flyerEditDraft;
+                    const setDraft = (patch: Partial<FlyerSearchHit>) =>
+                      setFlyerEditDraft((prev) => (prev ? { ...prev, ...patch } : prev));
+
+                    if (editing && draft) {
+                      return (
+                        <div key={key} className="border-b border-black/5 px-4 py-3 last:border-b-0">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <label className="sm:col-span-2 text-xs text-[color:var(--muted)]">
+                              Názov
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.name}
+                                onChange={(e) => setDraft({ name: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Množstvo
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.amount}
+                                onChange={(e) => setDraft({ amount: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Merná jednotka
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.unit}
+                                onChange={(e) => setDraft({ unit: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Bežná cena
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.priceRegular}
+                                onChange={(e) => setDraft({ priceRegular: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Akciová cena
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.priceSale}
+                                onChange={(e) => setDraft({ priceSale: e.target.value })}
+                              />
+                            </label>
+                            <label className="sm:col-span-2 text-xs text-[color:var(--muted)]">
+                              Doplnková informácia
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.info}
+                                onChange={(e) => setDraft({ info: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Akcia od (DD.MM.RRRR)
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.dateFrom}
+                                onChange={(e) => setDraft({ dateFrom: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Akcia do (DD.MM.RRRR)
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.dateTo}
+                                onChange={(e) => setDraft({ dateTo: e.target.value })}
+                              />
+                            </label>
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void saveFlyerEdit(hit)}
+                              disabled={flyerSavingKey === key}
+                              className="rounded-md bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
+                            >
+                              {flyerSavingKey === key ? "Ukladám…" : "Uložiť do letáka"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelFlyerEdit}
+                              className="rounded-md border border-black/10 px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                            >
+                              Zrušiť
+                            </button>
+                            <span className="text-xs text-[color:var(--muted)]">
+                              Jednotková cena sa dopočíta sama · {hit.slot}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={key}
@@ -2854,14 +3025,23 @@ export default function Home() {
                               .join(" · ")}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void deleteFlyerHit(hit)}
-                          disabled={flyerDeletingKey === key}
-                          className="shrink-0 rounded-md border border-[color:var(--btn-danger-outline-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--btn-danger-outline-text)] transition hover:border-[color:var(--btn-danger-outline-border-hover)] disabled:opacity-40"
-                        >
-                          {flyerDeletingKey === key ? "Mažem…" : "Zmazať z letáka"}
-                        </button>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startFlyerEdit(hit)}
+                            className="rounded-md border border-black/10 px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                          >
+                            Upraviť
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteFlyerHit(hit)}
+                            disabled={flyerDeletingKey === key}
+                            className="rounded-md border border-[color:var(--btn-danger-outline-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--btn-danger-outline-text)] transition hover:border-[color:var(--btn-danger-outline-border-hover)] disabled:opacity-40"
+                          >
+                            {flyerDeletingKey === key ? "Mažem…" : "Zmazať"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

@@ -1,20 +1,30 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeNameKey } from "../../../lib/normalize";
+import {
+  calculateUnitPrice,
+  normalizeNameKey,
+  normalizePrice,
+  normalizeSkDate,
+} from "../../../lib/normalize";
 
 // ---------------------------------------------------------------------------
 // Produkty tak, ako ich reálne vidí appka — teda z PUBLIKOVANÝCH letákov
 // (`databazy/{country}/{shop}_N.json`), nie z tabuľky master_products_v2.
 //
 //  GET    /api/flyer-products?country=sk&shop=tesco-hypermarket
+//  PATCH  /api/flyer-products   → prepíše JEDEN záznam v JEDNOM slote
 //  DELETE /api/flyer-products   → zmaže JEDEN záznam z JEDNÉHO slotu
 //
 // Prečo to existuje: editor hľadá v databáze, kde je na (obchod + názov) len
 // JEDEN riadok. Leták si ale drží týždenný snímok, takže v ňom bežne visia
 // záznamy, ku ktorým sa cez databázu nedá dostať — staršie týždne aj druhá
-// veľkosť toho istého produktu. Bez tohto API sa taký záznam nedá nájsť
-// ani zmazať, hoci ho appka zobrazuje.
+// veľkosť toho istého produktu. Bez tohto API sa taký záznam nedá nájsť,
+// opraviť ani zmazať, hoci ho appka zobrazuje.
+//
+// Zapisuje sa LEN do letáka. Do master_products_v2 to zámerne nesiaha —
+// tam je na názov jediný riadok s hodnotami z posledného importu a prepísať
+// ho starším týždňom by pokazilo dáta, ktoré sú v poriadku.
 // ---------------------------------------------------------------------------
 
 const BUCKET = "cap-data";
@@ -53,6 +63,28 @@ function supabaseAdmin(): SupabaseClient | null {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** Stiahne slot ako JSON. Ide cez REST s náhodným parametrom v adrese, nie
+ *  cez `storage.download()` — to totiž vracia obsah z CDN cache a hneď po
+ *  zápise by sme čítali starú verziu. Prakticky to znamenalo, že po uložení
+ *  ukázal editor pôvodnú cenu a ďalšia úprava skončila na „produkt sa
+ *  v slote nenašiel". */
+async function downloadJson(path: string): Promise<unknown | null> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !key) return null;
+  const url = `${base}/storage/v1/object/${BUCKET}/${path}?cb=${Date.now()}-${Math.random()}`;
+  try {
+    const res = await fetch(url, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 /** Názvy slotov obchodu (`shop.json` aj `shop_N.json`), zoradené podľa čísla. */
@@ -108,14 +140,9 @@ async function bumpIndexVersion(
   fileBase: string,
 ): Promise<string | null> {
   const indexPath = `${basePath}/_indexes/${fileBase}.json`;
-  const dl = await supabase.storage.from(BUCKET).download(indexPath);
-  if (dl.error || !dl.data) return null;
-  let index: Record<string, unknown>;
-  try {
-    index = JSON.parse(await dl.data.text());
-  } catch {
-    return null;
-  }
+  const loaded = await downloadJson(indexPath);
+  if (!loaded || typeof loaded !== "object") return null;
+  const index = loaded as Record<string, unknown>;
   const version = new Date().toISOString();
   index.version = version;
   const up = await supabase.storage
@@ -202,16 +229,9 @@ export async function GET(req: Request) {
   const items: FlyerHit[] = [];
 
   for (const file of files) {
-    const dl = await supabase.storage.from(BUCKET).download(`${basePath}/${file}`);
-    if (dl.error || !dl.data) {
-      warnings.push(`${file}: stiahnutie zlyhalo`);
-      continue;
-    }
-    let flyer: unknown;
-    try {
-      flyer = JSON.parse(await dl.data.text());
-    } catch {
-      warnings.push(`${file}: nečitateľný JSON`);
+    const flyer = await downloadJson(`${basePath}/${file}`);
+    if (flyer === null) {
+      warnings.push(`${file}: stiahnutie zlyhalo alebo nečitateľný JSON`);
       continue;
     }
     walkProducts(flyer, (product) => {
@@ -245,12 +265,33 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, shop, country, slots: files, items, warnings });
 }
 
-export async function DELETE(req: Request) {
-  const body = await req.json().catch(() => ({}));
+
+// --- Zápis do slotu -------------------------------------------------------
+// DELETE aj PATCH robia to isté dokola: overiť vstup, stiahnuť slot, nájsť
+// PRESNE ten jeden záznam, zapísať a zdvihnúť verziu indexu. Preto je to tu
+// raz a handlery dodajú len to, čo sa má so záznamom stať.
+
+type SlotTarget = {
+  name?: string;
+  amount?: string;
+  unit?: string;
+  priceSale?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+type SlotMutation =
+  | { kind: "delete" }
+  | { kind: "update"; patch: Record<string, string> };
+
+async function mutateSlotRecord(
+  body: Record<string, unknown>,
+  mutation: SlotMutation,
+) {
   const country = str(body?.country).toLowerCase().trim();
   const shop = str(body?.shop).trim();
   const slot = str(body?.slot).trim();
-  const target = body?.product as Record<string, string> | undefined;
+  const target = body?.product as SlotTarget | undefined;
 
   if (!COUNTRIES.includes(country)) {
     return NextResponse.json({ ok: false, error: "Neplatná krajina." }, { status: 400 });
@@ -283,26 +324,19 @@ export async function DELETE(req: Request) {
   }
 
   const path = `${basePath}/${slot}`;
-  const dl = await supabase.storage.from(BUCKET).download(path);
-  if (dl.error || !dl.data) {
+  const flyer = await downloadJson(path);
+  if (flyer === null) {
     return NextResponse.json(
-      { ok: false, error: "Slot sa nepodarilo stiahnuť." },
+      { ok: false, error: "Slot sa nepodarilo stiahnuť alebo nie je platný JSON." },
       { status: 500 },
     );
   }
 
-  let flyer: unknown;
-  try {
-    flyer = JSON.parse(await dl.data.text());
-  } catch {
-    return NextResponse.json({ ok: false, error: "Slot nie je platný JSON." }, { status: 500 });
-  }
-
   // Presná zhoda vrátane množstva, ceny a dátumov — ten istý názov má bežne
-  // viac variantov (veľkosť M/L) a zmazať sa smie len ten vybraný.
+  // viac variantov (veľkosť M/L) a zasahovať sa smie len do vybraného.
   const targetKey = normalizeNameKey(target.name);
   const same = (a: string, b: string) => a.trim() === b.trim();
-  let removed = 0;
+  let touched = 0;
 
   walkProducts(flyer, (product, siblings, index) => {
     if (normalizeNameKey(str(product["Názov"])) !== targetKey) return;
@@ -311,11 +345,16 @@ export async function DELETE(req: Request) {
     if (!same(str(product["Akciová cena"]), str(target.priceSale ?? ""))) return;
     if (!same(str(product["Dátum akcie od"]), str(target.dateFrom ?? ""))) return;
     if (!same(str(product["Dátum akcie do"]), str(target.dateTo ?? ""))) return;
-    siblings.splice(index, 1);
-    removed += 1;
+
+    if (mutation.kind === "delete") {
+      siblings.splice(index, 1);
+    } else {
+      Object.assign(product, mutation.patch);
+    }
+    touched += 1;
   });
 
-  if (removed === 0) {
+  if (touched === 0) {
     return NextResponse.json(
       { ok: false, error: "Produkt sa v slote nenašiel — leták sa medzitým mohol zmeniť." },
       { status: 404 },
@@ -340,11 +379,54 @@ export async function DELETE(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    removed,
+    touched,
     slot,
     version,
     warning: version
       ? null
       : "Verziu indexu sa nepodarilo zdvihnúť — appky môžu ešte chvíľu ukazovať starý obsah.",
   });
+}
+
+export async function DELETE(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  return mutateSlotRecord(body, { kind: "delete" });
+}
+
+export async function PATCH(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  const changes = body?.changes as Record<string, string> | undefined;
+
+  if (!changes || typeof changes !== "object") {
+    return NextResponse.json({ ok: false, error: "Chýbajú zmeny." }, { status: 400 });
+  }
+
+  const name = str(changes.name).trim();
+  if (!name) {
+    return NextResponse.json({ ok: false, error: "Názov nesmie byť prázdny." }, { status: 400 });
+  }
+
+  // Ceny a dátumy do rovnakého tvaru, v akom ich píše import — appka inak
+  // mieša „0.45" s „0,45" a dátumy si nevie prečítať.
+  const amount = str(changes.amount).trim();
+  const unit = str(changes.unit).trim();
+  const priceRegular = normalizePrice(changes.priceRegular ?? "");
+  const priceSale = normalizePrice(changes.priceSale ?? "");
+
+  const patch: Record<string, string> = {
+    "Názov": name,
+    "Množstvo": amount,
+    "Merná jednotka": unit,
+    "Bežná cena za bal.": priceRegular,
+    // Jednotkové ceny sa neprepisujú ručne — vždy sa dopočítajú, aby
+    // nemohlo vzniknúť niečo ako 20 ks za 1,48 € = 0,07 €/ks.
+    "Bežná jednotková cena": calculateUnitPrice(priceRegular, amount, unit),
+    "Akciová cena": priceSale,
+    "Akciová jednotková cena": calculateUnitPrice(priceSale, amount, unit),
+    "Doplnková Informácia": str(changes.info).trim(),
+    "Dátum akcie od": normalizeSkDate(changes.dateFrom ?? ""),
+    "Dátum akcie do": normalizeSkDate(changes.dateTo ?? ""),
+  };
+
+  return mutateSlotRecord(body, { kind: "update", patch });
 }
