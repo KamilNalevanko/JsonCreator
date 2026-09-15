@@ -238,6 +238,22 @@ const productMatchesShop = (product: FlyerProduct, shopKey: string) => {
   return tokens.some((token) => allowedTargets.has(token));
 };
 
+// Jeden záznam tak, ako leží v publikovanom letáku (/api/flyer-products).
+type FlyerSearchHit = {
+  slot: string;
+  name: string;
+  amount: string;
+  unit: string;
+  priceRegular: string;
+  priceSale: string;
+  priceSaleUnit: string;
+  info: string;
+  dateFrom: string;
+  dateTo: string;
+  placement: string;
+  inDb: boolean;
+};
+
 // ✅ jeden matcher pre všetko (názvy, info, zoznam…)
 const matchesSearch = (candidate: string, query: string) => {
   const q = normalizeKey(query);
@@ -588,6 +604,17 @@ export default function Home() {
   } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<typeof loadedProductsList>([]);
+  // Hľadanie priamo v publikovaných letákoch (to, čo reálne vidí appka).
+  // Oddelené od hľadania hore, ktoré ide do databázy — v letáku sú aj záznamy,
+  // ku ktorým sa cez databázu nedá dostať (staršie týždne, druhá veľkosť
+  // toho istého názvu), a tie sa inak nedajú ani nájsť, ani zmazať.
+  const [flyerSearchTerm, setFlyerSearchTerm] = useState("");
+  const [flyerSearchItems, setFlyerSearchItems] = useState<FlyerSearchHit[]>([]);
+  const [flyerSearchKey, setFlyerSearchKey] = useState("");
+  const [flyerSearchLoading, setFlyerSearchLoading] = useState(false);
+  const [flyerSearchError, setFlyerSearchError] = useState("");
+  const [flyerSearchOnlyOrphans, setFlyerSearchOnlyOrphans] = useState(false);
+  const [flyerDeletingKey, setFlyerDeletingKey] = useState("");
   const [showInfoSuggestions, setShowInfoSuggestions] = useState(false);
   const [filteredInfoSuggestions, setFilteredInfoSuggestions] = useState<string[]>([]);
   const [activeInfoSuggestionIndex, setActiveInfoSuggestionIndex] = useState<number>(-1);
@@ -2421,6 +2448,93 @@ export default function Home() {
     }));
   };
 
+  // --- Hľadanie v publikovaných letákoch -----------------------------------
+  // Údaje sa načítajú raz na dvojicu krajina+obchod a držia sa v pamäti;
+  // pri prepnutí obchodu sa zahodia (kľúč sedieť nebude).
+  const flyerSearchCurrentKey = `${bucketPath}|${shop}`;
+
+  const loadFlyerSearch = async (force = false) => {
+    if (!bucketPath || !shop) return;
+    if (!force && flyerSearchKey === flyerSearchCurrentKey) return;
+    setFlyerSearchLoading(true);
+    setFlyerSearchError("");
+    try {
+      const res = await fetch(
+        `/api/flyer-products?country=${encodeURIComponent(bucketPath)}&shop=${encodeURIComponent(shop)}`,
+        { cache: "no-store" },
+      );
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        setFlyerSearchError(data?.error || "Letáky sa nepodarilo načítať.");
+        setFlyerSearchItems([]);
+        return;
+      }
+      setFlyerSearchItems(Array.isArray(data.items) ? data.items : []);
+      setFlyerSearchKey(flyerSearchCurrentKey);
+    } catch {
+      setFlyerSearchError("Letáky sa nepodarilo načítať.");
+      setFlyerSearchItems([]);
+    } finally {
+      setFlyerSearchLoading(false);
+    }
+  };
+
+  const flyerHitKey = (hit: FlyerSearchHit) =>
+    [hit.slot, hit.name, hit.amount, hit.unit, hit.priceSale, hit.dateFrom].join("|");
+
+  const filteredFlyerHits = useMemo(() => {
+    const term = flyerSearchTerm.trim();
+    let hits = flyerSearchItems;
+    if (flyerSearchOnlyOrphans) hits = hits.filter((h) => !h.inDb);
+    if (term) hits = hits.filter((h) => matchesSearch(`${h.name} ${h.info}`, term));
+    // Najnovšie akcie hore — v nich sa najčastejšie opravuje.
+    return [...hits].sort((a, b) => b.slot.localeCompare(a.slot, "sk"));
+  }, [flyerSearchItems, flyerSearchTerm, flyerSearchOnlyOrphans]);
+
+  const deleteFlyerHit = async (hit: FlyerSearchHit) => {
+    const label = `${hit.name}${hit.amount ? ` (${hit.amount} ${hit.unit})` : ""} — ${hit.priceSale} €`;
+    if (!window.confirm(`Zmazať z letáka?\n\n${label}\n${hit.slot}\n\nZ databázy sa nemaže nič.`)) {
+      return;
+    }
+    const key = flyerHitKey(hit);
+    setFlyerDeletingKey(key);
+    setFlyerSearchError("");
+    try {
+      const res = await fetch("/api/flyer-products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          country: bucketPath,
+          shop,
+          slot: hit.slot,
+          product: {
+            name: hit.name,
+            amount: hit.amount,
+            unit: hit.unit,
+            priceSale: hit.priceSale,
+            dateFrom: hit.dateFrom,
+            dateTo: hit.dateTo,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        setFlyerSearchError(data?.error || "Mazanie zlyhalo.");
+        return;
+      }
+      setFlyerSearchItems((prev) => prev.filter((h) => flyerHitKey(h) !== key));
+      setStatus(
+        data.warning
+          ? `Zmazané z letáka (${hit.slot}). ${data.warning}`
+          : `Zmazané z letáka (${hit.slot}). Appky to prestanú zobrazovať po ďalšom načítaní.`,
+      );
+    } catch {
+      setFlyerSearchError("Mazanie zlyhalo.");
+    } finally {
+      setFlyerDeletingKey("");
+    }
+  };
+
   const cancelEdit = () => {
     setEditingLoadedRef(null);
     setEditingId(null);
@@ -2651,6 +2765,116 @@ export default function Home() {
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[color:var(--ink)]">
                 Počet produktov pre reťazec <span>{loadedProductsList.length}</span>
               </div>
+            </div>
+
+            {/* Hľadanie priamo v letákoch. Pole hore hľadá v databáze, tu sa
+                hľadá v tom, čo appka reálne stiahne — vrátane záznamov, ktoré
+                v databáze nie sú a cez ňu sa k nim nedá dostať. */}
+            <div className="mt-6 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink)]">
+                  Hľadať v letákoch (čo vidí appka)
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+                    <input
+                      type="checkbox"
+                      checked={flyerSearchOnlyOrphans}
+                      onChange={(e) => setFlyerSearchOnlyOrphans(e.target.checked)}
+                    />
+                    len čo sa v databáze nedá nájsť
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void loadFlyerSearch(true)}
+                    disabled={!bucketPath || !shop || flyerSearchLoading}
+                    className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30 disabled:opacity-40"
+                  >
+                    {flyerSearchLoading ? "Načítavam…" : "Načítať letáky"}
+                  </button>
+                </div>
+              </div>
+
+              <input
+                className="mt-3 w-full rounded-xl border border-black/10 bg-[var(--surface)] px-4 py-3 text-base text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                placeholder="Názov produktu v letáku…"
+                value={flyerSearchTerm}
+                onFocus={() => void loadFlyerSearch()}
+                onChange={(e) => {
+                  setFlyerSearchTerm(e.target.value);
+                  void loadFlyerSearch();
+                }}
+              />
+
+              {flyerSearchError && (
+                <div className="mt-2 text-xs font-semibold text-[color:var(--btn-danger-outline-text)]">
+                  {flyerSearchError}
+                </div>
+              )}
+
+              {flyerSearchKey === flyerSearchCurrentKey && (
+                <div className="mt-2 text-xs text-[color:var(--muted)]">
+                  {flyerSearchItems.length} produktov v letákoch ·{" "}
+                  {flyerSearchItems.filter((h) => !h.inDb).length} sa nedá nájsť v databáze
+                </div>
+              )}
+
+              {filteredFlyerHits.length > 0 && (
+                <div className="mt-3 max-h-[320px] overflow-y-auto rounded-xl border border-black/10">
+                  {filteredFlyerHits.slice(0, 200).map((hit) => {
+                    const key = flyerHitKey(hit);
+                    const range = formatDateRange(hit.dateFrom, hit.dateTo);
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-3 border-b border-black/5 px-4 py-3 text-sm last:border-b-0"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-[color:var(--ink)]">{hit.name}</span>
+                            {!hit.inDb && (
+                              <span
+                                title="Presne tento záznam (názov + množstvo + cena + dátum) v databáze nie je, takže sa cez hľadanie hore nedá nájsť ani opraviť."
+                                className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700"
+                              >
+                                len v letáku
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-[color:var(--muted)]">
+                            {[
+                              hit.amount ? `${hit.amount} ${hit.unit}`.trim() : "",
+                              hit.priceSale ? `${hit.priceSale} €` : "",
+                              hit.priceSaleUnit ? `${hit.priceSaleUnit} €/j.` : "",
+                              hit.info,
+                              range,
+                              hit.slot,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void deleteFlyerHit(hit)}
+                          disabled={flyerDeletingKey === key}
+                          className="shrink-0 rounded-md border border-[color:var(--btn-danger-outline-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--btn-danger-outline-text)] transition hover:border-[color:var(--btn-danger-outline-border-hover)] disabled:opacity-40"
+                        >
+                          {flyerDeletingKey === key ? "Mažem…" : "Zmazať z letáka"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {flyerSearchKey === flyerSearchCurrentKey &&
+                !flyerSearchLoading &&
+                filteredFlyerHits.length === 0 && (
+                  <div className="mt-3 text-xs text-[color:var(--muted)]">
+                    Nič nesedí.
+                  </div>
+                )}
             </div>
 
             <div className="mt-16 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
