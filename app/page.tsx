@@ -2789,6 +2789,8 @@ export default function Home() {
                 {/* Prehľad čísel z GA4, Appodealu a Play — samostatná stránka. */}
                 <a
                   href="/prehlad"
+                  target="_blank"
+                  rel="noopener"
                   className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
                 >
                   📈 Prehľad appky

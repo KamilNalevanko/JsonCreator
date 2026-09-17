@@ -82,7 +82,7 @@ async function googleToken(scope: string): Promise<string | null> {
 /** Aktívni a noví používatelia po dňoch. */
 type Ga4Row = { activeUsers: number; newUsers: number; engagementSeconds: number };
 
-async function loadGa4(days: number, warnings: string[]) {
+async function loadGa4(from: string, to: string, warnings: string[]) {
   const token = await googleToken(
     "https://www.googleapis.com/auth/analytics.readonly",
   );
@@ -101,7 +101,7 @@ async function loadGa4(days: number, warnings: string[]) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          dateRanges: [{ startDate: `${days}daysAgo`, endDate: "yesterday" }],
+          dateRanges: [{ startDate: from, endDate: to }],
           dimensions: [{ name: "date" }],
           metrics: [
             { name: "activeUsers" },
@@ -201,17 +201,57 @@ async function loadAppodeal(from: string, to: string, warnings: string[]) {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const days = Math.min(Math.max(Number(searchParams.get("days")) || 28, 7), 90);
+  // Dátum bez času a v miestnom čase. `toISOString()` prepína do UTC a pri
+  // večerných hodinách by posunul deň — z 14.–16. potom vyšli 4 dni.
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate(),
+    ).padStart(2, "0")}`;
+  const atMidnight = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const isDate = (v: string | null): v is string =>
+    !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
 
-  const to = new Date();
-  to.setDate(to.getDate() - 1); // včerajšok — dnešok ešte nie je uzavretý
-  const from = new Date(to);
-  from.setDate(from.getDate() - days + 1);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  // Buď vlastné obdobie (od–do), alebo počet dní dozadu.
+  const rawFrom = searchParams.get("from");
+  const rawTo = searchParams.get("to");
+
+  let from: Date;
+  let to: Date;
+
+  if (isDate(rawFrom) && isDate(rawTo)) {
+    const parse = (v: string) => {
+      const [y, m, d] = v.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    };
+    from = parse(rawFrom);
+    to = parse(rawTo);
+    if (from > to) [from, to] = [to, from];
+    // Dnešok ešte nie je uzavretý — GA4 by zaň vrátila neúplné čísla.
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (to > yesterday) to = yesterday;
+    // Strop na rok, nech to Appodealu netrvá večnosť.
+    const maxSpan = 365 * 24 * 3600 * 1000;
+    if (to.getTime() - from.getTime() > maxSpan) {
+      from = new Date(to.getTime() - maxSpan);
+    }
+  } else {
+    const span = Math.min(Math.max(Number(searchParams.get("days")) || 28, 7), 90);
+    to = new Date();
+    to.setDate(to.getDate() - 1);
+    from = new Date(to);
+    from.setDate(from.getDate() - span + 1);
+  }
+
+  from = atMidnight(from);
+  to = atMidnight(to);
+  const days =
+    Math.round((to.getTime() - from.getTime()) / (24 * 3600 * 1000)) + 1;
 
   const warnings: string[] = [];
   const [ga4, ads] = await Promise.all([
-    loadGa4(days, warnings),
+    loadGa4(iso(from), iso(to), warnings),
     loadAppodeal(iso(from), iso(to), warnings),
   ]);
 
