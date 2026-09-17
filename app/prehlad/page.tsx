@@ -15,6 +15,8 @@ type Day = {
   date: string;
   activeUsers: number;
   newUsers: number;
+  returningUsers: number;
+  avgSeconds: number;
   impressions: number;
   revenue: number;
   ecpm: number;
@@ -32,6 +34,8 @@ type Payload = {
     impressions: number;
     revenue: number;
     avgActiveUsers: number;
+    returningUsers: number;
+    avgSeconds: number;
   };
   warnings: string[];
 };
@@ -41,6 +45,14 @@ const fmt = (n: number, digits = 0) =>
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+
+/** Sekundy na „4 min 25 s" — zákazník chce vidieť čas, nie číslo. */
+const dur = (seconds: number) => {
+  if (!seconds || seconds < 1) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return m > 0 ? `${m} min ${s} s` : `${s} s`;
+};
 
 const shortDate = (iso: string) => {
   const [, m, d] = iso.split("-");
@@ -178,6 +190,16 @@ export default function PrehladPage() {
             note="koľko ľudí appku otvorí za deň"
           />
           <Stat
+            label="Čas v appke"
+            value={data ? dur(data.totals.avgSeconds) : "—"}
+            note="priemer na jedného používateľa za deň"
+          />
+          <Stat
+            label="Vracajúci sa"
+            value={data ? fmt(data.totals.returningUsers) : "—"}
+            note="návštevy ľudí, ktorí appku už poznali"
+          />
+          <Stat
             label="Impresie reklám"
             value={data ? fmt(data.totals.impressions) : "—"}
             note="reklamy sú momentálne vypnuté"
@@ -207,7 +229,11 @@ export default function PrehladPage() {
                 {(data?.days ?? []).map((d) => (
                   <div
                     key={d.date}
-                    title={`${d.date}\naktívni: ${d.activeUsers}\nnoví: ${d.newUsers}`}
+                    title={`${d.date}
+spolu: ${d.activeUsers}
+noví: ${d.newUsers}
+vracajúci sa: ${d.returningUsers}
+čas: ${dur(d.avgSeconds)}`}
                     style={{
                       flex: 1,
                       display: "flex",
@@ -243,8 +269,8 @@ export default function PrehladPage() {
                 ))}
               </div>
               <div style={{ display: "flex", gap: 20, fontSize: 12, color: MUTED }}>
-                <Legend color={GREEN} label="aktívni" />
-                <Legend color={GREEN_BRIGHT} label="z toho noví" />
+                <Legend color={GREEN} label="vracajúci sa" />
+                <Legend color={GREEN_BRIGHT} label="noví" />
               </div>
             </>
           )}
@@ -257,8 +283,10 @@ export default function PrehladPage() {
               <thead>
                 <tr style={{ color: MUTED, textAlign: "right" }}>
                   <Th align="left">Dátum</Th>
-                  <Th>Aktívni</Th>
+                  <Th>Spolu</Th>
                   <Th>Noví</Th>
+                  <Th>Vracajúci</Th>
+                  <Th>Čas</Th>
                   <Th>Impresie</Th>
                   <Th>Príjem</Th>
                   <Th>eCPM</Th>
@@ -274,6 +302,8 @@ export default function PrehladPage() {
                       <Td align="left">{shortDate(d.date)}</Td>
                       <Td>{fmt(d.activeUsers)}</Td>
                       <Td strong={d.newUsers > 0}>{fmt(d.newUsers)}</Td>
+                      <Td>{fmt(d.returningUsers)}</Td>
+                      <Td>{dur(d.avgSeconds)}</Td>
                       <Td>{d.impressions ? fmt(d.impressions) : "–"}</Td>
                       <Td>{d.revenue ? `$${fmt(d.revenue, 2)}` : "–"}</Td>
                       <Td>{d.ecpm ? `$${fmt(d.ecpm, 2)}` : "–"}</Td>

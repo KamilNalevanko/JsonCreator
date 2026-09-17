@@ -19,6 +19,11 @@ type Day = {
   date: string;
   activeUsers: number;
   newUsers: number;
+  /** Vracajúci sa = aktívni mínus noví. GA4 tie dve skupiny definuje tak,
+   *  že sa nekryjú, takže sa to dá odčítať. */
+  returningUsers: number;
+  /** Priemerný čas v appke na jedného aktívneho používateľa, v sekundách. */
+  avgSeconds: number;
   impressions: number;
   revenue: number;
   ecpm: number;
@@ -75,13 +80,15 @@ async function googleToken(scope: string): Promise<string | null> {
 }
 
 /** Aktívni a noví používatelia po dňoch. */
+type Ga4Row = { activeUsers: number; newUsers: number; engagementSeconds: number };
+
 async function loadGa4(days: number, warnings: string[]) {
   const token = await googleToken(
     "https://www.googleapis.com/auth/analytics.readonly",
   );
   if (!token) {
     warnings.push("GA4: chýba alebo je neplatný servisný účet.");
-    return new Map<string, { activeUsers: number; newUsers: number }>();
+    return new Map<string, Ga4Row>();
   }
 
   try {
@@ -96,7 +103,13 @@ async function loadGa4(days: number, warnings: string[]) {
         body: JSON.stringify({
           dateRanges: [{ startDate: `${days}daysAgo`, endDate: "yesterday" }],
           dimensions: [{ name: "date" }],
-          metrics: [{ name: "activeUsers" }, { name: "newUsers" }],
+          metrics: [
+            { name: "activeUsers" },
+            { name: "newUsers" },
+            // Celkový čas strávený v appke za deň — vydelený aktívnymi dá
+            // priemer na jedného človeka.
+            { name: "userEngagementDuration" },
+          ],
           orderBys: [{ dimension: { dimensionName: "date" } }],
         }),
       },
@@ -104,9 +117,9 @@ async function loadGa4(days: number, warnings: string[]) {
     const data = await res.json();
     if (data.error) {
       warnings.push(`GA4: ${data.error.message}`);
-      return new Map<string, { activeUsers: number; newUsers: number }>();
+      return new Map<string, Ga4Row>();
     }
-    const out = new Map<string, { activeUsers: number; newUsers: number }>();
+    const out = new Map<string, Ga4Row>();
     for (const row of data.rows ?? []) {
       // GA4 vracia dátum ako „20260916" — prepíšeme na „2026-09-16".
       const raw = row.dimensionValues[0].value as string;
@@ -114,12 +127,13 @@ async function loadGa4(days: number, warnings: string[]) {
       out.set(date, {
         activeUsers: Number(row.metricValues[0].value) || 0,
         newUsers: Number(row.metricValues[1].value) || 0,
+        engagementSeconds: Number(row.metricValues[2].value) || 0,
       });
     }
     return out;
   } catch (e) {
     warnings.push(`GA4: ${e instanceof Error ? e.message : "chyba"}`);
-    return new Map<string, { activeUsers: number; newUsers: number }>();
+    return new Map<string, Ga4Row>();
   }
 }
 
@@ -210,11 +224,14 @@ export async function GET(req: Request) {
     const d = new Date(from);
     d.setDate(d.getDate() + i);
     const date = iso(d);
-    const g = ga4.get(date) ?? { activeUsers: 0, newUsers: 0 };
+    const g = ga4.get(date) ?? { activeUsers: 0, newUsers: 0, engagementSeconds: 0 };
     const a = ads.get(date) ?? { impressions: 0, revenue: 0, ecpm: 0, ctr: 0 };
     dayList.push({
       date,
-      ...g,
+      activeUsers: g.activeUsers,
+      newUsers: g.newUsers,
+      returningUsers: Math.max(0, g.activeUsers - g.newUsers),
+      avgSeconds: g.activeUsers > 0 ? g.engagementSeconds / g.activeUsers : 0,
       ...a,
       // Príjem na denného aktívneho používateľa — jediné číslo, ktoré spája
       // Appodeal s GA4. Bez aktívnych používateľov nemá zmysel.
@@ -237,6 +254,12 @@ export async function GET(req: Request) {
       // Priemer aktívnych, nie súčet — sčítať denných aktívnych nedáva zmysel,
       // ten istý človek sa počíta každý deň znova.
       avgActiveUsers: Math.round(sum((d) => d.activeUsers) / dayList.length),
+      returningUsers: sum((d) => d.returningUsers),
+      // Vážený priemer — dni s viac ľuďmi majú väčšiu váhu, inak by jeden
+      // slabý deň s jedným dlho sediacim človekom pokrivil celé číslo.
+      avgSeconds:
+        sum((d) => d.avgSeconds * d.activeUsers) /
+        Math.max(1, sum((d) => d.activeUsers)),
     },
     warnings,
   });
