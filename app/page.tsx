@@ -2786,6 +2786,13 @@ export default function Home() {
           <div className="relative rounded-3xl bg-[color:var(--form)] p-5 shadow-[var(--shadow)] animate-[fade-in_0.6s_ease-out]">
             <div className="absolute top-4 right-6 z-10 flex flex-col items-end gap-2">
               <div className="flex flex-wrap items-center justify-end gap-3">
+                {/* Prehľad čísel z GA4, Appodealu a Play — samostatná stránka. */}
+                <a
+                  href="/prehlad"
+                  className="rounded-xl border border-black/10 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[color:var(--ink)] outline-none transition hover:border-black/30"
+                >
+                  📈 Prehľad appky
+                </a>
                 <button
                   type="button"
                   onClick={() => setShowNotifModal(true)}
@@ -2840,222 +2847,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Hľadanie priamo v letákoch. Pole hore hľadá v databáze, tu sa
-                hľadá v tom, čo appka reálne stiahne — vrátane záznamov, ktoré
-                v databáze nie sú a cez ňu sa k nim nedá dostať. */}
-            <div className="mt-6 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--ink)]">
-                  Hľadať v letákoch (čo vidí appka)
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
-                    <input
-                      type="checkbox"
-                      checked={flyerSearchOnlyOrphans}
-                      onChange={(e) => setFlyerSearchOnlyOrphans(e.target.checked)}
-                    />
-                    len čo sa v databáze nedá nájsť
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => void loadFlyerSearch(true)}
-                    disabled={!bucketPath || !shop || flyerSearchLoading}
-                    className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30 disabled:opacity-40"
-                  >
-                    {flyerSearchLoading ? "Načítavam…" : "Načítať letáky"}
-                  </button>
-                </div>
-              </div>
-
-              <input
-                className="mt-3 w-full rounded-xl border border-black/10 bg-[var(--surface)] px-4 py-3 text-base text-[color:var(--ink)] outline-none transition focus:border-black/30"
-                placeholder="Názov produktu v letáku…"
-                value={flyerSearchTerm}
-                onFocus={() => void loadFlyerSearch()}
-                onChange={(e) => {
-                  setFlyerSearchTerm(e.target.value);
-                  void loadFlyerSearch();
-                }}
-              />
-
-              {flyerSearchError && (
-                <div className="mt-2 text-xs font-semibold text-[color:var(--btn-danger-outline-text)]">
-                  {flyerSearchError}
-                </div>
-              )}
-
-              {flyerSearchKey === flyerSearchCurrentKey && (
-                <div className="mt-2 text-xs text-[color:var(--muted)]">
-                  {flyerSearchItems.length} produktov v letákoch ·{" "}
-                  {flyerSearchItems.filter((h) => !h.inDb).length} sa nedá nájsť v databáze
-                </div>
-              )}
-
-              {filteredFlyerHits.length > 0 && (
-                <div className="mt-3 max-h-[320px] overflow-y-auto rounded-xl border border-black/10">
-                  {filteredFlyerHits.slice(0, 200).map((hit) => {
-                    const key = flyerHitKey(hit);
-                    const range = formatDateRange(hit.dateFrom, hit.dateTo);
-                    const editing = flyerEditKey === key && flyerEditDraft !== null;
-                    const draft = flyerEditDraft;
-                    const setDraft = (patch: Partial<FlyerSearchHit>) =>
-                      setFlyerEditDraft((prev) => (prev ? { ...prev, ...patch } : prev));
-
-                    if (editing && draft) {
-                      return (
-                        <div key={key} className="border-b border-black/5 px-4 py-3 last:border-b-0">
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <label className="sm:col-span-2 text-xs text-[color:var(--muted)]">
-                              Názov
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.name}
-                                onChange={(e) => setDraft({ name: e.target.value })}
-                              />
-                            </label>
-                            <label className="text-xs text-[color:var(--muted)]">
-                              Množstvo
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.amount}
-                                onChange={(e) => setDraft({ amount: e.target.value })}
-                              />
-                            </label>
-                            <label className="text-xs text-[color:var(--muted)]">
-                              Merná jednotka
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.unit}
-                                onChange={(e) => setDraft({ unit: e.target.value })}
-                              />
-                            </label>
-                            <label className="text-xs text-[color:var(--muted)]">
-                              Bežná cena
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.priceRegular}
-                                onChange={(e) => setDraft({ priceRegular: e.target.value })}
-                              />
-                            </label>
-                            <label className="text-xs text-[color:var(--muted)]">
-                              Akciová cena
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.priceSale}
-                                onChange={(e) => setDraft({ priceSale: e.target.value })}
-                              />
-                            </label>
-                            <label className="sm:col-span-2 text-xs text-[color:var(--muted)]">
-                              Doplnková informácia
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.info}
-                                onChange={(e) => setDraft({ info: e.target.value })}
-                              />
-                            </label>
-                            <label className="text-xs text-[color:var(--muted)]">
-                              Akcia od (DD.MM.RRRR)
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.dateFrom}
-                                onChange={(e) => setDraft({ dateFrom: e.target.value })}
-                              />
-                            </label>
-                            <label className="text-xs text-[color:var(--muted)]">
-                              Akcia do (DD.MM.RRRR)
-                              <input
-                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
-                                value={draft.dateTo}
-                                onChange={(e) => setDraft({ dateTo: e.target.value })}
-                              />
-                            </label>
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => void saveFlyerEdit(hit)}
-                              disabled={flyerSavingKey === key}
-                              className="rounded-md bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
-                            >
-                              {flyerSavingKey === key ? "Ukladám…" : "Uložiť do letáka"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelFlyerEdit}
-                              className="rounded-md border border-black/10 px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30"
-                            >
-                              Zrušiť
-                            </button>
-                            <span className="text-xs text-[color:var(--muted)]">
-                              Jednotková cena sa dopočíta sama · {hit.slot}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={key}
-                        className="flex items-center justify-between gap-3 border-b border-black/5 px-4 py-3 text-sm last:border-b-0"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold text-[color:var(--ink)]">{hit.name}</span>
-                            {!hit.inDb && (
-                              <span
-                                title="Presne tento záznam (názov + množstvo + cena + dátum) v databáze nie je, takže sa cez hľadanie hore nedá nájsť ani opraviť."
-                                className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700"
-                              >
-                                len v letáku
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-0.5 truncate text-xs text-[color:var(--muted)]">
-                            {[
-                              hit.amount ? `${hit.amount} ${hit.unit}`.trim() : "",
-                              hit.priceSale ? `${hit.priceSale} €` : "",
-                              hit.priceSaleUnit ? `${hit.priceSaleUnit} €/j.` : "",
-                              hit.info,
-                              range,
-                              hit.slot,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startFlyerEdit(hit)}
-                            className="rounded-md border border-black/10 px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30"
-                          >
-                            Upraviť
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteFlyerHit(hit)}
-                            disabled={flyerDeletingKey === key}
-                            className="rounded-md border border-[color:var(--btn-danger-outline-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--btn-danger-outline-text)] transition hover:border-[color:var(--btn-danger-outline-border-hover)] disabled:opacity-40"
-                          >
-                            {flyerDeletingKey === key ? "Mažem…" : "Zmazať"}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {flyerSearchKey === flyerSearchCurrentKey &&
-                !flyerSearchLoading &&
-                filteredFlyerHits.length === 0 && (
-                  <div className="mt-3 text-xs text-[color:var(--muted)]">
-                    Nič nesedí.
-                  </div>
-                )}
-            </div>
 
             <div className="mt-16 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
               <div className="flex items-center justify-between gap-3">
@@ -4830,6 +4621,220 @@ placeholder={t("placeholder_extra_info")}
             </div>
 
 
+
+            {/* Hľadanie priamo v letákoch. Pole hore hľadá v databáze, tu sa
+                hľadá v tom, čo appka reálne stiahne — vrátane záznamov, ktoré
+                v databáze nie sú a cez ňu sa k nim nedá dostať. */}
+            <div className="mt-6 rounded-2xl border border-black/10 bg-[var(--surface)] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+                    <input
+                      type="checkbox"
+                      checked={flyerSearchOnlyOrphans}
+                      onChange={(e) => setFlyerSearchOnlyOrphans(e.target.checked)}
+                    />
+                    len čo sa v databáze nedá nájsť
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void loadFlyerSearch(true)}
+                    disabled={!bucketPath || !shop || flyerSearchLoading}
+                    className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30 disabled:opacity-40"
+                  >
+                    {flyerSearchLoading ? "Načítavam…" : "Načítať letáky"}
+                  </button>
+                </div>
+              </div>
+
+              <input
+                className="mt-3 w-full rounded-xl border border-black/10 bg-[var(--surface)] px-4 py-3 text-base text-[color:var(--ink)] outline-none transition focus:border-black/30"
+                placeholder="Názov produktu v letáku…"
+                value={flyerSearchTerm}
+                onFocus={() => void loadFlyerSearch()}
+                onChange={(e) => {
+                  setFlyerSearchTerm(e.target.value);
+                  void loadFlyerSearch();
+                }}
+              />
+
+              {flyerSearchError && (
+                <div className="mt-2 text-xs font-semibold text-[color:var(--btn-danger-outline-text)]">
+                  {flyerSearchError}
+                </div>
+              )}
+
+              {flyerSearchKey === flyerSearchCurrentKey && (
+                <div className="mt-2 text-xs text-[color:var(--muted)]">
+                  {flyerSearchItems.length} produktov v letákoch ·{" "}
+                  {flyerSearchItems.filter((h) => !h.inDb).length} sa nedá nájsť v databáze
+                </div>
+              )}
+
+              {filteredFlyerHits.length > 0 && (
+                <div className="mt-3 max-h-[320px] overflow-y-auto rounded-xl border border-black/10">
+                  {filteredFlyerHits.slice(0, 200).map((hit) => {
+                    const key = flyerHitKey(hit);
+                    const range = formatDateRange(hit.dateFrom, hit.dateTo);
+                    const editing = flyerEditKey === key && flyerEditDraft !== null;
+                    const draft = flyerEditDraft;
+                    const setDraft = (patch: Partial<FlyerSearchHit>) =>
+                      setFlyerEditDraft((prev) => (prev ? { ...prev, ...patch } : prev));
+
+                    if (editing && draft) {
+                      return (
+                        <div key={key} className="border-b border-black/5 px-4 py-3 last:border-b-0">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <label className="sm:col-span-2 text-xs text-[color:var(--muted)]">
+                              Názov
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.name}
+                                onChange={(e) => setDraft({ name: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Množstvo
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.amount}
+                                onChange={(e) => setDraft({ amount: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Merná jednotka
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.unit}
+                                onChange={(e) => setDraft({ unit: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Bežná cena
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.priceRegular}
+                                onChange={(e) => setDraft({ priceRegular: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Akciová cena
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.priceSale}
+                                onChange={(e) => setDraft({ priceSale: e.target.value })}
+                              />
+                            </label>
+                            <label className="sm:col-span-2 text-xs text-[color:var(--muted)]">
+                              Doplnková informácia
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.info}
+                                onChange={(e) => setDraft({ info: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Akcia od (DD.MM.RRRR)
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.dateFrom}
+                                onChange={(e) => setDraft({ dateFrom: e.target.value })}
+                              />
+                            </label>
+                            <label className="text-xs text-[color:var(--muted)]">
+                              Akcia do (DD.MM.RRRR)
+                              <input
+                                className="mt-1 w-full rounded-lg border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-black/30"
+                                value={draft.dateTo}
+                                onChange={(e) => setDraft({ dateTo: e.target.value })}
+                              />
+                            </label>
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void saveFlyerEdit(hit)}
+                              disabled={flyerSavingKey === key}
+                              className="rounded-md bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-black/75 disabled:opacity-40"
+                            >
+                              {flyerSavingKey === key ? "Ukladám…" : "Uložiť do letáka"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelFlyerEdit}
+                              className="rounded-md border border-black/10 px-4 py-2 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                            >
+                              Zrušiť
+                            </button>
+                            <span className="text-xs text-[color:var(--muted)]">
+                              Jednotková cena sa dopočíta sama · {hit.slot}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-3 border-b border-black/5 px-4 py-3 text-sm last:border-b-0"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-[color:var(--ink)]">{hit.name}</span>
+                            {!hit.inDb && (
+                              <span
+                                title="Presne tento záznam (názov + množstvo + cena + dátum) v databáze nie je, takže sa cez hľadanie hore nedá nájsť ani opraviť."
+                                className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700"
+                              >
+                                len v letáku
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-[color:var(--muted)]">
+                            {[
+                              hit.amount ? `${hit.amount} ${hit.unit}`.trim() : "",
+                              hit.priceSale ? `${hit.priceSale} €` : "",
+                              hit.priceSaleUnit ? `${hit.priceSaleUnit} €/j.` : "",
+                              hit.info,
+                              range,
+                              hit.slot,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startFlyerEdit(hit)}
+                            className="rounded-md border border-black/10 px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] transition hover:border-black/30"
+                          >
+                            Upraviť
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteFlyerHit(hit)}
+                            disabled={flyerDeletingKey === key}
+                            className="rounded-md border border-[color:var(--btn-danger-outline-border)] px-3 py-1.5 text-xs font-semibold text-[color:var(--btn-danger-outline-text)] transition hover:border-[color:var(--btn-danger-outline-border-hover)] disabled:opacity-40"
+                          >
+                            {flyerDeletingKey === key ? "Mažem…" : "Zmazať"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {flyerSearchKey === flyerSearchCurrentKey &&
+                !flyerSearchLoading &&
+                filteredFlyerHits.length === 0 && (
+                  <div className="mt-3 text-xs text-[color:var(--muted)]">
+                    Nič nesedí.
+                  </div>
+                )}
+            </div>
           </div>
         </section>
       </main>
