@@ -32,12 +32,15 @@ type Payload = {
   to: string;
   days: Day[];
   totals: {
-    newUsers: number;
+    /** Unikátni ľudia za obdobie. null = GA4 súhrn zlyhal. */
+    users: number | null;
+    newUsers: number | null;
+    returningUsers: number | null;
+    avgActiveUsers: number;
+    avgSeconds: number;
     impressions: number;
     revenue: number;
-    avgActiveUsers: number;
-    returningUsers: number;
-    avgSeconds: number;
+    platforms: { platform: string; users: number; newUsers: number }[];
   };
   warnings: string[];
 };
@@ -68,10 +71,14 @@ const longDate = (iso: string) =>
     month: "long",
   });
 
+// Miestny čas, nie `toISOString()` — ten prepína do UTC a tesne po polnoci
+// by vrátil predvčerajšok (rovnaká chyba ako bola v API).
 const yesterdayIso = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
 };
 
 export default function PrehladPage() {
@@ -173,7 +180,7 @@ export default function PrehladPage() {
             }}
           >
             <div style={{ display: "flex", gap: 8 }}>
-              {[7, 28, 90].map((r) => {
+              {[1, 7, 28, 90].map((r) => {
                 const active = !custom && r === days;
                 return (
                   <button
@@ -196,7 +203,7 @@ export default function PrehladPage() {
                       transition: "background 0.15s, color 0.15s",
                     }}
                   >
-                    {r} dní
+                    {r === 1 ? "Včera" : `${r} dní`}
                   </button>
                 );
               })}
@@ -301,8 +308,13 @@ export default function PrehladPage() {
               }}
             >
               <Stat
+                label="Ľudia za obdobie"
+                value={data?.totals.users != null ? fmt(data.totals.users) : "—"}
+                note="unikátni — každý človek sa počíta raz"
+              />
+              <Stat
                 label="Noví používatelia"
-                value={data ? fmt(data.totals.newUsers) : "—"}
+                value={data?.totals.newUsers != null ? fmt(data.totals.newUsers) : "—"}
                 note={
                   trend === null
                     ? "za zvolené obdobie"
@@ -322,8 +334,12 @@ export default function PrehladPage() {
               />
               <Stat
                 label="Vracajúci sa"
-                value={data ? fmt(data.totals.returningUsers) : "—"}
-                note="návštevy ľudí, ktorí appku už poznali"
+                value={
+                  data?.totals.returningUsers != null
+                    ? fmt(data.totals.returningUsers)
+                    : "—"
+                }
+                note="ľudia, čo appku poznali už pred týmto obdobím"
               />
               <Stat
                 label="Impresie reklám"
@@ -336,6 +352,55 @@ export default function PrehladPage() {
                 note="za zvolené obdobie"
               />
             </div>
+
+            {(data?.totals.platforms ?? []).length > 0 && (
+              <Card title="Podľa platformy">
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {data!.totals.platforms.map((p) => {
+                    const share = data!.totals.users
+                      ? (p.users / data!.totals.users) * 100
+                      : 0;
+                    return (
+                      <div key={p.platform}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 14,
+                            marginBottom: 6,
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{p.platform}</span>
+                          <span style={{ color: MUTED }}>
+                            <span style={{ color: INK, fontWeight: 600 }}>
+                              {fmt(p.users)}
+                            </span>{" "}
+                            ľudí · {fmt(p.newUsers)} nových · {fmt(share)} %
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            height: 8,
+                            background: BORDER,
+                            borderRadius: 4,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${share}%`,
+                              height: "100%",
+                              background: p.platform === "iOS" ? GREEN : GREEN_BRIGHT,
+                              borderRadius: 4,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             <Card title="Používatelia po dňoch">
               <div style={{ position: "relative" }} onMouseLeave={() => setHover(null)}>
@@ -410,6 +475,10 @@ export default function PrehladPage() {
             </Card>
 
             <Card title="Po dňoch">
+              <p style={{ margin: "-6px 0 14px", color: MUTED, fontSize: 12 }}>
+                Čísla sú za každý deň zvlášť. Nesčítavaj ich — kto appku otvorí
+                päť dní, je tu päťkrát, ale je to jeden človek.
+              </p>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                   <thead>

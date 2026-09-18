@@ -137,6 +137,99 @@ async function loadGa4(from: string, to: string, warnings: string[]) {
   }
 }
 
+type Ga4Period = {
+  /** Unikátni ľudia za celé obdobie — NIE súčet denných hodnôt. */
+  users: number;
+  newUsers: number;
+  engagementSeconds: number;
+  platforms: { platform: string; users: number; newUsers: number }[];
+  timeZone: string | null;
+};
+
+/**
+ * Súhrn za celé obdobie jedným dotazom.
+ *
+ * Toto sa nedá dopočítať zo súčtu dní: kto appku otvorí desať dní po sebe,
+ * v súčte po dňoch figuruje desaťkrát, ale je to jeden človek. Za 28 dní to
+ * robilo 700 „aktívnych" oproti 429 skutočným ľuďom — a z toho plynul úplne
+ * mylný počet vracajúcich sa (305 namiesto 34).
+ */
+async function loadGa4Period(
+  from: string,
+  to: string,
+  warnings: string[],
+): Promise<Ga4Period | null> {
+  const token = await googleToken(
+    "https://www.googleapis.com/auth/analytics.readonly",
+  );
+  if (!token) return null;
+
+  const run = async (body: unknown) =>
+    (
+      await fetch(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY_ID}:runReport`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        },
+      )
+    ).json();
+
+  try {
+    const range = [{ startDate: from, endDate: to }];
+    const [whole, byPlatform] = await Promise.all([
+      run({
+        dateRanges: range,
+        metrics: [
+          { name: "activeUsers" },
+          { name: "newUsers" },
+          { name: "userEngagementDuration" },
+        ],
+      }),
+      run({
+        dateRanges: range,
+        dimensions: [{ name: "platform" }],
+        metrics: [{ name: "activeUsers" }, { name: "newUsers" }],
+      }),
+    ]);
+    if (whole.error) {
+      warnings.push(`GA4 súhrn: ${whole.error.message}`);
+      return null;
+    }
+
+    // GA4 niekedy čísla zaokrúhli alebo zatají kvôli ochrane súkromia
+    // (pri malom počte ľudí v kombinácii s Google Signals). Keď sa to stane,
+    // nech to je napísané — inak by sme verili podhodnoteným číslam.
+    if (whole.metadata?.subjectToThresholding) {
+      warnings.push(
+        "GA4 uplatnil prahovanie — pri malých číslach môžu byť niektoré hodnoty nižšie, než v skutočnosti sú.",
+      );
+    }
+
+    const v = whole.rows?.[0]?.metricValues ?? [];
+    return {
+      users: Number(v[0]?.value) || 0,
+      newUsers: Number(v[1]?.value) || 0,
+      engagementSeconds: Number(v[2]?.value) || 0,
+      platforms: (byPlatform.rows ?? [])
+        .map((r: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+          platform: r.dimensionValues[0].value,
+          users: Number(r.metricValues[0].value) || 0,
+          newUsers: Number(r.metricValues[1].value) || 0,
+        }))
+        .sort((a: { users: number }, b: { users: number }) => b.users - a.users),
+      timeZone: whole.metadata?.timeZone ?? null,
+    };
+  } catch (e) {
+    warnings.push(`GA4 súhrn: ${e instanceof Error ? e.message : "chyba"}`);
+    return null;
+  }
+}
+
 /** Štatistiky reklám. Appodeal pracuje na úlohy — požiadavka, čakanie, výsledok. */
 async function loadAppodeal(from: string, to: string, warnings: string[]) {
   const key = process.env.APPODEAL_API_KEY;
@@ -237,7 +330,7 @@ export async function GET(req: Request) {
       from = new Date(to.getTime() - maxSpan);
     }
   } else {
-    const span = Math.min(Math.max(Number(searchParams.get("days")) || 28, 7), 90);
+    const span = Math.min(Math.max(Number(searchParams.get("days")) || 28, 1), 90);
     to = new Date();
     to.setDate(to.getDate() - 1);
     from = new Date(to);
@@ -250,10 +343,19 @@ export async function GET(req: Request) {
     Math.round((to.getTime() - from.getTime()) / (24 * 3600 * 1000)) + 1;
 
   const warnings: string[] = [];
-  const [ga4, ads] = await Promise.all([
+  const [ga4, period, ads] = await Promise.all([
     loadGa4(iso(from), iso(to), warnings),
+    loadGa4Period(iso(from), iso(to), warnings),
     loadAppodeal(iso(from), iso(to), warnings),
   ]);
+
+  // „Etc/GMT-2" je pevný posun UTC+2 — nepreskakuje na zimný čas. Od konca
+  // októbra by GA4 dni končili o hodinu inak než slovenské. Nech to vidno.
+  if (period?.timeZone && !/Europe\//.test(period.timeZone)) {
+    warnings.push(
+      `GA4 počíta dni v pásme ${period.timeZone} (pevný posun, bez zimného času). V GA4 → Správa → Podrobnosti o vlastníctve sa dá prepnúť na Europe/Bratislava.`,
+    );
+  }
 
   // Play inštalácie sa neťahajú cez API — Google ich dáva ako mesačné CSV do
   // svojho úložiska a prístup k nemu sa po pridaní práva prepína s oneskorením.
@@ -282,24 +384,34 @@ export async function GET(req: Request) {
   const sum = (pick: (d: Day) => number) =>
     dayList.reduce((acc, d) => acc + pick(d), 0);
 
+  // Ľudia za obdobie berieme z celoobdobného dotazu (unikátni). Keby zlyhal,
+  // radšej nič než súčet dní, ktorý by sa tváril ako počet ľudí.
+  const users = period?.users ?? null;
+  const newUsers = period?.newUsers ?? null;
+
   return NextResponse.json({
     ok: true,
     from: iso(from),
     to: iso(to),
     days: dayList,
     totals: {
-      newUsers: sum((d) => d.newUsers),
-      impressions: sum((d) => d.impressions),
-      revenue: sum((d) => d.revenue),
-      // Priemer aktívnych, nie súčet — sčítať denných aktívnych nedáva zmysel,
-      // ten istý človek sa počíta každý deň znova.
+      users,
+      newUsers,
+      // Kto bol aktívny v tomto období, ale appku používal už predtým.
+      returningUsers:
+        users !== null && newUsers !== null ? Math.max(0, users - newUsers) : null,
+      // Priemer za deň — tu súčet dní dáva zmysel, lebo ho delíme počtom dní.
       avgActiveUsers: Math.round(sum((d) => d.activeUsers) / dayList.length),
-      returningUsers: sum((d) => d.returningUsers),
-      // Vážený priemer — dni s viac ľuďmi majú väčšiu váhu, inak by jeden
-      // slabý deň s jedným dlho sediacim človekom pokrivil celé číslo.
+      // Čas na jedného človeka ZA DEŇ. Za celé obdobie by rástol s dĺžkou
+      // obdobia (90 dní by ukázalo trikrát viac než 28) a čísla by sa nedali
+      // porovnať. Vážené počtom ľudí, nie priemer denných priemerov — inak by
+      // jeden slabý deň s jedným dlho sediacim človekom pokrivil výsledok.
       avgSeconds:
         sum((d) => d.avgSeconds * d.activeUsers) /
         Math.max(1, sum((d) => d.activeUsers)),
+      impressions: sum((d) => d.impressions),
+      revenue: sum((d) => d.revenue),
+      platforms: period?.platforms ?? [],
     },
     warnings,
   });
