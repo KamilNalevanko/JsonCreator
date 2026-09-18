@@ -6,7 +6,7 @@
 // prístupový kľúč. Robí to isté, čo tlačidlo „Upratať staré letáky" v editore:
 //
 //   1. zmaže letáky staršie ako MAX_AGE_DAYS,
-//   2. zmaže letáky nad rámec MAX_FLYERS_PER_SHOP,
+//   2. zmaže letáky, ktorým skončila platnosť (platné a budúce nechá všetky),
 //   3. zmaže „siroty" — strany, ktoré už v index.json nie sú.
 //
 // Najnovší leták obchodu sa nezmaže nikdy, aby obchod neostal prázdny.
@@ -16,13 +16,20 @@
 // ---------------------------------------------------------------------------
 
 const MAX_AGE_DAYS = 35;
-const MAX_FLYERS_PER_SHOP = 3;
 const COUNTRIES = ["sk", "cz", "pl"];
+
+/** Dnešok v slovenskom čase. Worker beží v UTC a appka je pre SK/CZ/PL —
+ *  bez toho by sa „dnes" prehupol o polnoci UTC, nie o polnoci u nás. */
+function todayLocal() {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Bratislava" }).format(
+    new Date(),
+  );
+}
 
 /** Leták, ktorému skončila platnosť akcie — appka ho aj tak nezobrazuje. */
 function isExpired(entry) {
   if (!entry.dateTo) return false;
-  return entry.dateTo < new Date().toISOString().slice(0, 10);
+  return entry.dateTo < todayLocal();
 }
 
 function ageInDays(entry) {
@@ -73,10 +80,15 @@ async function cleanup(env, dryRun) {
       if (!flyers.length) continue;
 
       const sorted = [...flyers].sort((a, b) => ageInDays(a) - ageInDays(b));
-      // Po skončení akcie leták zmizne — rovnako ako pri produktoch.
-      const keep = sorted
-        .slice(0, MAX_FLYERS_PER_SHOP)
-        .filter((f, i) => i === 0 || (!isExpired(f) && ageInDays(f) <= MAX_AGE_DAYS));
+      // Rozhoduje PLATNOSŤ, nie poradie ani vek nahratia. Predtým sa brali
+      // prvé tri podľa nahratia, lenže letáky sa nahrávajú dopredu a
+      // „najstarší nahratý" býva práve ten platný — tak zmizol z Lidl CZ
+      // leták 17.–20. 9. Vek rozhoduje len pri starých letákoch bez dátumu.
+      const shouldKeep = (f) =>
+        f.dateTo ? !isExpired(f) : ageInDays(f) <= MAX_AGE_DAYS;
+      let keep = sorted.filter(shouldKeep);
+      // Keď už nič neplatí, najnovší ostane, nech obchod nie je prázdny.
+      if (keep.length === 0 && sorted.length > 0) keep = [sorted[0]];
       const keepIds = new Set(keep.map((f) => f.id));
       const dropped = sorted.filter((f) => !keepIds.has(f.id));
 

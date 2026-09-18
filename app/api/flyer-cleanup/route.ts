@@ -11,11 +11,11 @@ import {
 // ---------------------------------------------------------------------------
 // Priebežné upratovanie úložiska letákov.
 //
-// Nahrávanie samo drží len posledné N letákov na obchod, ale keď sa do obchodu
-// dlho nič nenahrá, ostanú tam staré (a dávno neplatné) letáky. Toto ich zmaže:
+// Nahrávanie pri pridaní letáka vyhodí neplatné, ale keď sa do obchodu dlho
+// nič nenahrá, ostanú tam staré (a dávno neplatné) letáky. Toto ich zmaže:
 //
-//  1. letáky staršie ako MAX_AGE_DAYS (podľa dátumu nahratia),
-//  2. letáky nad rámec MAX_FLYERS_PER_SHOP,
+//  1. staré letáky bez dátumu platnosti, nahraté pred viac než MAX_AGE_DAYS,
+//  2. letáky, ktorým skončila platnosť (platné a budúce nechá všetky),
 //  3. „siroty" — priečinky so stranami, ktoré už v index.json nie sú
 //     (napr. po prerušenom nahrávaní).
 //
@@ -24,7 +24,6 @@ import {
 // ---------------------------------------------------------------------------
 
 const MAX_AGE_DAYS = 35;
-const MAX_FLYERS_PER_SHOP = 3;
 const COUNTRIES = ["sk", "cz", "pl"];
 
 type FlyerEntry = {
@@ -35,11 +34,31 @@ type FlyerEntry = {
   uploadedAt: string;
 };
 
-/** Leták, ktorému skončila platnosť akcie — appka ho aj tak nezobrazuje. */
+/** Leták, ktorému skončila platnosť akcie — appka ho aj tak nezobrazuje.
+ *  Dnešok v miestnom čase — `toISOString()` by prepol do UTC. */
 function isExpired(entry: FlyerEntry): boolean {
   if (!entry.dateTo) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
   return entry.dateTo < today;
+}
+
+/**
+ * Má leták zostať? Rozhoduje PLATNOSŤ, nie poradie ani vek nahratia.
+ *
+ * Predtým sa bral prvé tri podľa dátumu nahratia a platný leták nahratý
+ * pred viac než 35 dňami tiež vypadol. Letáky sa ale nahrávajú dopredu,
+ * takže „najstarší nahratý" býva práve ten, ktorý dnes platí — presne tak
+ * zmizol z Lidl CZ leták 17.–20. 9.
+ *
+ * Vek nahratia rozhoduje už len pri starých letákoch bez dátumu platnosti,
+ * kde nič iné nemáme.
+ */
+function shouldKeep(entry: FlyerEntry): boolean {
+  if (entry.dateTo) return !isExpired(entry);
+  return ageInDays(entry) <= MAX_AGE_DAYS;
 }
 
 function ageInDays(entry: FlyerEntry): number {
@@ -87,14 +106,12 @@ export async function POST(req: Request) {
         }
         if (!flyers.length) continue;
 
-        // Najnovší ostáva vždy, aj keby bol starý — obchod nesmie ostať prázdny.
         const sorted = [...flyers].sort((a, b) => ageInDays(a) - ageInDays(b));
-        // Po skončení akcie leták zmizne — rovnako ako pri produktoch. Bez
-        // dátumu platnosti rozhoduje vek (staré letáky z čias, keď sa dátumy
-        // ešte nezadávali).
-        const keep = sorted
-          .slice(0, MAX_FLYERS_PER_SHOP)
-          .filter((f, i) => i === 0 || (!isExpired(f) && ageInDays(f) <= MAX_AGE_DAYS));
+        // Platné a budúce sa nechávajú VŠETKY, bez ohľadu na limit — radšej
+        // leták navyše než zmazať taký, čo ľudia práve čítajú.
+        let keep = sorted.filter(shouldKeep);
+        // Keď už nič neplatí, najnovší ostane, nech obchod nie je prázdny.
+        if (keep.length === 0 && sorted.length > 0) keep = [sorted[0]];
         const keepIds = new Set(keep.map((f) => f.id));
         const dropped = sorted.filter((f) => !keepIds.has(f.id));
 

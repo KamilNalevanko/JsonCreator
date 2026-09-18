@@ -180,8 +180,43 @@ export async function POST(req: Request) {
       },
       ...existing.filter((f) => f.id !== flyerId),
     ];
-    const keep = flyers.slice(0, MAX_FLYERS_PER_SHOP);
-    const drop = flyers.slice(MAX_FLYERS_PER_SHOP);
+
+    // Čo vyhodiť, keď je letákov priveľa.
+    //
+    // Predtým rozhodovalo POŘADIE NAHRATIA — vypadol ten najdlhšie nahratý.
+    // Lenže letáky sa nahrávajú dopredu, takže „najdlhšie nahratý" býva práve
+    // ten, ktorý dnes platí. Presne tak zmizol z Lidl CZ leták 17.–20. 9.:
+    // nahratý skôr než neplatný 10.–13. 9., a pri pridaní dvoch nových
+    // vypadol on, zatiaľ čo neplatný ostal.
+    //
+    // Teraz:
+    //   1. platné a budúce letáky sa NIKDY automaticky nemažú
+    //   2. vyhadzujú sa len neplatné, od najstaršieho konca platnosti
+    //   3. ak je platných a budúcich viac než limit, nechajú sa všetky —
+    //      radšej jeden leták navyše, než zmazať taký, čo ľudia práve čítajú
+    const today = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate(),
+      ).padStart(2, "0")}`;
+    })();
+    // Leták bez dátumu nevieme posúdiť — radšej ho berieme ako platný.
+    const isExpired = (f: FlyerEntry) => !!f.dateTo && f.dateTo < today;
+
+    const alive = flyers.filter((f) => !isExpired(f));
+    const expired = flyers
+      .filter(isExpired)
+      // Najčerstvejšie neplatné dopredu — tie sa nechajú, ak ostane miesto.
+      .sort((a, b) => (b.dateTo ?? "").localeCompare(a.dateTo ?? ""));
+
+    const room = Math.max(0, MAX_FLYERS_PER_SHOP - alive.length);
+    const keepExpired = expired.slice(0, room);
+    const drop = expired.slice(room);
+
+    // Zoradené pre index rovnako ako doteraz (najnovší nahratý prvý), nech sa
+    // appke nič nemení.
+    const keepIds = new Set([...alive, ...keepExpired].map((f) => f.id));
+    const keep = flyers.filter((f) => keepIds.has(f.id));
 
     // Index — appka číta tento drobný súbor a podľa neho vie, čo zobraziť.
     const index = { flyers: keep, width: TARGET_WIDTH };
