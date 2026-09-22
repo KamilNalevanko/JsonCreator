@@ -5,6 +5,7 @@ import {
   normalizePrice,
   calculateUnitPrice,
 } from "../../../../lib/normalize";
+import { bumpIndexVersionsForFiles } from "../../_lib/slot-index";
 
 // Uloží KOMPLETNÚ sadu akcií (promo inštancií) jedného produktu do letákov.
 // Rieši pridanie / úpravu / zmazanie naraz jednoduchým princípom "replace":
@@ -202,6 +203,11 @@ export async function POST(req: Request) {
       );
       if (up.error) warnings.push(`${L.name}: upload zlyhal — ${up.error.message}`);
     }
+
+    // Bez zdvihnutia verzie indexu si appky ďalej čítajú staré akcie z cache.
+    warnings.push(
+      ...(await bumpIndexVersionsForFiles(supabase, basePath, [...changedFiles])),
+    );
 
     // 5) DB: upsert jeden reprezentatívny riadok (najdlhšie trvajúca akcia).
     let dbUpdated = false;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeNameKey } from "../../../../lib/normalize";
+import { bumpIndexVersionsForFiles } from "../../_lib/slot-index";
 
 type FlyerProduct = {
   "Názov": string;
@@ -482,6 +483,15 @@ async function syncProductIntoFlyers(
       }
     }
   }
+
+  // Bez zdvihnutia verzie indexu si telefóny ďalej čítajú starý obsah z
+  // diskovej cache a úpravu NIKDY neuvidia.
+  summary.warnings.push(
+    ...(await bumpIndexVersionsForFiles(supabase, basePath, [
+      ...summary.updatedFiles,
+      ...summary.insertedFiles,
+    ])),
+  );
 
   return summary;
 }

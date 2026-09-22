@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeNameKey } from "../../../../lib/normalize";
+import { bumpIndexVersionsForFiles } from "../../_lib/slot-index";
 
 type ProductIdentity = {
   "Názov"?: string;
@@ -155,6 +156,11 @@ async function deleteProductFromFlyers(
       }
     }
   }
+
+  // Bez zdvihnutia verzie indexu by appky zmazaný produkt naďalej ukazovali.
+  summary.warnings.push(
+    ...(await bumpIndexVersionsForFiles(supabase, basePath, summary.removedFiles)),
+  );
 
   return summary;
 }
