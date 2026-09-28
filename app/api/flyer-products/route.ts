@@ -132,6 +132,40 @@ function walkProducts(
   }
 }
 
+/** Nájde (alebo vytvorí) pole Produkty pre cieľové zaradenie v hierarchii
+ *  letáka. Slúži na presun produktu do iného zaradenia. */
+function ensurePlacementProducts(
+  flyer: unknown,
+  categoryKey: string,
+  subcategoryKey: string,
+  placementKey: string,
+): FlyerProduct[] | null {
+  if (!Array.isArray(flyer)) return null;
+  let category = flyer.find((c) => str(c?.["Kategória"]) === categoryKey);
+  if (!category) {
+    category = { "Kategória": categoryKey, "Podkategórie": [] };
+    flyer.push(category);
+  }
+  if (!Array.isArray(category["Podkategórie"])) category["Podkategórie"] = [];
+  let sub = category["Podkategórie"].find(
+    (s: FlyerProduct) => str(s?.["Podkategória"]) === subcategoryKey,
+  );
+  if (!sub) {
+    sub = { "Podkategória": subcategoryKey, "Zaradenia": [] };
+    category["Podkategórie"].push(sub);
+  }
+  if (!Array.isArray(sub["Zaradenia"])) sub["Zaradenia"] = [];
+  let plc = sub["Zaradenia"].find(
+    (z: FlyerProduct) => str(z?.["Zaradenie"]) === placementKey,
+  );
+  if (!plc) {
+    plc = { "Zaradenie": placementKey, "Produkty": [] };
+    sub["Zaradenia"].push(plc);
+  }
+  if (!Array.isArray(plc["Produkty"])) plc["Produkty"] = [];
+  return plc["Produkty"] as FlyerProduct[];
+}
+
 /** Po zápise do slotu treba zdvihnúť verziu indexu, inak si appky ďalej
  *  čítajú starý obsah z diskovej cache a zmenu nikdy neuvidia. */
 async function bumpIndexVersion(
@@ -282,7 +316,13 @@ type SlotTarget = {
 
 type SlotMutation =
   | { kind: "delete" }
-  | { kind: "update"; patch: Record<string, string> };
+  | {
+      kind: "update";
+      patch: Record<string, string>;
+      // Ak je zadané a líši sa od súčasného umiestnenia, produkt sa presunie
+      // do iného zaradenia v hierarchii letáka.
+      move?: { category: string; subcategory: string; placement: string };
+    };
 
 async function mutateSlotRecord(
   body: Record<string, unknown>,
@@ -336,23 +376,45 @@ async function mutateSlotRecord(
   // viac variantov (veľkosť M/L) a zasahovať sa smie len do vybraného.
   const targetKey = normalizeNameKey(target.name);
   const same = (a: string, b: string) => a.trim() === b.trim();
-  let touched = 0;
 
-  walkProducts(flyer, (product, siblings, index) => {
+  // Najprv nájdeme všetky zhody (nemutujeme počas prechodu — pri presune totiž
+  // potrebujeme siahať do inej vetvy hierarchie).
+  const found: { product: FlyerProduct; siblings: FlyerProduct[] }[] = [];
+  walkProducts(flyer, (product, siblings) => {
     if (normalizeNameKey(str(product["Názov"])) !== targetKey) return;
     if (!same(str(product["Množstvo"]), str(target.amount ?? ""))) return;
     if (!same(str(product["Merná jednotka"]), str(target.unit ?? ""))) return;
     if (!same(str(product["Akciová cena"]), str(target.priceSale ?? ""))) return;
     if (!same(str(product["Dátum akcie od"]), str(target.dateFrom ?? ""))) return;
     if (!same(str(product["Dátum akcie do"]), str(target.dateTo ?? ""))) return;
-
-    if (mutation.kind === "delete") {
-      siblings.splice(index, 1);
-    } else {
-      Object.assign(product, mutation.patch);
-    }
-    touched += 1;
+    found.push({ product, siblings });
   });
+
+  const touched = found.length;
+
+  for (const { product, siblings } of found) {
+    if (mutation.kind === "delete") {
+      const i = siblings.indexOf(product);
+      if (i >= 0) siblings.splice(i, 1);
+      continue;
+    }
+    // update
+    Object.assign(product, mutation.patch);
+    if (mutation.move) {
+      const dest = ensurePlacementProducts(
+        flyer,
+        mutation.move.category,
+        mutation.move.subcategory,
+        mutation.move.placement,
+      );
+      // Presun len ak cieľ existuje a je to iné pole než súčasné.
+      if (dest && dest !== siblings) {
+        const i = siblings.indexOf(product);
+        if (i >= 0) siblings.splice(i, 1);
+        dest.push(product);
+      }
+    }
+  }
 
   if (touched === 0) {
     return NextResponse.json(
@@ -428,5 +490,18 @@ export async function PATCH(req: Request) {
     "Dátum akcie do": normalizeSkDate(changes.dateTo ?? ""),
   };
 
-  return mutateSlotRecord(body, { kind: "update", patch });
+  // Zaradenie meníme len ak sú zadané všetky tri kľúče — inak by sme produkt
+  // hodili do prázdna. Vtedy sa prepíšu aj polia a produkt sa presunie.
+  const category = str(changes.category).trim();
+  const subcategory = str(changes.subcategory).trim();
+  const placement = str(changes.placement).trim();
+  let move: { category: string; subcategory: string; placement: string } | undefined;
+  if (category && subcategory && placement) {
+    patch["Kategória"] = category;
+    patch["Podkategória"] = subcategory;
+    patch["Zaradenie"] = placement;
+    move = { category, subcategory, placement };
+  }
+
+  return mutateSlotRecord(body, { kind: "update", patch, move });
 }
