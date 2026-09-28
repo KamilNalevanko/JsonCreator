@@ -253,6 +253,8 @@ type FlyerSearchHit = {
   category: string;
   subcategory: string;
   placement: string;
+  // Akcia platí len s vernostnou kartou / aplikáciou obchodu.
+  requiresCard: boolean;
   inDb: boolean;
 };
 
@@ -2563,6 +2565,8 @@ export default function Home() {
             category: flyerEditDraft.category,
             subcategory: flyerEditDraft.subcategory,
             placement: flyerEditDraft.placement,
+            // Appka pri takej akcii ukáže „len s kartou" a ponúkne kartu.
+            requiresCard: flyerEditDraft.requiresCard ? "true" : "false",
           },
         }),
       });
@@ -3997,6 +4001,17 @@ export default function Home() {
                                 onChange={(e) => setDraft({ info: e.target.value })}
                               />
                             </label>
+                            <label className="sm:col-span-2 flex items-center gap-2 text-sm text-[color:var(--ink)]">
+                              <input
+                                type="checkbox"
+                                checked={draft.requiresCard}
+                                onChange={(e) => setDraft({ requiresCard: e.target.checked })}
+                              />
+                              💳 Len s vernostnou kartou / aplikáciou obchodu
+                              <span className="text-xs text-[color:var(--muted)]">
+                                (appka ukáže odznak a ponúkne kartu)
+                              </span>
+                            </label>
                             <label className="text-xs text-[color:var(--muted)]">
                               Akcia od (DD.MM.RRRR)
                               <input
@@ -4052,6 +4067,11 @@ export default function Home() {
                                 className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700"
                               >
                                 len v letáku
+                              </span>
+                            )}
+                            {hit.requiresCard && (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                                💳 len s kartou
                               </span>
                             )}
                           </div>

@@ -46,10 +46,15 @@ type FlyerHit = {
   info: string;
   dateFrom: string;
   dateTo: string;
+  // Akcia len s vernostnou kartou / aplikáciou obchodu — appka pri nej ukáže
+  // odznak a ponúkne kartu.
+  requiresCard: boolean;
   inDb: boolean;
 };
 
 const str = (value: unknown) => (value == null ? "" : String(value));
+const isTrue = (value: unknown) =>
+  value === true || ["true", "áno", "ano", "1"].includes(str(value).trim().toLowerCase());
 
 // Rovnaký sanitizer ako v rotating-upload / delete — inak by sme siahali inam.
 const sanitizeBase = (value: string) =>
@@ -289,6 +294,7 @@ export async function GET(req: Request) {
         info: str(product["Doplnková Informácia"]),
         dateFrom,
         dateTo: str(product["Dátum akcie do"]),
+        requiresCard: isTrue(product["Vyžaduje kartu"]),
         inDb: dbRecords.has(
           recordKey(normalizeNameKey(name), amount, unit, priceSale, dateFrom),
         ),
@@ -318,7 +324,7 @@ type SlotMutation =
   | { kind: "delete" }
   | {
       kind: "update";
-      patch: Record<string, string>;
+      patch: Record<string, string | boolean>;
       // Ak je zadané a líši sa od súčasného umiestnenia, produkt sa presunie
       // do iného zaradenia v hierarchii letáka.
       move?: { category: string; subcategory: string; placement: string };
@@ -457,7 +463,7 @@ export async function DELETE(req: Request) {
 
 export async function PATCH(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const changes = body?.changes as Record<string, string> | undefined;
+  const changes = body?.changes as Record<string, string | boolean> | undefined;
 
   if (!changes || typeof changes !== "object") {
     return NextResponse.json({ ok: false, error: "Chýbajú zmeny." }, { status: 400 });
@@ -475,7 +481,7 @@ export async function PATCH(req: Request) {
   const priceRegular = normalizePrice(changes.priceRegular ?? "");
   const priceSale = normalizePrice(changes.priceSale ?? "");
 
-  const patch: Record<string, string> = {
+  const patch: Record<string, string | boolean> = {
     "Názov": name,
     "Množstvo": amount,
     "Merná jednotka": unit,
@@ -489,6 +495,11 @@ export async function PATCH(req: Request) {
     "Dátum akcie od": normalizeSkDate(changes.dateFrom ?? ""),
     "Dátum akcie do": normalizeSkDate(changes.dateTo ?? ""),
   };
+
+  // „Len s kartou" — ukladáme ako skutočný boolean, appka ho číta priamo.
+  if (changes.requiresCard !== undefined) {
+    patch["Vyžaduje kartu"] = isTrue(changes.requiresCard);
+  }
 
   // Zaradenie meníme len ak sú zadané všetky tri kľúče — inak by sme produkt
   // hodili do prázdna. Vtedy sa prepíšu aj polia a produkt sa presunie.
