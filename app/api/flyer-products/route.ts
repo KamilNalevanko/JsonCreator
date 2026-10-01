@@ -49,6 +49,8 @@ type FlyerHit = {
   // Akcia len s vernostnou kartou / aplikáciou obchodu — appka pri nej ukáže
   // odznak a ponúkne kartu.
   requiresCard: boolean;
+  // Akcia len s kupónom.
+  requiresCoupon: boolean;
   inDb: boolean;
 };
 
@@ -178,6 +180,21 @@ async function bumpIndexVersion(
   basePath: string,
   fileBase: string,
 ): Promise<string | null> {
+  // Pár pokusov — keď verzia ostane stará, telefóny zmenu v letáku nevidia
+  // (1. 10.: Tesco cena ostala v appkách stará, hoci slot už mal novú).
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const version = await bumpIndexVersionOnce(supabase, basePath, fileBase);
+    if (version) return version;
+    await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+  }
+  return null;
+}
+
+async function bumpIndexVersionOnce(
+  supabase: SupabaseClient,
+  basePath: string,
+  fileBase: string,
+): Promise<string | null> {
   const indexPath = `${basePath}/_indexes/${fileBase}.json`;
   const loaded = await downloadJson(indexPath);
   if (!loaded || typeof loaded !== "object") return null;
@@ -295,6 +312,7 @@ export async function GET(req: Request) {
         dateFrom,
         dateTo: str(product["Dátum akcie do"]),
         requiresCard: isTrue(product["Vyžaduje kartu"]),
+        requiresCoupon: isTrue(product["Vyžaduje kupón"]),
         inDb: dbRecords.has(
           recordKey(normalizeNameKey(name), amount, unit, priceSale, dateFrom),
         ),
@@ -499,6 +517,9 @@ export async function PATCH(req: Request) {
   // „Len s kartou" — ukladáme ako skutočný boolean, appka ho číta priamo.
   if (changes.requiresCard !== undefined) {
     patch["Vyžaduje kartu"] = isTrue(changes.requiresCard);
+  }
+  if (changes.requiresCoupon !== undefined) {
+    patch["Vyžaduje kupón"] = isTrue(changes.requiresCoupon);
   }
 
   // Zaradenie meníme len ak sú zadané všetky tri kľúče — inak by sme produkt

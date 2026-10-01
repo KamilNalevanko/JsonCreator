@@ -26,7 +26,27 @@ interface Product {
   food?: boolean;
   date_from?: string;
   date_to?: string;
+  requires_card?: boolean;
+  requires_coupon?: boolean;
 }
+
+// Jednoznačné frázy „len s kartou / aplikáciou" (SK/CZ/PL) — rovnaké ako
+// v appke (lib/loyalty/card_requirement.dart). `` nepozná diakritiku,
+// preto hranice slov cez \p{L}.
+const CARD_PHRASES: RegExp[] = [
+  /lidl\s*plus/i,
+  /kaufland\s*card/i,
+  /club\s*card|clubcard/i,
+  /moja\s*biedronka|moją\s*biedronką|moja\s*biedronką/i,
+  /billa\s*club|jö\s*bonus/i,
+  /albert\s*plus|moje\s*albert/i,
+  /(^|[^\p{L}])s\s+(vernostn\p{L}*\s+)?kart(ou|ami)(?![\p{L}])/iu,
+  /(^|[^\p{L}])s\s+(vernostn\p{L}*\s+)?(aplikáciou|aplikácii|aplikací|aplikaci)(?![\p{L}])/iu,
+  /(^|[^\p{L}])(z\s+(kartą|aplikacją)|w\s+aplikacji)(?![\p{L}])/iu,
+];
+const COUPON_PHRASES: RegExp[] = [
+  /(^|[^\p{L}])(kupón\p{L}*|kupon\p{L}*)(?![\p{L}])/iu,
+];
 
 interface ParsedResponse {
   meta?: {
@@ -768,7 +788,7 @@ export async function POST(req: Request) {
 
     const PRODUCT_SCHEMA = `{
   "meta": { "date_from": "DD.MM.YYYY or null", "date_to": "DD.MM.YYYY or null" },
-  "products": [{ "name": "Brand + product when brand is readable, e.g. Lindt Lindor pralinky", "amount": "...", "unit": "g/kg/ml/l/ks/zväzok/null", "price_sale": "...", "note": "...", "page": N, "placementKey": "...", "food": true, "date_from": "DD.MM.YYYY or empty", "date_to": "DD.MM.YYYY or empty" }]
+  "products": [{ "name": "Brand + product when brand is readable, e.g. Lindt Lindor pralinky", "amount": "...", "unit": "g/kg/ml/l/ks/zväzok/null", "price_sale": "...", "note": "...", "page": N, "placementKey": "...", "food": true, "date_from": "DD.MM.YYYY or empty", "date_to": "DD.MM.YYYY or empty", "requires_card": false, "requires_coupon": false }]
 }`;
 
     // Build placement lookup + translated list for AI
@@ -965,7 +985,7 @@ export async function POST(req: Request) {
     const PRODUCT_RULES = `You extract supermarket flyer products. country="${country}", language="${targetLanguageName}". Return ONLY valid JSON in the schema.
 
 TASK: Extract only food, drinks and alcohol. One visible offer = one record. Include small corner products if edible. Skip non-food and pure campaign/legal areas.
-- SKIP loyalty-points redemption offers entirely: products obtainable only for collected loyalty points / coupons (signals: "LEN ZA VAŠE BODY", "BEZ DOPLATKU", "AKTIVÁCIA BODOV", "KUPÓN", a negative number like "-295" instead of a price, coupon validity dates). These have NO real price — never turn the points value into a price.
+- SKIP loyalty-POINTS redemption offers entirely: products obtainable only for collected loyalty points (signals: "LEN ZA VAŠE BODY", "BEZ DOPLATKU", "AKTIVÁCIA BODOV", a negative number like "-295" instead of a price). These have NO real price — never turn the points value into a price. But an offer that has a REAL money price and only needs a loyalty card, the store app or a coupon is a normal offer — KEEP it and mark it (see CARD / COUPON).
 
 NAME (short, clean):
 - BRAND FIRST (always): actively look for the product's brand on its package before naming it — check the logo even on small/dark/glossy packs; most packaged products do carry a brand, so make the effort and try not to leave it missing. When a brand is readable, the name MUST start with it, then the product type. Even if the flyer writes the product type first, REORDER so the brand leads: write "Brand + product type", never "product type + Brand". Examples: "Lindt Lindor čokoládové pralinky", "Davidoff instantná káva". Add the sub-brand/line if printed together (e.g. "Lindt Lindor", "Figaro Tatiana", "Haribo Goldbären"). Write the brand exactly as printed; do not translate it.
@@ -986,6 +1006,13 @@ PRICES:
 - IGNORE every other number around the offer: crossed-out old prices, "BĚŽNÁ CENA", per-kg/per-l comparison prices, percentages. Do not output them anywhere.
 - Many flyers (especially Czech ones, prices in Kč) print the decimal part as SMALL RAISED digits after a big number (e.g. big "129" with a small "90" = 129,90). Read such a pair as ONE price with a decimal comma — never as two prices, never as "12990", and never guess missing decimals. In the TEXT LAYER such prices appear GLUED: "13990" means 139,90 and "5990" means 59,90 (the last two digits are the decimals).
 - Copy the price EXACTLY as printed on that offer. If you cannot clearly read it, leave it "" — an empty price is better than an estimated one. Never invent prices.
+
+CARD / COUPON (per product) — the app shows a badge and offers the shopper's loyalty card, so mark these carefully:
+- "requires_card": true when the advertised price is valid ONLY with the store's loyalty card or the store app / membership. Typical signals printed on or right next to THIS offer: "s Lidl Plus", "Lidl Plus" badge, "s Kaufland Card", "Kaufland Card" price tag, "Clubcard" / "s Clubcard", "Moja Biedronka" / "z kartą Moja Biedronka", "jö Bonus Club", "Billa Club", "Albert Plus", "Moje Albert", "s kartou", "s vernostnou kartou", "s aplikáciou", "s aplikací", "z kartą", "z aplikacją", "w aplikacji", "cena v aplikaci", a price label in the card/app colours with the card logo.
+- "requires_coupon": true when the price needs a COUPON to be activated or presented: "kupón", "s kupónom", "s kuponem", "kupon", "z kuponem", "aktivuj kupón v aplikácii", "kupon w aplikacji", a cut-out coupon frame with a price.
+- A coupon activated in the store app usually needs the app/card too → set BOTH true.
+- The badge must belong to THIS offer — do not copy it from a neighbouring tile or from a page-wide banner that is not tied to specific products. If the flyer shows two prices (regular and card price), "price_sale" is the card price only when it is the prominent one; otherwise keep the normal price and set requires_card=false.
+- When unsure, set false. Also keep the short condition in "note" (e.g. "s Lidl Plus", "s kupónom").
 
 DATES (per product):
 - If THIS product prints its OWN validity next to it (e.g. "oferta od 29.06 do 4.07", "29.06-30.06", "platí od…do…"), put that range in the product's "date_from"/"date_to" as DD.MM.YYYY. Copy the day and month exactly as printed. If the year is missing, still fill day.month and use the current year.
@@ -1721,6 +1748,14 @@ CRITICAL: never invent products and never output a variant that is not printed (
           meta.date_to,
         ),
         page: item.page ?? null,
+        // Akcia len s kartou / kupónom — AI to označí, text v poznámke
+        // (napr. „s Lidl Plus") to doistí. Editor to dá skontrolovať.
+        requiresCard:
+          item.requires_card === true ||
+          CARD_PHRASES.some((re) => re.test(`${item.note || ""} ${item.name || ""}`)),
+        requiresCoupon:
+          item.requires_coupon === true ||
+          COUPON_PHRASES.some((re) => re.test(`${item.note || ""} ${item.name || ""}`)),
         categoryKey: parent?.categoryKey || "",
         subcategoryKey: parent?.subcategoryKey || "",
         placementKey: pk,

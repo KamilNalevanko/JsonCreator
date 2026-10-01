@@ -44,6 +44,9 @@ type FlyerProduct = {
   "Dátum akcie od": string;
   "Dátum akcie do": string;
   "Obchody"?: string[];
+  // Akcia platí len s vernostnou kartou / aplikáciou, resp. s kupónom.
+  "Vyžaduje kartu"?: boolean;
+  "Vyžaduje kupón"?: boolean;
 };
 
 type ProductEntry = {
@@ -84,6 +87,8 @@ type AiExtractItem = {
   categoryKey?: string;
   subcategoryKey?: string;
   placementKey?: string;
+  requiresCard?: boolean;
+  requiresCoupon?: boolean;
 };
 
 type AiExtractMeta = {
@@ -133,6 +138,8 @@ const normalizeAiExtractItem = (item: unknown): AiExtractItem => {
     categoryKey: toText(src.categoryKey),
     subcategoryKey: toText(src.subcategoryKey),
     placementKey: toText(src.placementKey),
+    requiresCard: src.requiresCard === true,
+    requiresCoupon: src.requiresCoupon === true,
   };
 };
 
@@ -255,6 +262,8 @@ type FlyerSearchHit = {
   placement: string;
   // Akcia platí len s vernostnou kartou / aplikáciou obchodu.
   requiresCard: boolean;
+  // Akcia platí len s kupónom.
+  requiresCoupon: boolean;
   inDb: boolean;
 };
 
@@ -1365,6 +1374,8 @@ export default function Home() {
         "Dátum akcie od": item.date_from || "",
         "Dátum akcie do": item.date_to || "",
         "Obchody": shop ? [shop] : [],
+        "Vyžaduje kartu": !!item.requiresCard,
+        "Vyžaduje kupón": !!item.requiresCoupon,
       };
       const existing = productMap.get(key) ?? [];
       productMap.set(key, [...existing, product]);
@@ -1694,6 +1705,8 @@ export default function Home() {
           "Dátum akcie od": item.date_from || "",
           "Dátum akcie do": item.date_to || "",
           "Obchody": shop ? [shop] : [],
+          "Vyžaduje kartu": !!item.requiresCard,
+          "Vyžaduje kupón": !!item.requiresCoupon,
         };
         const entry: ProductEntry = { id: `ai-${idx}`, product };
         return {
@@ -2567,6 +2580,7 @@ export default function Home() {
             placement: flyerEditDraft.placement,
             // Appka pri takej akcii ukáže „len s kartou" a ponúkne kartu.
             requiresCard: flyerEditDraft.requiresCard ? "true" : "false",
+            requiresCoupon: flyerEditDraft.requiresCoupon ? "true" : "false",
           },
         }),
       });
@@ -3238,8 +3252,31 @@ export default function Home() {
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
                       </div>
-                      {/* R5: Ďalšia akcia + Duplikovať — kópie hneď pod produkt */}
-                      <div className="flex justify-end gap-2 border-t border-black/[0.05] pt-1">
+                      {/* R5: Karta / kupón (AI predvyplní, človek skontroluje) + Ďalšia akcia + Duplikovať */}
+                      <div className="flex items-center justify-end gap-2 border-t border-black/[0.05] pt-1">
+                        <label
+                          className={`flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${item.requiresCard ? "bg-emerald-100 text-emerald-800" : "text-[color:var(--muted)]"}`}
+                          title="Cena platí len s vernostnou kartou / aplikáciou obchodu — appka ukáže odznak a ponúkne kartu"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!item.requiresCard}
+                            onChange={e => setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, requiresCard: e.target.checked } : it))}
+                          />
+                          💳 Karta
+                        </label>
+                        <label
+                          className={`flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${item.requiresCoupon ? "bg-amber-100 text-amber-800" : "text-[color:var(--muted)]"}`}
+                          title="Cena platí len s kupónom"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!item.requiresCoupon}
+                            onChange={e => setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, requiresCoupon: e.target.checked } : it))}
+                          />
+                          🎟️ Kupón
+                        </label>
+                        <span className="flex-1" />
                         <button
                           tabIndex={-1}
                           onMouseDown={e => e.preventDefault()}
@@ -3486,6 +3523,8 @@ export default function Home() {
                                 "Dátum akcie od": item.date_from || "",
                                 "Dátum akcie do": item.date_to || "",
                                 "Obchody": [aiSaveShop],
+                                "Vyžaduje kartu": !!item.requiresCard,
+                                "Vyžaduje kupón": !!item.requiresCoupon,
                               };
                               const existing = productMap.get(key) ?? [];
                               productMap.set(key, [...existing, product]);
@@ -4012,6 +4051,14 @@ export default function Home() {
                                 (appka ukáže odznak a ponúkne kartu)
                               </span>
                             </label>
+                            <label className="sm:col-span-2 flex items-center gap-2 text-sm text-[color:var(--ink)]">
+                              <input
+                                type="checkbox"
+                                checked={draft.requiresCoupon}
+                                onChange={(e) => setDraft({ requiresCoupon: e.target.checked })}
+                              />
+                              🎟️ Len s kupónom
+                            </label>
                             <label className="text-xs text-[color:var(--muted)]">
                               Akcia od (DD.MM.RRRR)
                               <input
@@ -4072,6 +4119,11 @@ export default function Home() {
                             {hit.requiresCard && (
                               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                                 💳 len s kartou
+                              </span>
+                            )}
+                            {hit.requiresCoupon && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                                🎟️ s kupónom
                               </span>
                             )}
                           </div>

@@ -42,6 +42,21 @@ export async function bumpIndexVersion(
   basePath: string,
   fileBase: string,
 ): Promise<string | null> {
+  // Pár pokusov — keď verzia ostane stará, telefóny zmenu v letáku nevidia
+  // (1. 10.: Tesco cena ostala v appkách stará, hoci slot už mal novú).
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const version = await bumpIndexVersionOnce(supabase, basePath, fileBase);
+    if (version) return version;
+    await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+  }
+  return null;
+}
+
+async function bumpIndexVersionOnce(
+  supabase: SupabaseClient,
+  basePath: string,
+  fileBase: string,
+): Promise<string | null> {
   const indexPath = `${basePath}/_indexes/${fileBase}.json`;
   const loaded = await downloadFreshJson(indexPath);
   if (!loaded || typeof loaded !== "object") return null;
