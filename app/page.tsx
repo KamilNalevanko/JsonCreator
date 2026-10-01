@@ -2820,6 +2820,9 @@ export default function Home() {
       <main className="relative mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-6 pb-12 pt-2">
         <header className="flex flex-col gap-2">
           <h1 className="sr-only">{t("app_title")}</h1>
+          <span className="text-[10px] text-[color:var(--muted)]">
+            Verzia editora: {process.env.NEXT_PUBLIC_EDITOR_BUILD || "vývoj"}
+          </span>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(980px,3fr)_minmax(300px,1fr)]">
