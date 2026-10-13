@@ -14,6 +14,18 @@ type Country = "sk" | "cz" | "pl";
 type Lang = "sk" | "cs" | "pl";
 const LANG_OF: Record<Country, Lang> = { sk: "sk", cz: "cs", pl: "pl" };
 const FLAG: Record<Country, string> = { sk: "🇸🇰", cz: "🇨🇿", pl: "🇵🇱" };
+// Názvy krajín v pádoch: „v Česku“, „do Česka“, „pre Česko“.
+const COUNTRY_NAME = {
+  v: { sk: "Slovensku", cz: "Česku", pl: "Poľsku" },
+  do: { sk: "Slovenska", cz: "Česka", pl: "Poľska" },
+  pre: { sk: "Slovensko", cz: "Česko", pl: "Poľsko" },
+} as const;
+/** Ostatné krajiny okrem [c], napr. „Česku a Poľsku“. */
+const others = (c: Country, pad: keyof typeof COUNTRY_NAME = "v") =>
+  (["sk", "cz", "pl"] as Country[])
+    .filter((x) => x !== c)
+    .map((x) => COUNTRY_NAME[pad][x])
+    .join(" a ");
 
 type HierPlacement = { Zaradenie: string };
 type HierSub = { "Podkategória": string; Zaradenia: HierPlacement[] };
@@ -226,7 +238,9 @@ export default function RecipeForm({
   const startEdit = (r: Recipe) => {
     setEditing(structuredClone(r));
     setIsNew(false);
-    setTranslate(false);
+    // Úprava slovenského receptu sa predvolene prenesie aj do CZ/PL, nech sú
+    // všetky krajiny rovnaké. Úprava CZ/PL býva oprava prekladu — tá nie.
+    setTranslate(country === "sk");
     setNotify(false);
     setAiText("");
     setMsg(null);
@@ -652,9 +666,30 @@ export default function RecipeForm({
 
       {/* Zverejnenie */}
       <div className="space-y-2 rounded-xl border border-black/10 bg-[var(--surface)]/60 p-3 text-sm">
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} className="h-4 w-4" />
-          🌍 Preložiť pomocou AI a zverejniť aj v ostatných krajinách (SK, CZ, PL)
+        <label className="flex cursor-pointer items-start gap-2">
+          <input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} className="mt-0.5 h-4 w-4" />
+          <span>
+            <b>
+              🌍{" "}
+              {isNew
+                ? `Zverejniť aj v ${others(country)} (AI recept preloží)`
+                : `Preniesť túto úpravu aj do ${others(country, "do")}`}
+            </b>
+            <span className="mt-1 block text-xs opacity-75">
+              {translate ? (
+                <>
+                  ✅ Zaškrtnuté: recept sa uloží v {FLAG[country]} {country.toUpperCase()} a AI z neho
+                  {isNew ? " vytvorí" : " znova vytvorí"} aj verzie pre {others(country, "pre")}.
+                  {!isNew && " Ak niekto v nich ručne opravoval preklad, tieto opravy sa prepíšu."}
+                </>
+              ) : (
+                <>
+                  ⬜ Nezaškrtnuté: {isNew ? "recept bude" : "zmena sa uloží"} len v {FLAG[country]}{" "}
+                  {country.toUpperCase()}. V {others(country)} {isNew ? "nebude" : "ostane stará verzia"}.
+                </>
+              )}
+            </span>
+          </span>
         </label>
         <label className="flex cursor-pointer items-center gap-2">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="h-4 w-4" />
