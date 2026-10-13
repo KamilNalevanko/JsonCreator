@@ -1,0 +1,714 @@
+{
+ "version": 1,
+ "recipes": [
+  {
+   "id": "kuracie-stehna-cesnak",
+   "section": "masite",
+   "category": "hydina",
+   "title": "Kuracie stehná na cesnaku",
+   "image": "assets/images/recepty/r_kuracie-stehna-cesnak.jpg",
+   "timeMin": 60,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Kuracie stehná",
+     "amount": "8 ks",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "kuracie",
+      "p": "horn_stehno_kuracie"
+     }
+    },
+    {
+     "name": "Cesnak",
+     "amount": "1 hlávka",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Zemiaky",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Maslo",
+     "amount": "50 g",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "maslo",
+      "p": "maslo_82"
+     }
+    },
+    {
+     "name": "Mletá paprika",
+     "amount": "1 ČL",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "mlet_paprika"
+     }
+    },
+    {
+     "name": "Soľ",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    },
+    {
+     "name": "Čierne korenie",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "ierne_korenie"
+     }
+    }
+   ],
+   "steps": [
+    "Rúru predhrej na 200 °C.",
+    "Stehná osoľ, okoreň a potri paprikou.",
+    "Zemiaky nakrájaj na mesiačiky a daj do pekáča, na ne polož stehná a strúčiky cesnaku.",
+    "Navrch daj kúsky masla a peč 50 minút dozlatista, v polovici polej výpekom."
+   ]
+  },
+  {
+   "id": "bravcove-pliecko-cibulka",
+   "section": "masite",
+   "category": "bravcove",
+   "title": "Bravčové pliecko na cibuľke s tymianom",
+   "image": "assets/images/recepty/r_bravcove-pliecko-cibulka.jpg",
+   "timeMin": 120,
+   "difficulty": 2,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Bravčové pliecko",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "brav_ov",
+      "p": "pliecko"
+     }
+    },
+    {
+     "name": "Cibuľa",
+     "amount": "3 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Soľ",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    },
+    {
+     "name": "Tymian",
+     "amount": "2 vetvičky"
+    },
+    {
+     "name": "Olej",
+     "amount": "2 PL",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    }
+   ],
+   "steps": [
+    "Mäso osoľ a nechaj 30 minút odpočívať.",
+    "Na oleji opeč mäso zo všetkých strán.",
+    "Do pekáča daj cibuľu nakrájanú na kolieska, na ňu mäso a tymian, podlej pohárom vody.",
+    "Peč prikryté 90 minút pri 180 °C, posledných 20 minút odkryté."
+   ]
+  },
+  {
+   "id": "hovadzi-gulas",
+   "section": "masite",
+   "category": "hovadzie",
+   "title": "Hovädzí guláš",
+   "image": "assets/images/recepty/r_hovadzi-gulas.jpg",
+   "timeMin": 150,
+   "difficulty": 2,
+   "servings": 6,
+   "ingredients": [
+    {
+     "name": "Hovädzie plece",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "hov_dzie",
+      "p": "hov_dzieplece"
+     }
+    },
+    {
+     "name": "Cibuľa",
+     "amount": "4 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Mletá paprika",
+     "amount": "2 PL",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "mlet_paprika"
+     }
+    },
+    {
+     "name": "Rasca",
+     "amount": "1 ČL",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "rasca"
+     }
+    },
+    {
+     "name": "Paradajkový pretlak",
+     "amount": "2 PL",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "sterilizovan_zelenina",
+      "p": "paradajkov_pretlak"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "3 PL",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Soľ",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Cibuľu nadrobno nakrájaj a na oleji ju pomaly opeč dozlatista.",
+    "Pridaj mäso nakrájané na kocky a opeč ho.",
+    "Odstav, primiešaj papriku, rascu a pretlak, podlej vodou.",
+    "Dus pod pokrievkou asi 2 hodiny domäkka, na konci osoľ."
+   ]
+  },
+  {
+   "id": "losos-citron",
+   "section": "masite",
+   "category": "ryby",
+   "title": "Pečený losos s citrónom a zemiakmi",
+   "image": "assets/images/recepty/r_losos-citron.jpg",
+   "timeMin": 30,
+   "difficulty": 1,
+   "servings": 2,
+   "ingredients": [
+    {
+     "name": "Losos",
+     "amount": "2 filety",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "morsk_ryby",
+      "p": "losos"
+     }
+    },
+    {
+     "name": "Citrón",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "ovocie",
+      "s": "erstv_ovocie",
+      "p": "citr_ny"
+     }
+    },
+    {
+     "name": "Zemiaky",
+     "amount": "500 g",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Olivový olej",
+     "amount": "2 PL",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "olivov_olej"
+     }
+    },
+    {
+     "name": "Soľ",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Zemiaky uvar v šupke do polomäkka a rozkroj na polovice.",
+    "Losos osoľ, pokvapkaj citrónom a olejom.",
+    "Zemiaky aj losos daj na plech a peč 15–18 minút pri 200 °C.",
+    "Podávaj s plátkami citróna."
+   ]
+  },
+  {
+   "id": "kuraci-vyvar",
+   "section": "polievky",
+   "category": "vyvary",
+   "title": "Kurací vývar s rezancami",
+   "image": "assets/images/recepty/r_kuraci-vyvar.jpg",
+   "timeMin": 150,
+   "difficulty": 1,
+   "servings": 6,
+   "ingredients": [
+    {
+     "name": "Kuracie mäso na vývar",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "kuracie",
+      "p": "m_so_na_v_var_kurac"
+     }
+    },
+    {
+     "name": "Mrkva",
+     "amount": "3 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "mrkva"
+     }
+    },
+    {
+     "name": "Petržlen",
+     "amount": "2 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "petr_len"
+     }
+    },
+    {
+     "name": "Zeler",
+     "amount": "1/4 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zeler"
+     }
+    },
+    {
+     "name": "Cibuľa",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Rezance",
+     "amount": "200 g",
+     "zaradenie": {
+      "c": "cestoviny_ry_a_a_strukoviny",
+      "s": "cestoviny",
+      "p": "rezance"
+     }
+    },
+    {
+     "name": "Soľ",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Mäso zalej 3 litrami studenej vody a pomaly priveď do varu, zbieraj penu.",
+    "Pridaj očistenú zeleninu a cibuľu, var mierne 2 hodiny.",
+    "Vývar preceď, mäso oddeľ od kostí, zeleninu nakrájaj.",
+    "Rezance uvar zvlášť, podávaj vývar s mäsom, zeleninou a rezancami."
+   ]
+  },
+  {
+   "id": "tekvicova-polievka",
+   "section": "polievky",
+   "category": "kremove",
+   "title": "Krémová tekvicová polievka",
+   "image": "assets/images/recepty/r_tekvicova-polievka.jpg",
+   "timeMin": 40,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Tekvica hokaido",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "tekvica"
+     }
+    },
+    {
+     "name": "Cibuľa",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Cesnak",
+     "amount": "2 strúčiky",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Smotana na varenie",
+     "amount": "200 ml",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "smotana",
+      "p": "sladk_10_smotana"
+     }
+    },
+    {
+     "name": "Bujón",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "dochucovadl",
+      "p": "buj_n"
+     }
+    },
+    {
+     "name": "Maslo",
+     "amount": "30 g",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "maslo",
+      "p": "maslo_82"
+     }
+    }
+   ],
+   "steps": [
+    "Na masle speň cibuľu a cesnak.",
+    "Pridaj tekvicu nakrájanú na kocky, zalej 1 litrom vody a pridaj bujón.",
+    "Var 20 minút domäkka.",
+    "Rozmixuj, vmiešaj smotanu a dochuť soľou a korením."
+   ]
+  },
+  {
+   "id": "spagety-aglio-olio",
+   "section": "cestoviny",
+   "category": "cestoviny_jedla",
+   "title": "Špagety aglio e olio",
+   "image": "assets/images/recepty/r_spagety-aglio-olio.jpg",
+   "timeMin": 20,
+   "difficulty": 1,
+   "servings": 2,
+   "ingredients": [
+    {
+     "name": "Špagety",
+     "amount": "250 g",
+     "zaradenie": {
+      "c": "cestoviny_ry_a_a_strukoviny",
+      "s": "cestoviny",
+      "p": "pagety"
+     }
+    },
+    {
+     "name": "Cesnak",
+     "amount": "4 strúčiky",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Chilli",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "chilli"
+     }
+    },
+    {
+     "name": "Olivový olej",
+     "amount": "5 PL",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "olivov_olej"
+     }
+    },
+    {
+     "name": "Petržlenová vňať",
+     "amount": "1 hrsť",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "bylinky",
+      "p": "petr_lenov_v_a"
+     }
+    },
+    {
+     "name": "Parmezán",
+     "amount": "40 g",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "tvrd_a_polotvrd_syry",
+      "p": "parmez_n"
+     }
+    }
+   ],
+   "steps": [
+    "Špagety uvar v osolenej vode al dente.",
+    "Na oleji zľahka opeč nakrájaný cesnak a chilli, nesmie zhnednúť.",
+    "Pridaj scedené špagety a trochu vody z varenia, premiešaj.",
+    "Posyp vňaťou a parmezánom."
+   ]
+  },
+  {
+   "id": "palacinky",
+   "section": "bezmasite",
+   "category": "sladke_jedla",
+   "title": "Palacinky s džemom",
+   "image": "assets/images/recepty/r_palacinky.jpg",
+   "timeMin": 30,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Hladká múka",
+     "amount": "250 g",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "m_ky",
+      "p": "hladk_m_ka"
+     }
+    },
+    {
+     "name": "Mlieko",
+     "amount": "500 ml",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "mlieko",
+      "p": "polotu_n_mlieko"
+     }
+    },
+    {
+     "name": "Vajcia",
+     "amount": "2 ks",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "vajcia",
+      "p": "slepa_ie_vajcia"
+     }
+    },
+    {
+     "name": "Cukor",
+     "amount": "1 PL",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "cukor",
+      "p": "kryst_lov_cukor"
+     }
+    },
+    {
+     "name": "Džem",
+     "amount": "1 pohár",
+     "zaradenie": {
+      "c": "ovocie",
+      "s": "d_emy_marmel_dy_a_sladk_n_tierky",
+      "p": "ovocn_d_em"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "na vyprážanie",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    }
+   ],
+   "steps": [
+    "Vymiešaj múku, mlieko, vajcia, cukor a štipku soli na hladké cesto.",
+    "Nechaj 15 minút odpočívať.",
+    "Na rozpálenej panvici s kvapkou oleja peč tenké palacinky z oboch strán.",
+    "Natri džemom a zroluj."
+   ]
+  },
+  {
+   "id": "hrnckova-babovka",
+   "section": "pecenie",
+   "category": "hrnckove",
+   "title": "Hrnčeková kakaová bábovka",
+   "image": "assets/images/recepty/r_hrnckova-babovka.jpg",
+   "timeMin": 60,
+   "difficulty": 1,
+   "servings": 8,
+   "ingredients": [
+    {
+     "name": "Polohrubá múka",
+     "amount": "2 hrnčeky",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "m_ky",
+      "p": "polohrub_m_ka"
+     }
+    },
+    {
+     "name": "Cukor",
+     "amount": "1 hrnček",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "cukor",
+      "p": "kryst_lov_cukor"
+     }
+    },
+    {
+     "name": "Mlieko",
+     "amount": "1 hrnček",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "mlieko",
+      "p": "polotu_n_mlieko"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "1/2 hrnčeka",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Vajcia",
+     "amount": "2 ks",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "vajcia",
+      "p": "slepa_ie_vajcia"
+     }
+    },
+    {
+     "name": "Kakao",
+     "amount": "2 PL",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "pe_enie_a_varenie",
+      "p": "kakao"
+     }
+    },
+    {
+     "name": "Prášok do pečiva",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "pe_enie_a_varenie",
+      "p": "pr_ok_do_pe_iva"
+     }
+    }
+   ],
+   "steps": [
+    "Vymiešaj vajcia s cukrom, pridaj mlieko a olej.",
+    "Primiešaj múku s práškom do pečiva.",
+    "Polovicu cesta zafarbi kakaom.",
+    "Do vymastenej formy nalej striedavo svetlé a tmavé cesto a peč 45 minút pri 170 °C."
+   ]
+  },
+  {
+   "id": "pecene-zemiaky",
+   "section": "prilohy",
+   "category": "zemiaky",
+   "title": "Pečené zemiaky s rozmarínom",
+   "image": "assets/images/recepty/r_pecene-zemiaky.jpg",
+   "timeMin": 45,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Zemiaky",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "3 PL",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Rozmarín",
+     "amount": "2 vetvičky"
+    },
+    {
+     "name": "Soľ",
+     "amount": "podľa chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Zemiaky umy a nakrájaj na kocky alebo mesiačiky.",
+    "Premiešaj ich s olejom, soľou a rozmarínom.",
+    "Rozlož na plech a peč 35–40 minút pri 200 °C, v polovici premiešaj."
+   ]
+  }
+ ]
+}

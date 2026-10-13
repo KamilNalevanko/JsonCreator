@@ -1,0 +1,714 @@
+{
+ "version": 1,
+ "recipes": [
+  {
+   "id": "kuracie-stehna-cesnak",
+   "section": "masite",
+   "category": "hydina",
+   "title": "Kuřecí stehna na česneku",
+   "image": "assets/images/recepty/r_kuracie-stehna-cesnak.jpg",
+   "timeMin": 60,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Kuřecí stehna",
+     "amount": "8 ks",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "kuracie",
+      "p": "horn_stehno_kuracie"
+     }
+    },
+    {
+     "name": "Česnek",
+     "amount": "1 palička",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Brambory",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Máslo",
+     "amount": "50 g",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "maslo",
+      "p": "maslo_82"
+     }
+    },
+    {
+     "name": "Mletá paprika",
+     "amount": "1 lžička",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "mlet_paprika"
+     }
+    },
+    {
+     "name": "Sůl",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    },
+    {
+     "name": "Černý pepř",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "ierne_korenie"
+     }
+    }
+   ],
+   "steps": [
+    "Troubu předehřej na 200 °C.",
+    "Stehna osol, opepři a potři paprikou.",
+    "Brambory nakrájej na měsíčky a dej do pekáče, na ně polož stehna a stroužky česneku.",
+    "Navrch dej kousky másla a peč 50 minut dozlatova, v polovině přelij výpekem."
+   ]
+  },
+  {
+   "id": "bravcove-pliecko-cibulka",
+   "section": "masite",
+   "category": "bravcove",
+   "title": "Vepřová plec na cibulce s tymiánem",
+   "image": "assets/images/recepty/r_bravcove-pliecko-cibulka.jpg",
+   "timeMin": 120,
+   "difficulty": 2,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Vepřová plec",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "brav_ov",
+      "p": "pliecko"
+     }
+    },
+    {
+     "name": "Cibule",
+     "amount": "3 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Sůl",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    },
+    {
+     "name": "Tymián",
+     "amount": "2 snítky"
+    },
+    {
+     "name": "Olej",
+     "amount": "2 lžíce",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    }
+   ],
+   "steps": [
+    "Maso osol a nech 30 minut odpočinout.",
+    "Na oleji maso opeč ze všech stran.",
+    "Do pekáče dej cibuli nakrájenou na kolečka, na ni maso a tymián, podlij sklenicí vody.",
+    "Peč přikryté 90 minut při 180 °C, posledních 20 minut odkryté."
+   ]
+  },
+  {
+   "id": "hovadzi-gulas",
+   "section": "masite",
+   "category": "hovadzie",
+   "title": "Hovězí guláš",
+   "image": "assets/images/recepty/r_hovadzi-gulas.jpg",
+   "timeMin": 150,
+   "difficulty": 2,
+   "servings": 6,
+   "ingredients": [
+    {
+     "name": "Hovězí plec",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "hov_dzie",
+      "p": "hov_dzieplece"
+     }
+    },
+    {
+     "name": "Cibule",
+     "amount": "4 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Mletá paprika",
+     "amount": "2 lžíce",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "mlet_paprika"
+     }
+    },
+    {
+     "name": "Kmín",
+     "amount": "1 lžička",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "rasca"
+     }
+    },
+    {
+     "name": "Rajčatový protlak",
+     "amount": "2 lžíce",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "sterilizovan_zelenina",
+      "p": "paradajkov_pretlak"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "3 lžíce",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Sůl",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Cibuli nadrobno nakrájej a na oleji ji pomalu osmahni dozlatova.",
+    "Přidej maso nakrájené na kostky a opeč ho.",
+    "Odstav, vmíchej papriku, kmín a protlak, podlij vodou.",
+    "Duš pod pokličkou asi 2 hodiny doměkka, na konci osol."
+   ]
+  },
+  {
+   "id": "losos-citron",
+   "section": "masite",
+   "category": "ryby",
+   "title": "Pečený losos s citronem a bramborami",
+   "image": "assets/images/recepty/r_losos-citron.jpg",
+   "timeMin": 30,
+   "difficulty": 1,
+   "servings": 2,
+   "ingredients": [
+    {
+     "name": "Losos",
+     "amount": "2 filety",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "morsk_ryby",
+      "p": "losos"
+     }
+    },
+    {
+     "name": "Citron",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "ovocie",
+      "s": "erstv_ovocie",
+      "p": "citr_ny"
+     }
+    },
+    {
+     "name": "Brambory",
+     "amount": "500 g",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Olivový olej",
+     "amount": "2 lžíce",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "olivov_olej"
+     }
+    },
+    {
+     "name": "Sůl",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Brambory uvař ve slupce napůl doměkka a rozkroj na poloviny.",
+    "Lososa osol, pokapej citronem a olejem.",
+    "Brambory i lososa dej na plech a peč 15–18 minut při 200 °C.",
+    "Podávej s plátky citronu."
+   ]
+  },
+  {
+   "id": "kuraci-vyvar",
+   "section": "polievky",
+   "category": "vyvary",
+   "title": "Kuřecí vývar s nudlemi",
+   "image": "assets/images/recepty/r_kuraci-vyvar.jpg",
+   "timeMin": 150,
+   "difficulty": 1,
+   "servings": 6,
+   "ingredients": [
+    {
+     "name": "Kuřecí maso na vývar",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "kuracie",
+      "p": "m_so_na_v_var_kurac"
+     }
+    },
+    {
+     "name": "Mrkev",
+     "amount": "3 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "mrkva"
+     }
+    },
+    {
+     "name": "Petržel",
+     "amount": "2 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "petr_len"
+     }
+    },
+    {
+     "name": "Celer",
+     "amount": "1/4 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zeler"
+     }
+    },
+    {
+     "name": "Cibule",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Nudle",
+     "amount": "200 g",
+     "zaradenie": {
+      "c": "cestoviny_ry_a_a_strukoviny",
+      "s": "cestoviny",
+      "p": "rezance"
+     }
+    },
+    {
+     "name": "Sůl",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Maso zalij 3 litry studené vody a pomalu přiveď k varu, sbírej pěnu.",
+    "Přidej očištěnou zeleninu a cibuli, vař mírně 2 hodiny.",
+    "Vývar přeceď, maso odděl od kostí, zeleninu nakrájej.",
+    "Nudle uvař zvlášť, podávej vývar s masem, zeleninou a nudlemi."
+   ]
+  },
+  {
+   "id": "tekvicova-polievka",
+   "section": "polievky",
+   "category": "kremove",
+   "title": "Krémová dýňová polévka",
+   "image": "assets/images/recepty/r_tekvicova-polievka.jpg",
+   "timeMin": 40,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Dýně hokaido",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "tekvica"
+     }
+    },
+    {
+     "name": "Cibule",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Česnek",
+     "amount": "2 stroužky",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Smetana na vaření",
+     "amount": "200 ml",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "smotana",
+      "p": "sladk_10_smotana"
+     }
+    },
+    {
+     "name": "Bujón",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "dochucovadl",
+      "p": "buj_n"
+     }
+    },
+    {
+     "name": "Máslo",
+     "amount": "30 g",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "maslo",
+      "p": "maslo_82"
+     }
+    }
+   ],
+   "steps": [
+    "Na másle osmahni cibuli a česnek.",
+    "Přidej dýni nakrájenou na kostky, zalij 1 litrem vody a přidej bujón.",
+    "Vař 20 minut doměkka.",
+    "Rozmixuj, vmíchej smetanu a dochuť solí a pepřem."
+   ]
+  },
+  {
+   "id": "spagety-aglio-olio",
+   "section": "cestoviny",
+   "category": "cestoviny_jedla",
+   "title": "Špagety aglio e olio",
+   "image": "assets/images/recepty/r_spagety-aglio-olio.jpg",
+   "timeMin": 20,
+   "difficulty": 1,
+   "servings": 2,
+   "ingredients": [
+    {
+     "name": "Špagety",
+     "amount": "250 g",
+     "zaradenie": {
+      "c": "cestoviny_ry_a_a_strukoviny",
+      "s": "cestoviny",
+      "p": "pagety"
+     }
+    },
+    {
+     "name": "Česnek",
+     "amount": "4 stroužky",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Chilli",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "chilli"
+     }
+    },
+    {
+     "name": "Olivový olej",
+     "amount": "5 lžic",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "olivov_olej"
+     }
+    },
+    {
+     "name": "Petrželová nať",
+     "amount": "1 hrst",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "bylinky",
+      "p": "petr_lenov_v_a"
+     }
+    },
+    {
+     "name": "Parmazán",
+     "amount": "40 g",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "tvrd_a_polotvrd_syry",
+      "p": "parmez_n"
+     }
+    }
+   ],
+   "steps": [
+    "Špagety uvař v osolené vodě al dente.",
+    "Na oleji zlehka opeč nakrájený česnek a chilli, nesmí zhnědnout.",
+    "Přidej scezené špagety a trochu vody z vaření, promíchej.",
+    "Posyp natí a parmazánem."
+   ]
+  },
+  {
+   "id": "palacinky",
+   "section": "bezmasite",
+   "category": "sladke_jedla",
+   "title": "Palačinky s džemem",
+   "image": "assets/images/recepty/r_palacinky.jpg",
+   "timeMin": 30,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Hladká mouka",
+     "amount": "250 g",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "m_ky",
+      "p": "hladk_m_ka"
+     }
+    },
+    {
+     "name": "Mléko",
+     "amount": "500 ml",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "mlieko",
+      "p": "polotu_n_mlieko"
+     }
+    },
+    {
+     "name": "Vejce",
+     "amount": "2 ks",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "vajcia",
+      "p": "slepa_ie_vajcia"
+     }
+    },
+    {
+     "name": "Cukr",
+     "amount": "1 lžíce",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "cukor",
+      "p": "kryst_lov_cukor"
+     }
+    },
+    {
+     "name": "Džem",
+     "amount": "1 sklenice",
+     "zaradenie": {
+      "c": "ovocie",
+      "s": "d_emy_marmel_dy_a_sladk_n_tierky",
+      "p": "ovocn_d_em"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "na smažení",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    }
+   ],
+   "steps": [
+    "Vymíchej mouku, mléko, vejce, cukr a špetku soli na hladké těsto.",
+    "Nech 15 minut odpočinout.",
+    "Na rozpálené pánvi s kapkou oleje peč tenké palačinky z obou stran.",
+    "Potři džemem a zarol."
+   ]
+  },
+  {
+   "id": "hrnckova-babovka",
+   "section": "pecenie",
+   "category": "hrnckove",
+   "title": "Hrnková kakaová bábovka",
+   "image": "assets/images/recepty/r_hrnckova-babovka.jpg",
+   "timeMin": 60,
+   "difficulty": 1,
+   "servings": 8,
+   "ingredients": [
+    {
+     "name": "Polohrubá mouka",
+     "amount": "2 hrnky",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "m_ky",
+      "p": "polohrub_m_ka"
+     }
+    },
+    {
+     "name": "Cukr",
+     "amount": "1 hrnek",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "cukor",
+      "p": "kryst_lov_cukor"
+     }
+    },
+    {
+     "name": "Mléko",
+     "amount": "1 hrnek",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "mlieko",
+      "p": "polotu_n_mlieko"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "1/2 hrnku",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Vejce",
+     "amount": "2 ks",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "vajcia",
+      "p": "slepa_ie_vajcia"
+     }
+    },
+    {
+     "name": "Kakao",
+     "amount": "2 lžíce",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "pe_enie_a_varenie",
+      "p": "kakao"
+     }
+    },
+    {
+     "name": "Prášek do pečiva",
+     "amount": "1 ks",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "pe_enie_a_varenie",
+      "p": "pr_ok_do_pe_iva"
+     }
+    }
+   ],
+   "steps": [
+    "Vymíchej vejce s cukrem, přidej mléko a olej.",
+    "Vmíchej mouku s práškem do pečiva.",
+    "Polovinu těsta obarvi kakaem.",
+    "Do vymazané formy nalij střídavě světlé a tmavé těsto a peč 45 minut při 170 °C."
+   ]
+  },
+  {
+   "id": "pecene-zemiaky",
+   "section": "prilohy",
+   "category": "zemiaky",
+   "title": "Pečené brambory s rozmarýnem",
+   "image": "assets/images/recepty/r_pecene-zemiaky.jpg",
+   "timeMin": 45,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Brambory",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "3 lžíce",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Rozmarýn",
+     "amount": "2 snítky"
+    },
+    {
+     "name": "Sůl",
+     "amount": "podle chuti",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Brambory omyj a nakrájej na kostky nebo měsíčky.",
+    "Promíchej je s olejem, solí a rozmarýnem.",
+    "Rozlož na plech a peč 35–40 minut při 200 °C, v polovině promíchej."
+   ]
+  }
+ ]
+}

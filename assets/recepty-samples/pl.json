@@ -1,0 +1,714 @@
+{
+ "version": 1,
+ "recipes": [
+  {
+   "id": "kuracie-stehna-cesnak",
+   "section": "masite",
+   "category": "hydina",
+   "title": "Udka kurczaka z czosnkiem",
+   "image": "assets/images/recepty/r_kuracie-stehna-cesnak.jpg",
+   "timeMin": 60,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Udka z kurczaka",
+     "amount": "8 szt.",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "kuracie",
+      "p": "horn_stehno_kuracie"
+     }
+    },
+    {
+     "name": "Czosnek",
+     "amount": "1 główka",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Ziemniaki",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Masło",
+     "amount": "50 g",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "maslo",
+      "p": "maslo_82"
+     }
+    },
+    {
+     "name": "Papryka mielona",
+     "amount": "1 łyżeczka",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "mlet_paprika"
+     }
+    },
+    {
+     "name": "Sól",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    },
+    {
+     "name": "Pieprz czarny",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "ierne_korenie"
+     }
+    }
+   ],
+   "steps": [
+    "Rozgrzej piekarnik do 200 °C.",
+    "Udka posól, popieprz i natrzyj papryką.",
+    "Ziemniaki pokrój w łódeczki i włóż do brytfanny, na nie połóż udka i ząbki czosnku.",
+    "Na wierzch połóż kawałki masła i piecz 50 minut na złoto, w połowie polej sosem z pieczenia."
+   ]
+  },
+  {
+   "id": "bravcove-pliecko-cibulka",
+   "section": "masite",
+   "category": "bravcove",
+   "title": "Łopatka wieprzowa na cebulce z tymiankiem",
+   "image": "assets/images/recepty/r_bravcove-pliecko-cibulka.jpg",
+   "timeMin": 120,
+   "difficulty": 2,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Łopatka wieprzowa",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "brav_ov",
+      "p": "pliecko"
+     }
+    },
+    {
+     "name": "Cebula",
+     "amount": "3 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Sól",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    },
+    {
+     "name": "Tymianek",
+     "amount": "2 gałązki"
+    },
+    {
+     "name": "Olej",
+     "amount": "2 łyżki",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    }
+   ],
+   "steps": [
+    "Mięso posól i odstaw na 30 minut.",
+    "Obsmaż mięso na oleju ze wszystkich stron.",
+    "Do brytfanny włóż cebulę pokrojoną w plastry, na nią mięso i tymianek, podlej szklanką wody.",
+    "Piecz pod przykryciem 90 minut w 180 °C, ostatnie 20 minut bez przykrycia."
+   ]
+  },
+  {
+   "id": "hovadzi-gulas",
+   "section": "masite",
+   "category": "hovadzie",
+   "title": "Gulasz wołowy",
+   "image": "assets/images/recepty/r_hovadzi-gulas.jpg",
+   "timeMin": 150,
+   "difficulty": 2,
+   "servings": 6,
+   "ingredients": [
+    {
+     "name": "Łopatka wołowa",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "hov_dzie",
+      "p": "hov_dzieplece"
+     }
+    },
+    {
+     "name": "Cebula",
+     "amount": "4 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Papryka mielona",
+     "amount": "2 łyżki",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "mlet_paprika"
+     }
+    },
+    {
+     "name": "Kminek",
+     "amount": "1 łyżeczka",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "koreniny",
+      "p": "rasca"
+     }
+    },
+    {
+     "name": "Koncentrat pomidorowy",
+     "amount": "2 łyżki",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "sterilizovan_zelenina",
+      "p": "paradajkov_pretlak"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "3 łyżki",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Sól",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Cebulę drobno posiekaj i powoli zeszklij na oleju na złoto.",
+    "Dodaj mięso pokrojone w kostkę i obsmaż.",
+    "Zdejmij z ognia, wmieszaj paprykę, kminek i koncentrat, podlej wodą.",
+    "Duś pod przykryciem około 2 godzin do miękkości, na końcu posól."
+   ]
+  },
+  {
+   "id": "losos-citron",
+   "section": "masite",
+   "category": "ryby",
+   "title": "Pieczony łosoś z cytryną i ziemniakami",
+   "image": "assets/images/recepty/r_losos-citron.jpg",
+   "timeMin": 30,
+   "difficulty": 1,
+   "servings": 2,
+   "ingredients": [
+    {
+     "name": "Łosoś",
+     "amount": "2 filety",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "morsk_ryby",
+      "p": "losos"
+     }
+    },
+    {
+     "name": "Cytryna",
+     "amount": "1 szt.",
+     "zaradenie": {
+      "c": "ovocie",
+      "s": "erstv_ovocie",
+      "p": "citr_ny"
+     }
+    },
+    {
+     "name": "Ziemniaki",
+     "amount": "500 g",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Oliwa z oliwek",
+     "amount": "2 łyżki",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "olivov_olej"
+     }
+    },
+    {
+     "name": "Sól",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Ugotuj ziemniaki w mundurkach do półmiękkości i przekrój na pół.",
+    "Łososia posól, skrop cytryną i oliwą.",
+    "Ziemniaki i łososia połóż na blasze i piecz 15–18 minut w 200 °C.",
+    "Podawaj z plasterkami cytryny."
+   ]
+  },
+  {
+   "id": "kuraci-vyvar",
+   "section": "polievky",
+   "category": "vyvary",
+   "title": "Rosół z kurczaka z makaronem",
+   "image": "assets/images/recepty/r_kuraci-vyvar.jpg",
+   "timeMin": 150,
+   "difficulty": 1,
+   "servings": 6,
+   "ingredients": [
+    {
+     "name": "Kurczak na rosół",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "m_so_ryby_a_deniny",
+      "s": "kuracie",
+      "p": "m_so_na_v_var_kurac"
+     }
+    },
+    {
+     "name": "Marchew",
+     "amount": "3 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "mrkva"
+     }
+    },
+    {
+     "name": "Pietruszka",
+     "amount": "2 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "petr_len"
+     }
+    },
+    {
+     "name": "Seler",
+     "amount": "1/4 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zeler"
+     }
+    },
+    {
+     "name": "Cebula",
+     "amount": "1 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Makaron nitki",
+     "amount": "200 g",
+     "zaradenie": {
+      "c": "cestoviny_ry_a_a_strukoviny",
+      "s": "cestoviny",
+      "p": "rezance"
+     }
+    },
+    {
+     "name": "Sól",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Mięso zalej 3 litrami zimnej wody i powoli zagotuj, zbierając szumowiny.",
+    "Dodaj obrane warzywa i cebulę, gotuj na małym ogniu 2 godziny.",
+    "Przecedź rosół, oddziel mięso od kości, pokrój warzywa.",
+    "Makaron ugotuj osobno, podawaj rosół z mięsem, warzywami i makaronem."
+   ]
+  },
+  {
+   "id": "tekvicova-polievka",
+   "section": "polievky",
+   "category": "kremove",
+   "title": "Krem z dyni",
+   "image": "assets/images/recepty/r_tekvicova-polievka.jpg",
+   "timeMin": 40,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Dynia hokkaido",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "tekvica"
+     }
+    },
+    {
+     "name": "Cebula",
+     "amount": "1 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cibu_a"
+     }
+    },
+    {
+     "name": "Czosnek",
+     "amount": "2 ząbki",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Śmietanka do gotowania",
+     "amount": "200 ml",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "smotana",
+      "p": "sladk_10_smotana"
+     }
+    },
+    {
+     "name": "Bulion",
+     "amount": "1 szt.",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "dochucovadl",
+      "p": "buj_n"
+     }
+    },
+    {
+     "name": "Masło",
+     "amount": "30 g",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "maslo",
+      "p": "maslo_82"
+     }
+    }
+   ],
+   "steps": [
+    "Na maśle zeszklij cebulę i czosnek.",
+    "Dodaj dynię pokrojoną w kostkę, zalej 1 litrem wody i dodaj bulion.",
+    "Gotuj 20 minut do miękkości.",
+    "Zmiksuj, wmieszaj śmietankę i dopraw solą i pieprzem."
+   ]
+  },
+  {
+   "id": "spagety-aglio-olio",
+   "section": "cestoviny",
+   "category": "cestoviny_jedla",
+   "title": "Spaghetti aglio e olio",
+   "image": "assets/images/recepty/r_spagety-aglio-olio.jpg",
+   "timeMin": 20,
+   "difficulty": 1,
+   "servings": 2,
+   "ingredients": [
+    {
+     "name": "Spaghetti",
+     "amount": "250 g",
+     "zaradenie": {
+      "c": "cestoviny_ry_a_a_strukoviny",
+      "s": "cestoviny",
+      "p": "pagety"
+     }
+    },
+    {
+     "name": "Czosnek",
+     "amount": "4 ząbki",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "cesnak"
+     }
+    },
+    {
+     "name": "Chili",
+     "amount": "1 szt.",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "chilli"
+     }
+    },
+    {
+     "name": "Oliwa z oliwek",
+     "amount": "5 łyżek",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "olivov_olej"
+     }
+    },
+    {
+     "name": "Natka pietruszki",
+     "amount": "1 garść",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "bylinky",
+      "p": "petr_lenov_v_a"
+     }
+    },
+    {
+     "name": "Parmezan",
+     "amount": "40 g",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "tvrd_a_polotvrd_syry",
+      "p": "parmez_n"
+     }
+    }
+   ],
+   "steps": [
+    "Ugotuj spaghetti w osolonej wodzie al dente.",
+    "Na oliwie delikatnie podsmaż pokrojony czosnek i chili, nie może się zrumienić.",
+    "Dodaj odcedzony makaron i trochę wody z gotowania, wymieszaj.",
+    "Posyp natką i parmezanem."
+   ]
+  },
+  {
+   "id": "palacinky",
+   "section": "bezmasite",
+   "category": "sladke_jedla",
+   "title": "Naleśniki z dżemem",
+   "image": "assets/images/recepty/r_palacinky.jpg",
+   "timeMin": 30,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Mąka pszenna",
+     "amount": "250 g",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "m_ky",
+      "p": "hladk_m_ka"
+     }
+    },
+    {
+     "name": "Mleko",
+     "amount": "500 ml",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "mlieko",
+      "p": "polotu_n_mlieko"
+     }
+    },
+    {
+     "name": "Jajka",
+     "amount": "2 szt.",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "vajcia",
+      "p": "slepa_ie_vajcia"
+     }
+    },
+    {
+     "name": "Cukier",
+     "amount": "1 łyżka",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "cukor",
+      "p": "kryst_lov_cukor"
+     }
+    },
+    {
+     "name": "Dżem",
+     "amount": "1 słoik",
+     "zaradenie": {
+      "c": "ovocie",
+      "s": "d_emy_marmel_dy_a_sladk_n_tierky",
+      "p": "ovocn_d_em"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "do smażenia",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    }
+   ],
+   "steps": [
+    "Wymieszaj mąkę, mleko, jajka, cukier i szczyptę soli na gładkie ciasto.",
+    "Odstaw na 15 minut.",
+    "Na rozgrzanej patelni z kroplą oleju smaż cienkie naleśniki z obu stron.",
+    "Posmaruj dżemem i zwiń."
+   ]
+  },
+  {
+   "id": "hrnckova-babovka",
+   "section": "pecenie",
+   "category": "hrnckove",
+   "title": "Babka kakaowa z kubka",
+   "image": "assets/images/recepty/r_hrnckova-babovka.jpg",
+   "timeMin": 60,
+   "difficulty": 1,
+   "servings": 8,
+   "ingredients": [
+    {
+     "name": "Mąka tortowa",
+     "amount": "2 kubki",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "m_ky",
+      "p": "polohrub_m_ka"
+     }
+    },
+    {
+     "name": "Cukier",
+     "amount": "1 kubek",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "cukor",
+      "p": "kryst_lov_cukor"
+     }
+    },
+    {
+     "name": "Mleko",
+     "amount": "1 kubek",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "mlieko",
+      "p": "polotu_n_mlieko"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "1/2 kubka",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Jajka",
+     "amount": "2 szt.",
+     "zaradenie": {
+      "c": "mlie_ne_v_robky_a_vajcia",
+      "s": "vajcia",
+      "p": "slepa_ie_vajcia"
+     }
+    },
+    {
+     "name": "Kakao",
+     "amount": "2 łyżki",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "pe_enie_a_varenie",
+      "p": "kakao"
+     }
+    },
+    {
+     "name": "Proszek do pieczenia",
+     "amount": "1 opak.",
+     "zaradenie": {
+      "c": "m_ky_pe_enie_a_varenie",
+      "s": "pe_enie_a_varenie",
+      "p": "pr_ok_do_pe_iva"
+     }
+    }
+   ],
+   "steps": [
+    "Ubij jajka z cukrem, dodaj mleko i olej.",
+    "Wmieszaj mąkę z proszkiem do pieczenia.",
+    "Połowę ciasta zabarw kakao.",
+    "Do wysmarowanej formy wlewaj na zmianę jasne i ciemne ciasto i piecz 45 minut w 170 °C."
+   ]
+  },
+  {
+   "id": "pecene-zemiaky",
+   "section": "prilohy",
+   "category": "zemiaky",
+   "title": "Pieczone ziemniaki z rozmarynem",
+   "image": "assets/images/recepty/r_pecene-zemiaky.jpg",
+   "timeMin": 45,
+   "difficulty": 1,
+   "servings": 4,
+   "ingredients": [
+    {
+     "name": "Ziemniaki",
+     "amount": "1 kg",
+     "zaradenie": {
+      "c": "zelenina",
+      "s": "erstv_zelenina",
+      "p": "zemiaky"
+     }
+    },
+    {
+     "name": "Olej",
+     "amount": "3 łyżki",
+     "zaradenie": {
+      "c": "oleje_tuky_a_maslo",
+      "s": "oleje",
+      "p": "slne_nicov_olej"
+     }
+    },
+    {
+     "name": "Rozmaryn",
+     "amount": "2 gałązki"
+    },
+    {
+     "name": "Sól",
+     "amount": "do smaku",
+     "zaradenie": {
+      "c": "so_cukor_dochucovadl_koreniny",
+      "s": "so",
+      "p": "so_zaradenie"
+     }
+    }
+   ],
+   "steps": [
+    "Ziemniaki umyj i pokrój w kostkę lub łódeczki.",
+    "Wymieszaj z olejem, solą i rozmarynem.",
+    "Rozłóż na blasze i piecz 35–40 minut w 200 °C, w połowie przemieszaj."
+   ]
+  }
+ ]
+}

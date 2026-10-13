@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import hierarchyData from "../../assets/hierarchia.json";
+import RecipeForm from "./RecipeForm";
 
 type Country = "sk" | "cz" | "pl";
 
@@ -44,25 +45,6 @@ const unitLabel = (u: string) => {
 
 type ShopOption = { value: string; label: string };
 
-// Odporúčaná štruktúra receptu (placeholder v poli) — nech to používateľ nahodí
-// jednotne. Je to len vzor, môže si upraviť.
-const RECIPE_TEMPLATE = `Názov: Kuracie stehná na cesnaku
-
-Porcie: 4
-Čas: 45 min
-
-Ingrediencie:
-- 8 ks kuracích stehien
-- 6 strúčikov cesnaku
-- 2 lyžice olivového oleja
-- soľ, korenie
-
-Postup:
-1. Stehná osolíme a okoreníme.
-2. Cesnak nasekáme, zmiešame s olejom, potrieme mäso.
-3. Pečieme pri 200 °C cca 40 min.
-
-Tip: podávaj so zemiakmi alebo ryžou.`;
 
 export default function NotifikacieModal({
   open,
@@ -468,7 +450,7 @@ export default function NotifikacieModal({
       onClick={onClose}
     >
       <div
-        className="relative my-8 w-full max-w-2xl rounded-3xl bg-[color:var(--form)] p-6 text-[color:var(--ink)] shadow-[var(--shadow)] ring-1 ring-black/10"
+        className={`relative my-8 w-full ${recipeMode ? "max-w-4xl" : "max-w-2xl"} rounded-3xl bg-[color:var(--form)] p-6 text-[color:var(--ink)] shadow-[var(--shadow)] ring-1 ring-black/10`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -507,55 +489,18 @@ export default function NotifikacieModal({
             </div>
           </div>
 
-          {/* Prepínač: obyčajný oznam vs recept */}
+          {/* Prepínač: obyčajný oznam vs recept do appky */}
           <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm font-semibold">
             <input
               type="checkbox"
               checked={recipeMode}
-              onChange={(e) => {
-                setRecipeMode(e.target.checked);
-                // Predvyplň vzor ako editovateľný text (nech nezmizne pri písaní).
-                if (e.target.checked && !recipeText.trim()) {
-                  setRecipeText(RECIPE_TEMPLATE);
-                }
-              }}
+              onChange={(e) => setRecipeMode(e.target.checked)}
               className="h-4 w-4"
             />
-            🍲 Poslať recept (uloží sa do obálky → dá sa uložiť do receptov)
+            🍲 Recept do appky (sekcia Recepty — s obrázkom, ingredienciami a notifikáciou)
           </label>
 
-          {recipeMode ? (
-            <>
-              <div>
-                <label className={labelCls}>Názov receptu</label>
-                <input
-                  value={recipeName}
-                  onChange={(e) => setRecipeName(e.target.value)}
-                  maxLength={80}
-                  placeholder="napr. Kuracie stehná na cesnaku"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Text receptu</label>
-                <textarea
-                  value={recipeText}
-                  onChange={(e) => setRecipeText(e.target.value)}
-                  rows={14}
-                  placeholder={RECIPE_TEMPLATE}
-                  className={`${inputCls} resize-y font-mono text-xs`}
-                />
-                <div className="text-right text-xs opacity-50">
-                  {recipeText.length} znakov
-                </div>
-                <p className="mt-1 text-xs opacity-70">
-                  Vlož recept podľa vzoru (názov, ingrediencie, postup). <b>ID sa
-                  vygeneruje automaticky.</b> Notifikácia ukáže len názov + „nový
-                  recept"; celý text sa uloží do obálky v appke.
-                </p>
-              </div>
-            </>
-          ) : (
+          {!recipeMode && (
             <>
               <div>
                 <label className={labelCls}>Titul</label>
@@ -588,6 +533,7 @@ export default function NotifikacieModal({
             </>
           )}
 
+          {!recipeMode && (
           <div className="rounded-2xl border border-black/10 bg-[var(--surface)]/40 p-4">
             <label className={labelCls}>
               Produkt na preklik{" "}
@@ -757,6 +703,7 @@ export default function NotifikacieModal({
               appku.
             </p>
           </div>
+          )}
 
           <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
@@ -818,6 +765,14 @@ export default function NotifikacieModal({
             )}
           </div>
 
+          {recipeMode ? (
+            <RecipeForm
+              country={country}
+              testToken={testMode ? deviceToken.trim() : ""}
+              labelFor={labelFor}
+            />
+          ) : (
+            <>
           <div className="rounded-2xl border border-black/10 bg-[var(--surface)]/40 p-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
               <input
@@ -867,6 +822,8 @@ export default function NotifikacieModal({
                   ? "🧪 Poslať test len mne"
                   : "📣 Poslať notifikáciu všetkým"}
           </button>
+            </>
+          )}
 
           {result && (
             <div
