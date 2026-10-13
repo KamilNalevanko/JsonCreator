@@ -385,17 +385,22 @@ export default function RecipeForm({
     }
   };
 
+  /** Zmaže recept vo všetkých krajinách (preklady majú rovnaké id). */
   const remove = async (r: Recipe) => {
-    if (!window.confirm(`Zmazať recept „${r.title}“ z appky (${country.toUpperCase()})?`)) return;
+    if (!window.confirm(`Zmazať recept „${r.title}“ z appky vo všetkých krajinách (SK, CZ, PL)?`)) return;
     setBusy("del");
     try {
-      const res = await fetch(`/api/recipes?country=${country}&id=${encodeURIComponent(r.id)}`, {
-        method: "DELETE",
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error);
+      const deleted: string[] = [];
+      for (const c of ["sk", "cz", "pl"] as Country[]) {
+        const res = await fetch(`/api/recipes?country=${c}&id=${encodeURIComponent(r.id)}`, {
+          method: "DELETE",
+        });
+        const json = await res.json();
+        if (json.ok) deleted.push(c.toUpperCase());
+        else if (res.status !== 404) throw new Error(`${c.toUpperCase()}: ${json.error}`);
+      }
       setEditing(null);
-      setMsg({ ok: true, text: "Recept zmazaný." });
+      setMsg({ ok: true, text: `Recept zmazaný (${deleted.join(", ")}).` });
       await load();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
