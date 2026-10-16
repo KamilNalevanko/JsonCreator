@@ -102,6 +102,11 @@ const CATEGORY_LABEL = Object.fromEntries(
   SECTIONS.flatMap((s) => s.categories.map((c) => [c.key, `${s.label} › ${c.label}`])),
 );
 
+// Kým nie je vonku verzia appky so sekciou Recepty, staršie appky by
+// notifikáciu s receptom nevedeli otvoriť — push ide len na testovací telefón.
+// Po vydaní appky prepnúť na true.
+const RECIPE_PUSH_TO_ALL = false;
+
 const PUSH_TEXT: Record<Lang, string> = {
   sk: "🍲 Nový recept — pozri si ho v appke",
   cs: "🍲 Nový recept — podívej se na něj v appce",
@@ -201,7 +206,7 @@ export default function RecipeForm({
   const [busy, setBusy] = useState<string>("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [translate, setTranslate] = useState(true);
-  const [notify, setNotify] = useState(true);
+  const [notify, setNotify] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -230,7 +235,7 @@ export default function RecipeForm({
     setEditing(emptyRecipe());
     setIsNew(true);
     setTranslate(country === "sk");
-    setNotify(true);
+    setNotify(false);
     setAiText("");
     setMsg(null);
   };
@@ -337,6 +342,8 @@ export default function RecipeForm({
     if (!json.ok) throw new Error(`Notifikácia ${c.toUpperCase()}: ${json.error}`);
   };
 
+  const canNotify = RECIPE_PUSH_TO_ALL || !!testToken;
+
   const validate = (r: Recipe): string | null => {
     if (!r.title.trim()) return "Vyplň názov receptu.";
     if (!r.section || !r.category) return "Vyber sekciu a kategóriu.";
@@ -363,7 +370,7 @@ export default function RecipeForm({
     if (
       !window.confirm(
         `Zverejniť recept „${editing.title}“ v appke (${targets.map((t) => t.toUpperCase()).join(", ")})?` +
-          (notify ? `\n\nPošle sa aj notifikácia ${who}.` : ""),
+          (notify && canNotify ? `\n\nPošle sa aj notifikácia ${who}.` : ""),
       )
     )
       return;
@@ -373,7 +380,7 @@ export default function RecipeForm({
     try {
       const saved = await saveOne(country, toStored(editing));
       const done: string[] = [country.toUpperCase()];
-      if (notify) await push(country, saved.title, saved.id);
+      if (notify && canNotify) await push(country, saved.title, saved.id);
       for (const t of targets.filter((t) => t !== country)) {
         const res = await fetch("/api/recipes/ai", {
           method: "POST",
@@ -383,12 +390,12 @@ export default function RecipeForm({
         const json = await res.json();
         if (!json.ok) throw new Error(`Preklad ${t.toUpperCase()}: ${json.error}`);
         const tr = await saveOne(t, { ...json.recipe, id: saved.id });
-        if (notify) await push(t, tr.title, tr.id);
+        if (notify && canNotify) await push(t, tr.title, tr.id);
         done.push(t.toUpperCase());
       }
       setMsg({
         ok: true,
-        text: `Zverejnené ✅ (${done.join(", ")})${notify ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
+        text: `Zverejnené ✅ (${done.join(", ")})${notify && canNotify ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
       });
       setEditing(null);
       await load();
@@ -691,9 +698,24 @@ export default function RecipeForm({
             </span>
           </span>
         </label>
-        <label className="flex cursor-pointer items-center gap-2">
-          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="h-4 w-4" />
-          📣 Poslať notifikáciu {testToken ? <b className="text-amber-600">len na môj telefón (test)</b> : "všetkým"} — po klepnutí sa otvorí recept
+        <label className={`flex items-start gap-2 ${canNotify ? "cursor-pointer" : "opacity-60"}`}>
+          <input
+            type="checkbox"
+            checked={notify && canNotify}
+            disabled={!canNotify}
+            onChange={(e) => setNotify(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            📣 Poslať notifikáciu{" "}
+            {testToken ? <b className="text-amber-600">len na môj telefón (test)</b> : "všetkým"} — po klepnutí sa otvorí recept
+            {!canNotify && (
+              <span className="mt-1 block text-xs">
+                Notifikácie všetkým sa zapnú, keď vyjde nová verzia appky so sekciou Recepty
+                (staršie appky by recept nevedeli otvoriť). Na skúšku zapni hore 🧪 Testovací režim.
+              </span>
+            )}
+          </span>
         </label>
       </div>
 
