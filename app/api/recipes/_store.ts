@@ -15,6 +15,16 @@ export const BUCKET = "cap-data";
 
 export type RecipeLang = "sk" | "cs" | "pl";
 
+/** Sekcie a kategórie receptov — musia sedieť s kostrou v appke. */
+export const RECIPE_CATEGORIES: Record<string, string[]> = {
+  masite: ["hydina", "bravcove", "hovadzie", "zajac", "jahnacina", "ryby"],
+  bezmasite: ["zeleninove", "strukoviny", "syrove_tofu", "sladke_jedla"],
+  cestoviny: ["cestoviny_jedla", "halusky", "rizota"],
+  polievky: ["vyvary", "kremove", "syte"],
+  pecenie: ["hrnckove", "zakusky", "nepecene", "chlieb", "slane_kolace"],
+  prilohy: ["zemiaky", "ryza", "cestoviny_prilohy", "knedle"],
+};
+
 export type RecipeIngredient = {
   name: string;
   amount?: string;

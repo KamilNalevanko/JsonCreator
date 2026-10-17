@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  RECIPE_CATEGORIES,
   readRecipes,
   sanitizeRecipe,
   slugify,
@@ -35,7 +36,9 @@ export async function POST(req: Request) {
     if (!lang) return err("Neplatná krajina.");
     const recipe = sanitizeRecipe((body?.recipe || {}) as Partial<Recipe>);
     if (!recipe.title) return err("Recept nemá názov.");
-    if (!recipe.section || !recipe.category) return err("Vyber sekciu a kategóriu.");
+    if (!(RECIPE_CATEGORIES[recipe.section] || []).includes(recipe.category)) {
+      return err("Vyber sekciu a kategóriu (neznáma kategória).");
+    }
     if (!recipe.ingredients.length) return err("Pridaj aspoň jednu ingredienciu.");
     if (!recipe.steps.length) return err("Pridaj aspoň jeden krok postupu.");
 

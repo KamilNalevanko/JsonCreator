@@ -346,7 +346,10 @@ export default function RecipeForm({
 
   const validate = (r: Recipe): string | null => {
     if (!r.title.trim()) return "Vyplň názov receptu.";
-    if (!r.section || !r.category) return "Vyber sekciu a kategóriu.";
+    const sec = SECTIONS.find((x) => x.key === r.section);
+    if (!sec || !sec.categories.some((c) => c.key === r.category)) {
+      return "Vyber sekciu a kategóriu.";
+    }
     if (!r.ingredients.some((i) => i.name.trim())) return "Pridaj aspoň jednu ingredienciu.";
     const noZar = r.ingredients.find((i) => i.name.trim() && i.mode === "zaradenie" && !i.zaradenie?.p);
     if (noZar) return `Ingrediencia „${noZar.name}“ nemá vybrané zaradenie (alebo ju prepni na vlastnú položku).`;

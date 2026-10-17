@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import hierarchyData from "../../../../assets/hierarchia.json";
 import skLabels from "../../../../assets/langs/sk.json";
-import type { Recipe } from "../_store";
+import { RECIPE_CATEGORIES, type Recipe } from "../_store";
 
 // AI pomocník pre recepty (cez rovnakú Supabase funkciu ako čítanie letákov):
 //  • action "parse"     — z vloženého textu poskladá recept a ingredienciám
@@ -24,6 +24,8 @@ const PLACEMENTS = HIERARCHY.flatMap((c) =>
   ),
 );
 const VALID = new Set(PLACEMENTS.map((p) => p.key));
+
+const CATEGORIES = RECIPE_CATEGORIES;
 
 const SECTIONS = `masite: hydina, bravcove, hovadzie, zajac, jahnacina, ryby
 bezmasite: zeleninove, strukoviny, syrove_tofu, sladke_jedla (palacinky, parené buchty)
@@ -69,7 +71,7 @@ async function parseRecipe(text: string, lang: string) {
   const system = `You turn a free-form cooking recipe into structured JSON for a grocery app.
 Write all texts in ${LANG_NAMES[lang] || "Slovak"} (keep the author's wording, fix only obvious typos).
 Return JSON: {"title","section","category","timeMin","difficulty","servings","ingredients":[{"name","amount","placement"}],"steps":[...]}
-- section/category: pick from this list (section: categories):
+- section/category: pick EXACTLY one key from this list (section: categories); never invent other keys (chicken = hydina, pork = bravcove, beef = hovadzie):
 ${SECTIONS}
 - timeMin: total minutes (integer); difficulty: 1 easy, 2 medium, 3 hard; servings: integer (default 4).
 - ingredients: one per item. "name" = the grocery item in nominative (e.g. "Kuracie stehná", "Cesnak"), "amount" = quantity with unit ("8 ks", "2 PL", "podľa chuti").
@@ -93,8 +95,10 @@ ${PLACEMENTS.map((p) => `${p.key} = ${p.label}`).join("\n")}`;
   );
   return {
     title: (out.title || "").toString(),
-    section: (out.section || "").toString(),
-    category: (out.category || "").toString(),
+    section: CATEGORIES[String(out.section)] ? String(out.section) : "",
+    category: (CATEGORIES[String(out.section)] || []).includes(String(out.category))
+      ? String(out.category)
+      : "",
     timeMin: Number(out.timeMin) || 0,
     difficulty: Number(out.difficulty) || 1,
     servings: Number(out.servings) || 4,
