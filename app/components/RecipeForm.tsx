@@ -201,6 +201,8 @@ export default function RecipeForm({
   const [fromSamples, setFromSamples] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Recipe | null>(null);
+  // Stav receptu pri otvorení — podľa neho sa pri odchode pýtame na zmeny.
+  const openedRef = useRef<string>("");
   const [isNew, setIsNew] = useState(true);
   const [aiText, setAiText] = useState("");
   const [busy, setBusy] = useState<string>("");
@@ -232,7 +234,9 @@ export default function RecipeForm({
   }, [country]);
 
   const startNew = () => {
-    setEditing(emptyRecipe());
+    const fresh = emptyRecipe();
+    openedRef.current = JSON.stringify(fresh);
+    setEditing(fresh);
     setIsNew(true);
     setTranslate(country === "sk");
     setNotify(false);
@@ -241,6 +245,7 @@ export default function RecipeForm({
   };
 
   const startEdit = (r: Recipe) => {
+    openedRef.current = JSON.stringify(r);
     setEditing(structuredClone(r));
     setIsNew(false);
     // Úprava slovenského receptu sa predvolene prenesie aj do CZ/PL, nech sú
@@ -433,6 +438,18 @@ export default function RecipeForm({
     }
   };
 
+  /** Späť na zoznam bez uloženia (pri zmenách sa najprv opýta). */
+  const leave = () => {
+    if (
+      editing &&
+      JSON.stringify(editing) !== openedRef.current &&
+      !window.confirm("Zahodiť neuložené zmeny v recepte?")
+    )
+      return;
+    setEditing(null);
+    setMsg(null);
+  };
+
   const inputCls =
     "w-full rounded-xl border border-black/10 bg-[var(--surface)] px-3 py-2 text-sm text-[color:var(--ink)] outline-none focus:border-emerald-500";
   const labelCls = "mb-1 block text-sm font-semibold";
@@ -503,7 +520,7 @@ export default function RecipeForm({
         </div>
         <button
           type="button"
-          onClick={() => setEditing(null)}
+          onClick={leave}
           className="rounded-lg border border-black/10 px-3 py-1 text-xs hover:border-black/30"
         >
           ← Späť na zoznam
@@ -725,6 +742,14 @@ export default function RecipeForm({
       {msg && <Msg {...msg} />}
 
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={leave}
+          disabled={busy !== ""}
+          className="rounded-xl border border-black/15 bg-[var(--surface)] px-4 py-3 text-sm font-semibold hover:border-black/30 disabled:opacity-50"
+        >
+          ← Späť bez uloženia
+        </button>
         <button
           type="button"
           onClick={save}
