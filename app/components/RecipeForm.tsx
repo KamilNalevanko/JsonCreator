@@ -98,9 +98,6 @@ const SECTIONS: { key: string; label: string; categories: { key: string; label: 
     { key: "cestoviny_prilohy", label: "Cestoviny" }, { key: "knedle", label: "Knedle" },
   ] },
 ];
-const CATEGORY_LABEL = Object.fromEntries(
-  SECTIONS.flatMap((s) => s.categories.map((c) => [c.key, `${s.label} › ${c.label}`])),
-);
 
 // Kým nie je vonku verzia appky so sekciou Recepty, staršie appky by
 // notifikáciu s receptom nevedeli otvoriť — push ide len na testovací telefón.
@@ -199,6 +196,9 @@ export default function RecipeForm({
 }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [fromSamples, setFromSamples] = useState(false);
+  // Filter zoznamu ako dlaždice v appke: sekcia → kategória ("" = všetky).
+  const [fSection, setFSection] = useState("");
+  const [fCategory, setFCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Recipe | null>(null);
   // Stav receptu pri otvorení — podľa neho sa pri odchode pýtame na zmeny.
@@ -238,7 +238,7 @@ export default function RecipeForm({
     openedRef.current = JSON.stringify(fresh);
     setEditing(fresh);
     setIsNew(true);
-    setTranslate(country === "sk");
+    setTranslate(true);
     setNotify(false);
     setAiText("");
     setMsg(null);
@@ -478,32 +478,80 @@ export default function RecipeForm({
           </p>
         )}
         {msg && <Msg {...msg} />}
+        {/* Rozdelenie ako v appke: sekcie a v nich kategórie */}
+        <div className="flex flex-wrap gap-1.5">
+          <Chip active={!fSection} onClick={() => { setFSection(""); setFCategory(""); }}>
+            Všetky ({recipes.length})
+          </Chip>
+          {SECTIONS.map((sec) => (
+            <Chip
+              key={sec.key}
+              active={fSection === sec.key}
+              onClick={() => { setFSection(sec.key); setFCategory(""); }}
+            >
+              {sec.label} ({recipes.filter((r) => r.section === sec.key).length})
+            </Chip>
+          ))}
+        </div>
+        {fSection && (
+          <div className="flex flex-wrap gap-1.5 pl-2">
+            <Chip small active={!fCategory} onClick={() => setFCategory("")}>
+              Celá sekcia
+            </Chip>
+            {SECTIONS.find((sec) => sec.key === fSection)?.categories.map((c) => (
+              <Chip key={c.key} small active={fCategory === c.key} onClick={() => setFCategory(c.key)}>
+                {c.label} ({recipes.filter((r) => r.category === c.key).length})
+              </Chip>
+            ))}
+          </div>
+        )}
         {loading ? (
           <div className="text-sm opacity-60">Načítavam…</div>
         ) : (
-          <div className="grid max-h-[420px] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-            {recipes.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => startEdit(r)}
-                className="flex items-center gap-3 rounded-xl border border-black/10 bg-[var(--surface)] p-2 text-left hover:border-emerald-500"
-              >
-                {r.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imageSrc(r.image)} alt="" className="h-14 w-14 rounded-lg object-cover" />
-                ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-black/5">🍲</div>
-                )}
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{r.title}</div>
-                  <div className="truncate text-xs opacity-60">{CATEGORY_LABEL[r.category] || r.category}</div>
-                  <div className="text-xs opacity-60">
-                    {r.timeMin} min · {["", "ľahké", "stredné", "náročné"][r.difficulty]} · {r.ingredients.length} ingr.
+          <div className="max-h-[480px] space-y-3 overflow-y-auto">
+            {SECTIONS.flatMap((sec) =>
+              sec.categories.map((cat) => ({ sec, cat })),
+            )
+              .filter(({ sec, cat }) => (!fSection || sec.key === fSection) && (!fCategory || cat.key === fCategory))
+              .map(({ sec, cat }) => ({ sec, cat, items: recipes.filter((r) => r.category === cat.key) }))
+              .filter(({ items }) => items.length > 0 || !!fCategory)
+              .map(({ sec, cat, items }) => (
+                <div key={cat.key}>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide opacity-60">
+                    {sec.label} › {cat.label} ({items.length})
                   </div>
+                  {items.length === 0 ? (
+                    <div className="text-xs opacity-50">V tejto kategórii zatiaľ nie je žiadny recept.</div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {items.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => startEdit(r)}
+                          className="flex items-center gap-3 rounded-xl border border-black/10 bg-[var(--surface)] p-2 text-left hover:border-emerald-500"
+                        >
+                          {r.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={imageSrc(r.image)} alt="" className="h-14 w-14 rounded-lg object-cover" />
+                          ) : (
+                            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-black/5">🍲</div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold">{r.title}</div>
+                            <div className="text-xs opacity-60">
+                              {r.timeMin} min · {["", "ľahké", "stredné", "náročné"][r.difficulty]} · {r.ingredients.length} ingr.
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </button>
-            ))}
+              ))}
+            {recipes.length === 0 && (
+              <div className="text-sm opacity-60">Zatiaľ tu nie je žiadny recept. Pridaj prvý cez ＋ Nový recept.</div>
+            )}
           </div>
         )}
       </div>
@@ -770,6 +818,32 @@ export default function RecipeForm({
         )}
       </div>
     </div>
+  );
+}
+
+function Chip({
+  active,
+  small,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  small?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border font-semibold transition ${small ? "px-2.5 py-0.5 text-[11px]" : "px-3 py-1 text-xs"} ${
+        active
+          ? "border-emerald-600 bg-emerald-600 text-white"
+          : "border-black/10 bg-[var(--surface)] hover:border-emerald-500"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

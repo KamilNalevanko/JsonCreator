@@ -148,7 +148,7 @@ export async function POST(req: Request) {
     }
     if (body?.action === "translate") {
       const to = (body?.to || "").toString();
-      if (!["cs", "pl"].includes(to)) {
+      if (!["sk", "cs", "pl"].includes(to)) {
         return NextResponse.json({ ok: false, error: "Neplatný jazyk." }, { status: 400 });
       }
       return NextResponse.json({ ok: true, recipe: await translateRecipe(body.recipe as Recipe, to) });
