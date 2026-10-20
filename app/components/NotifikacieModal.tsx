@@ -462,10 +462,41 @@ export default function NotifikacieModal({
           ✕
         </button>
 
-        <h2 className="text-2xl font-bold">📣 Poslať notifikáciu</h2>
+        {/* Prepínač režimu: obyčajná notifikácia vs recepty v appke */}
+        <div className="mr-10 inline-flex rounded-2xl border border-black/10 bg-[var(--surface)] p-1">
+          {([
+            { key: false, label: "📣 Notifikácia" },
+            { key: true, label: "🍲 Recepty v appke" },
+          ] as const).map((tab) => (
+            <button
+              key={String(tab.key)}
+              type="button"
+              onClick={() => setRecipeMode(tab.key)}
+              className={`rounded-xl px-5 py-2 text-sm font-semibold transition ${
+                recipeMode === tab.key
+                  ? tab.key
+                    ? "bg-emerald-600 text-white shadow"
+                    : "bg-blue-600 text-white shadow"
+                  : "text-[color:var(--ink)] opacity-70 hover:opacity-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <h2 className="mt-4 text-2xl font-bold">
+          {recipeMode ? "🍲 Recepty v appke" : "📣 Poslať notifikáciu"}
+        </h2>
         <p className="mt-1 text-sm opacity-70">
-          Notifikácia príde všetkým používateľom s vybraným jazykom appky —
-          <strong> aj keď majú appku vypnutú</strong> (pípne + odznak).
+          {recipeMode ? (
+            <>Pridaj, uprav alebo naplánuj recept v sekcii Recepty — s obrázkom, ingredienciami a akciami.</>
+          ) : (
+            <>
+              Notifikácia príde všetkým používateľom s vybraným jazykom appky —
+              <strong> aj keď majú appku vypnutú</strong> (pípne + odznak).
+            </>
+          )}
         </p>
 
         <div className="mt-6 space-y-4">
@@ -489,16 +520,6 @@ export default function NotifikacieModal({
             </div>
           </div>
 
-          {/* Prepínač: obyčajný oznam vs recept do appky */}
-          <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm font-semibold">
-            <input
-              type="checkbox"
-              checked={recipeMode}
-              onChange={(e) => setRecipeMode(e.target.checked)}
-              className="h-4 w-4"
-            />
-            🍲 Recept do appky (sekcia Recepty — s obrázkom, ingredienciami a notifikáciou)
-          </label>
 
           {!recipeMode && (
             <>
