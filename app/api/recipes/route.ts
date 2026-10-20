@@ -44,19 +44,29 @@ export async function POST(req: Request) {
     if (!recipe.steps.length) return err("Pridaj aspoň jeden krok postupu.");
 
     await withRecipeLock(lang, async () => {
-      const { recipes } = await readRecipes(lang);
-      if (!recipe.id) {
-        // Rovnaké id vo všetkých jazykoch → obľúbené a preklady k sebe sedia.
-        const base = (body?.id || "").toString().trim() || slugify(recipe.title);
-        let id = base;
-        for (let n = 2; recipes.some((r) => r.id === id); n++) id = `${base}-${n}`;
-        recipe.id = id;
+      // Recepty môžu pridávať dvaja ľudia naraz z dvoch editorov. Po zápise
+      // si zoznam znova načítame a keď tam náš recept nie je (iný editor
+      // zapísal v tej istej chvíli), uložíme ho ešte raz.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const { recipes } = await readRecipes(lang);
+        if (!recipe.id) {
+          // Rovnaké id vo všetkých jazykoch → obľúbené a preklady k sebe sedia.
+          const base = (body?.id || "").toString().trim() || slugify(recipe.title);
+          let id = base;
+          for (let n = 2; recipes.some((r) => r.id === id); n++) id = `${base}-${n}`;
+          recipe.id = id;
+        }
+        const idx = recipes.findIndex((r) => r.id === recipe.id);
+        // Nové recepty idú navrch, nech ich ľudia v appke vidia hneď.
+        if (idx >= 0) recipes[idx] = recipe;
+        else recipes.unshift(recipe);
+        await writeRecipes(lang, recipes);
+        await new Promise((r) => setTimeout(r, 400 + Math.random() * 600));
+        const check = await readRecipes(lang);
+        const stored = check.recipes.find((r) => r.id === recipe.id);
+        if (stored && JSON.stringify(stored) === JSON.stringify(recipe)) return;
       }
-      const idx = recipes.findIndex((r) => r.id === recipe.id);
-      // Nové recepty idú navrch, nech ich ľudia v appke vidia hneď.
-      if (idx >= 0) recipes[idx] = recipe;
-      else recipes.unshift(recipe);
-      await writeRecipes(lang, recipes);
+      throw new Error("Recept sa nepodarilo uložiť (súbežná úprava). Skús to znova.");
     });
     return NextResponse.json({ ok: true, recipe });
   } catch (e) {
@@ -71,11 +81,18 @@ export async function DELETE(req: Request) {
     const id = (params.get("id") || "").trim();
     if (!lang || !id) return err("Chýba krajina alebo id.");
     const removed = await withRecipeLock(lang, async () => {
-      const { recipes } = await readRecipes(lang);
-      const next = recipes.filter((r) => r.id !== id);
-      if (next.length === recipes.length) return false;
-      await writeRecipes(lang, next);
-      return true;
+      let found = false;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const { recipes } = await readRecipes(lang);
+        const next = recipes.filter((r) => r.id !== id);
+        if (next.length === recipes.length) return found;
+        found = true;
+        await writeRecipes(lang, next);
+        await new Promise((r) => setTimeout(r, 400 + Math.random() * 600));
+        const check = await readRecipes(lang);
+        if (!check.recipes.some((r) => r.id === id)) return true;
+      }
+      throw new Error("Recept sa nepodarilo zmazať (súbežná úprava). Skús to znova.");
     });
     if (!removed) return err("Recept sa nenašiel.", 404);
     return NextResponse.json({ ok: true });
