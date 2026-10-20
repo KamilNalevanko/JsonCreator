@@ -143,7 +143,7 @@ Deno.serve(async () => {
       const country = normalizeCountry(row.country);
       const d = (row.data ?? {}) as Record<string, unknown>;
       const data: Record<string, string> = { country };
-      for (const k of ["category", "subcategory", "placement", "product", "shop"]) {
+      for (const k of ["category", "subcategory", "placement", "product", "shop", "type", "recipeId", "msgId"]) {
         const v = d[k];
         if (v !== undefined && v !== null && String(v).trim() !== "") {
           data[k] = String(v);

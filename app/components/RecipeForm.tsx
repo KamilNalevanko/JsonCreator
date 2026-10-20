@@ -51,6 +51,7 @@ type Recipe = {
   servings: number;
   ingredients: Ingredient[];
   steps: string[];
+  publishAt?: string;
 };
 type StoredIngredient = Omit<Ingredient, "mode">;
 type ProductHit = {
@@ -121,6 +122,17 @@ function imageSrc(image: string): string {
   }
   return `${SUPABASE_URL}/storage/v1/object/public/cap-data/${image}`;
 }
+
+/** ISO čas → hodnota pre <input type="datetime-local"> (miestny čas). */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const isScheduled = (r: { publishAt?: string }) =>
+  !!r.publishAt && Date.parse(r.publishAt) > Date.now();
 
 function emptyRecipe(): Recipe {
   return {
@@ -209,6 +221,9 @@ export default function RecipeForm({
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [translate, setTranslate] = useState(true);
   const [notify, setNotify] = useState(false);
+  // Časovač: recept sa v appke ukáže (a notifikácia odíde) až v zadaný čas.
+  const [scheduleOn, setScheduleOn] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -240,6 +255,8 @@ export default function RecipeForm({
     setIsNew(true);
     setTranslate(true);
     setNotify(false);
+    setScheduleOn(false);
+    setScheduleAt("");
     setAiText("");
     setMsg(null);
   };
@@ -252,6 +269,8 @@ export default function RecipeForm({
     // všetky krajiny rovnaké. Úprava CZ/PL býva oprava prekladu — tá nie.
     setTranslate(country === "sk");
     setNotify(false);
+    setScheduleOn(isScheduled(r));
+    setScheduleAt(isScheduled(r) ? toLocalInput(r.publishAt!) : "");
     setAiText("");
     setMsg(null);
   };
@@ -347,6 +366,24 @@ export default function RecipeForm({
     if (!json.ok) throw new Error(`Notifikácia ${c.toUpperCase()}: ${json.error}`);
   };
 
+  /** Notifikácia o recepte naplánovaná na čas zverejnenia (Supabase plánovač). */
+  const schedulePush = async (c: Country, title: string, recipeId: string, sendAt: string) => {
+    const res = await fetch("/api/schedule-notification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        country: c,
+        title,
+        message: PUSH_TEXT[LANG_OF[c]],
+        send_at: sendAt,
+        data: { type: "catalog_recipe", recipeId },
+        ...(testToken ? { token: testToken } : {}),
+      }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(`Naplánovanie notifikácie ${c.toUpperCase()}: ${json.error}`);
+  };
+
   const canNotify = RECIPE_PUSH_TO_ALL || !!testToken;
 
   const validate = (r: Recipe): string | null => {
@@ -371,24 +408,46 @@ export default function RecipeForm({
       setMsg({ ok: false, text: problem });
       return;
     }
+    let publishAt = "";
+    if (scheduleOn) {
+      const t = new Date(scheduleAt).getTime();
+      if (!scheduleAt || Number.isNaN(t) || t < Date.now() + 60_000) {
+        setMsg({ ok: false, text: "Vyber čas zverejnenia v budúcnosti (aspoň o minútu)." });
+        return;
+      }
+      publishAt = new Date(t).toISOString();
+    }
+    const when = publishAt ? new Date(publishAt).toLocaleString("sk-SK") : "";
     const targets: Country[] = translate
       ? (["sk", "cz", "pl"] as Country[])
       : [country];
     const who = testToken ? "len na tvoj telefón (test)" : "VŠETKÝM používateľom";
     if (
       !window.confirm(
-        `Zverejniť recept „${editing.title}“ v appke (${targets.map((t) => t.toUpperCase()).join(", ")})?` +
-          (notify && canNotify ? `\n\nPošle sa aj notifikácia ${who}.` : ""),
+        (publishAt
+          ? `Naplánovať recept „${editing.title}“ — v appke sa ukáže ${when} (${targets.map((t) => t.toUpperCase()).join(", ")})?`
+          : `Zverejniť recept „${editing.title}“ v appke (${targets.map((t) => t.toUpperCase()).join(", ")})?`) +
+          (notify && canNotify
+            ? `
+
+${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
+            : ""),
       )
     )
       return;
 
+    const notifyNow = async (c: Country, title: string, id: string) => {
+      if (!(notify && canNotify)) return;
+      if (publishAt) await schedulePush(c, title, id, publishAt);
+      else await push(c, title, id);
+    };
+
     setBusy("save");
     setMsg(null);
     try {
-      const saved = await saveOne(country, toStored(editing));
+      const saved = await saveOne(country, { ...toStored(editing), publishAt });
       const done: string[] = [country.toUpperCase()];
-      if (notify && canNotify) await push(country, saved.title, saved.id);
+      await notifyNow(country, saved.title, saved.id);
       for (const t of targets.filter((t) => t !== country)) {
         const res = await fetch("/api/recipes/ai", {
           method: "POST",
@@ -397,13 +456,16 @@ export default function RecipeForm({
         });
         const json = await res.json();
         if (!json.ok) throw new Error(`Preklad ${t.toUpperCase()}: ${json.error}`);
-        const tr = await saveOne(t, { ...json.recipe, id: saved.id });
-        if (notify && canNotify) await push(t, tr.title, tr.id);
+        const tr = await saveOne(t, { ...json.recipe, id: saved.id, publishAt });
+        await notifyNow(t, tr.title, tr.id);
         done.push(t.toUpperCase());
       }
+      const notified = notify && canNotify;
       setMsg({
         ok: true,
-        text: `Zverejnené ✅ (${done.join(", ")})${notify && canNotify ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
+        text: publishAt
+          ? `Naplánované ⏰ (${done.join(", ")}) — v appke sa ukáže ${when}${notified ? " a vtedy odíde aj notifikácia" : ""}.`
+          : `Zverejnené ✅ (${done.join(", ")})${notified ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
       });
       setEditing(null);
       await load();
@@ -539,6 +601,11 @@ export default function RecipeForm({
                           )}
                           <div className="min-w-0">
                             <div className="truncate text-sm font-semibold">{r.title}</div>
+                            {isScheduled(r) && (
+                              <div className="text-xs font-semibold text-indigo-600">
+                                ⏰ v appke od {new Date(r.publishAt!).toLocaleString("sk-SK")}
+                              </div>
+                            )}
                             <div className="text-xs opacity-60">
                               {r.timeMin} min · {["", "ľahké", "stredné", "náročné"][r.difficulty]} · {r.ingredients.length} ingr.
                             </div>
@@ -742,6 +809,40 @@ export default function RecipeForm({
       {/* Zverejnenie */}
       <div className="space-y-2 rounded-xl border border-black/10 bg-[var(--surface)]/60 p-3 text-sm">
         <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            checked={scheduleOn}
+            onChange={(e) => {
+              setScheduleOn(e.target.checked);
+              if (e.target.checked && !scheduleAt) {
+                // Predvoľba: zajtra o 8:00.
+                const d = new Date();
+                d.setDate(d.getDate() + 1);
+                d.setHours(8, 0, 0, 0);
+                setScheduleAt(toLocalInput(d.toISOString()));
+              }
+            }}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span className="flex-1">
+            <b>⏰ Naplánovať zverejnenie</b>
+            <span className="mt-1 block text-xs opacity-75">
+              {scheduleOn
+                ? "Recept sa uloží hneď, ale v appke sa ukáže až v zadaný čas. Ak je zaškrtnutá notifikácia, odíde v ten istý čas (pošle ju server, editor nemusí bežať)."
+                : "Nezaškrtnuté: recept sa v appke ukáže hneď po uložení."}
+            </span>
+            {scheduleOn && (
+              <input
+                type="datetime-local"
+                value={scheduleAt}
+                min={toLocalInput(new Date(Date.now() + 60_000).toISOString())}
+                onChange={(e) => setScheduleAt(e.target.value)}
+                className="mt-2 rounded-lg border border-black/10 bg-[var(--surface)] px-2 py-1 text-sm"
+              />
+            )}
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2">
           <input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} className="mt-0.5 h-4 w-4" />
           <span>
             <b>
@@ -804,7 +905,7 @@ export default function RecipeForm({
           disabled={busy !== ""}
           className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
         >
-          {busy === "save" ? "Zverejňujem…" : "✅ Uložiť a zverejniť v appke"}
+          {busy === "save" ? "Ukladám…" : scheduleOn ? "⏰ Uložiť a naplánovať" : "✅ Uložiť a zverejniť v appke"}
         </button>
         {!isNew && (
           <button
