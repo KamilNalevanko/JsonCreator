@@ -6,6 +6,7 @@ import {
   slugify,
   toLang,
   writeRecipes,
+  withRecipeLock,
   type Recipe,
 } from "./_store";
 
@@ -42,19 +43,21 @@ export async function POST(req: Request) {
     if (!recipe.ingredients.length) return err("Pridaj aspoň jednu ingredienciu.");
     if (!recipe.steps.length) return err("Pridaj aspoň jeden krok postupu.");
 
-    const { recipes } = await readRecipes(lang);
-    if (!recipe.id) {
-      // Rovnaké id vo všetkých jazykoch → obľúbené a preklady k sebe sedia.
-      const base = (body?.id || "").toString().trim() || slugify(recipe.title);
-      let id = base;
-      for (let n = 2; recipes.some((r) => r.id === id); n++) id = `${base}-${n}`;
-      recipe.id = id;
-    }
-    const idx = recipes.findIndex((r) => r.id === recipe.id);
-    // Nové recepty idú navrch, nech ich ľudia v appke vidia hneď.
-    if (idx >= 0) recipes[idx] = recipe;
-    else recipes.unshift(recipe);
-    await writeRecipes(lang, recipes);
+    await withRecipeLock(lang, async () => {
+      const { recipes } = await readRecipes(lang);
+      if (!recipe.id) {
+        // Rovnaké id vo všetkých jazykoch → obľúbené a preklady k sebe sedia.
+        const base = (body?.id || "").toString().trim() || slugify(recipe.title);
+        let id = base;
+        for (let n = 2; recipes.some((r) => r.id === id); n++) id = `${base}-${n}`;
+        recipe.id = id;
+      }
+      const idx = recipes.findIndex((r) => r.id === recipe.id);
+      // Nové recepty idú navrch, nech ich ľudia v appke vidia hneď.
+      if (idx >= 0) recipes[idx] = recipe;
+      else recipes.unshift(recipe);
+      await writeRecipes(lang, recipes);
+    });
     return NextResponse.json({ ok: true, recipe });
   } catch (e) {
     return err(e instanceof Error ? e.message : String(e), 500);
@@ -67,10 +70,14 @@ export async function DELETE(req: Request) {
     const lang = toLang(params.get("country") || "");
     const id = (params.get("id") || "").trim();
     if (!lang || !id) return err("Chýba krajina alebo id.");
-    const { recipes } = await readRecipes(lang);
-    const next = recipes.filter((r) => r.id !== id);
-    if (next.length === recipes.length) return err("Recept sa nenašiel.", 404);
-    await writeRecipes(lang, next);
+    const removed = await withRecipeLock(lang, async () => {
+      const { recipes } = await readRecipes(lang);
+      const next = recipes.filter((r) => r.id !== id);
+      if (next.length === recipes.length) return false;
+      await writeRecipes(lang, next);
+      return true;
+    });
+    if (!removed) return err("Recept sa nenašiel.", 404);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return err(e instanceof Error ? e.message : String(e), 500);

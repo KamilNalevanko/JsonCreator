@@ -1,7 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import sampleSk from "../../../assets/recepty-samples/sk.json";
-import sampleCs from "../../../assets/recepty-samples/cs.json";
-import samplePl from "../../../assets/recepty-samples/pl.json";
 
 // ---------------------------------------------------------------------------
 // Recepty pre sekciu Recepty v appke. Jeden súbor na jazyk appky:
@@ -47,11 +44,6 @@ export type Recipe = {
 
 type RecipeFile = { version: number; updatedAt?: string; recipes: Recipe[] };
 
-const SAMPLES: Record<RecipeLang, RecipeFile> = {
-  sk: sampleSk as RecipeFile,
-  cs: sampleCs as RecipeFile,
-  pl: samplePl as RecipeFile,
-};
 
 /** Editor používa pre Česko "cz", appka "cs". */
 export function toLang(country: string): RecipeLang | null {
@@ -68,17 +60,43 @@ export function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/**
+ * Načíta recepty VŽDY čerstvé. Pozor: autorizované sťahovanie zo Supabase ide
+ * cez CDN a vracalo aj minútu starý súbor — editor potom pri uložení prepísal
+ * medzitým pridané recepty. Verejná adresa s unikátnym parametrom a súbor
+ * uložený s `no-cache` sú vždy aktuálne (overené).
+ */
 export async function readRecipes(
   lang: RecipeLang,
 ): Promise<{ recipes: Recipe[]; fromSamples: boolean }> {
-  const { data, error } = await getSupabase()
-    .storage.from(BUCKET)
-    .download(`recepty/${lang}.json`);
-  if (error || !data) {
-    return { recipes: structuredClone(SAMPLES[lang].recipes), fromSamples: true };
+  const base = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+  if (!base) throw new Error("Chýba SUPABASE_URL.");
+  const res = await fetch(
+    `${base}/storage/v1/object/public/${BUCKET}/recepty/${lang}.json?t=${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    { cache: "no-store", headers: { "Cache-Control": "no-cache" } },
+  );
+  if (res.status === 400 || res.status === 404) {
+    const text = await res.text();
+    // Súbor ešte neexistuje → prázdny zoznam. Iná chyba → radšej nič neukladať.
+    if (/not_found|NoSuchKey|Object not found/i.test(text)) {
+      return { recipes: [], fromSamples: false };
+    }
+    throw new Error(`Recepty sa nedali načítať (${res.status}).`);
   }
-  const parsed = JSON.parse(await data.text()) as RecipeFile;
-  return { recipes: Array.isArray(parsed.recipes) ? parsed.recipes : [], fromSamples: false };
+  if (!res.ok) throw new Error(`Recepty sa nedali načítať (${res.status}).`);
+  const parsed = (await res.json()) as RecipeFile;
+  if (!Array.isArray(parsed.recipes)) throw new Error("Súbor s receptami je poškodený.");
+  return { recipes: parsed.recipes, fromSamples: false };
+}
+
+// Zápisy jedného jazyka idú po sebe — dve uloženia naraz by si inak
+// navzájom prepísali zoznam (čítaj → uprav → zapíš).
+const locks = new Map<RecipeLang, Promise<unknown>>();
+export function withRecipeLock<T>(lang: RecipeLang, fn: () => Promise<T>): Promise<T> {
+  const prev = locks.get(lang) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(fn);
+  locks.set(lang, next);
+  return next;
 }
 
 export async function writeRecipes(lang: RecipeLang, recipes: Recipe[]): Promise<void> {
@@ -88,7 +106,8 @@ export async function writeRecipes(lang: RecipeLang, recipes: Recipe[]): Promise
     .upload(`recepty/${lang}.json`, Buffer.from(JSON.stringify(body), "utf8"), {
       contentType: "application/json",
       upsert: true,
-      cacheControl: "60",
+      // no-cache: appka aj editor dostanú po uložení hneď novú verziu.
+      cacheControl: "no-cache",
     });
   if (error) throw new Error(error.message);
 }
