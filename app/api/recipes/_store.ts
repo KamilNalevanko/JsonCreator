@@ -42,6 +42,8 @@ export type Recipe = {
   steps: string[];
   /** Naplánované zverejnenie (ISO čas). Appka recept ukáže až od tohto času. */
   publishAt?: string;
+  /** Kedy bol recept pridaný — appka podľa toho radí a 7 dní ukazuje „NOVÉ“. */
+  createdAt?: string;
 };
 
 type RecipeFile = { version: number; updatedAt?: string; recipes: Recipe[] };
@@ -149,6 +151,9 @@ export function sanitizeRecipe(r: Partial<Recipe>): Recipe {
       })
       .filter((i) => i.name),
     steps: (r.steps || []).map((s) => (s || "").toString().trim()).filter(Boolean),
+    ...(r.createdAt && !Number.isNaN(Date.parse(r.createdAt))
+      ? { createdAt: new Date(r.createdAt).toISOString() }
+      : {}),
     ...(r.publishAt && !Number.isNaN(Date.parse(r.publishAt))
       ? { publishAt: new Date(r.publishAt).toISOString() }
       : {}),

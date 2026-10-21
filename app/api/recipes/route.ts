@@ -57,6 +57,11 @@ export async function POST(req: Request) {
           recipe.id = id;
         }
         const idx = recipes.findIndex((r) => r.id === recipe.id);
+        // Dátum pridania: pri úprave ostáva pôvodný, nový recept dostane teraz.
+        recipe.createdAt =
+          (idx >= 0 ? recipes[idx].createdAt : undefined) ||
+          recipe.createdAt ||
+          new Date().toISOString();
         // Nové recepty idú navrch, nech ich ľudia v appke vidia hneď.
         if (idx >= 0) recipes[idx] = recipe;
         else recipes.unshift(recipe);
