@@ -177,7 +177,8 @@ function toStored(r: Recipe) {
 
 type Stored = ReturnType<typeof toStored>;
 /** Preklad čakajúci na kontrolu pred uložením. */
-type ReviewItem = { c: Country; r: Stored };
+// `src` = pôvodný recept, z ktorého preklad vznikol (zmena → upozornenie).
+type ReviewItem = { c: Country; r: Stored; src: string };
 
 /** Zmenší fotku v prehliadači (max 1200 px, JPEG) pred nahraním. */
 async function shrinkImage(file: File): Promise<string> {
@@ -231,6 +232,13 @@ export default function RecipeForm({
   // Preklady na kontrolu (null = ešte nepreložené / formulár).
   const [review, setReview] = useState<ReviewItem[] | null>(null);
   const [reviewTab, setReviewTab] = useState<Country>("sk");
+  // Preklady ostávajú uložené aj po návrate k receptu — znova sa prekladá
+  // len na výslovné „Preložiť znova“.
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const clearReview = () => {
+    setReview(null);
+    setReviewOpen(false);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -250,7 +258,7 @@ export default function RecipeForm({
 
   useEffect(() => {
     setEditing(null);
-    setReview(null);
+    clearReview();
     setMsg(null);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -266,7 +274,7 @@ export default function RecipeForm({
     setScheduleOn(false);
     setScheduleAt("");
     setAiText("");
-    setReview(null);
+    clearReview();
     setMsg(null);
   };
 
@@ -281,7 +289,7 @@ export default function RecipeForm({
     setScheduleOn(isScheduled(r));
     setScheduleAt(isScheduled(r) ? toLocalInput(r.publishAt!) : "");
     setAiText("");
-    setReview(null);
+    clearReview();
     setMsg(null);
   };
 
@@ -429,12 +437,14 @@ export default function RecipeForm({
     setMsg(null);
     try {
       const src = toStored(editing);
+      const srcJson = JSON.stringify(src);
       const out: ReviewItem[] = [];
       for (const t of (["sk", "cz", "pl"] as Country[]).filter((t) => t !== country)) {
-        out.push({ c: t, r: await translateTo(t, src) });
+        out.push({ c: t, r: await translateTo(t, src), src: srcJson });
       }
       setReview(out);
       setReviewTab(out[0].c);
+      setReviewOpen(true);
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -447,8 +457,9 @@ export default function RecipeForm({
     setBusy("translate");
     setMsg(null);
     try {
-      const r = await translateTo(t, toStored(editing));
-      setReview((rv) => rv && rv.map((x) => (x.c === t ? { c: t, r } : x)));
+      const src = toStored(editing);
+      const r = await translateTo(t, src);
+      setReview((rv) => rv && rv.map((x) => (x.c === t ? { c: t, r, src: JSON.stringify(src) } : x)));
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -457,7 +468,7 @@ export default function RecipeForm({
   };
 
   const setReviewRecipe = (t: Country, patch: Partial<Stored>) =>
-    setReview((rv) => rv && rv.map((x) => (x.c === t ? { c: t, r: { ...x.r, ...patch } } : x)));
+    setReview((rv) => rv && rv.map((x) => (x.c === t ? { ...x, r: { ...x.r, ...patch } } : x)));
 
   const save = async () => {
     if (!editing) return;
@@ -476,8 +487,9 @@ export default function RecipeForm({
       publishAt = new Date(t).toISOString();
     }
     // Preklady sa najprv ukážu na kontrolu — uloží sa až po ich potvrdení.
-    if (translate && !review) {
-      await prepareReview();
+    if (translate && !reviewOpen) {
+      if (review) setReviewOpen(true);
+      else await prepareReview();
       return;
     }
     const when = publishAt ? new Date(publishAt).toLocaleString("sk-SK") : "";
@@ -530,7 +542,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
           : `Zverejnené ✅ (${done.join(", ")})${notified ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
       });
       setEditing(null);
-      setReview(null);
+      clearReview();
       await load();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
@@ -572,7 +584,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
     )
       return;
     setEditing(null);
-    setReview(null);
+    clearReview();
     setMsg(null);
   };
 
@@ -690,7 +702,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
   }
 
   // ------------------------------------------------------- kontrola prekladov
-  if (review) {
+  if (review && reviewOpen) {
     const cur = review.find((x) => x.c === reviewTab) ?? review[0];
     const r = cur.r;
     return (
@@ -703,6 +715,13 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
           kým nedáš <b>Uložiť</b>. Obrázok, čas, náročnosť a zaradenia ingrediencií sú rovnaké ako v {FLAG[country]}{" "}
           {country.toUpperCase()}.
         </p>
+        {cur.src !== JSON.stringify(toStored(editing)) && (
+          <div className="rounded-xl bg-amber-500/15 px-3 py-2 text-sm text-amber-800">
+            ⚠️ Recept v {FLAG[country]} {country.toUpperCase()} si po preložení zmenil. Tento preklad je ešte
+            zo starej verzie — ak sa má zmena preniesť, daj <b>🔄 Preložiť {cur.c.toUpperCase()} znova</b>{" "}
+            (alebo ju oprav ručne).
+          </div>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {review.map((x) => (
             <Chip key={x.c} active={x.c === cur.c} onClick={() => setReviewTab(x.c)}>
@@ -776,7 +795,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
           <button
             type="button"
             onClick={() => {
-              setReview(null);
+              setReviewOpen(false);
               setMsg(null);
             }}
             disabled={busy !== ""}
@@ -1094,7 +1113,9 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
             : busy === "save"
               ? "Ukladám…"
               : translate
-                ? "🌍 Preložiť a skontrolovať →"
+                ? review
+                  ? "🌍 Skontrolovať preklady →"
+                  : "🌍 Preložiť a skontrolovať →"
                 : scheduleOn
                   ? "⏰ Uložiť a naplánovať"
                   : "✅ Uložiť a zverejniť v appke"}
