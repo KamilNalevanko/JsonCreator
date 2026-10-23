@@ -35,6 +35,11 @@ pecenie: hrnckove (hrnčekové koláče), zakusky (zákusky a krémové koláče
 prilohy: zemiaky, ryza, cestoviny_prilohy, knedle`;
 
 const LANG_NAMES: Record<string, string> = { sk: "Slovak", cs: "Czech", pl: "Polish" };
+const TRANSLATE_HINT: Record<string, string> = {
+  sk: "Prelož celý recept do slovenčiny (nie do češtiny ani poľštiny):",
+  cs: "Přelož celý recept do češtiny (ne do slovenštiny ani polštiny):",
+  pl: "Przetłumacz cały przepis na język polski (nie na czeski ani słowacki):",
+};
 
 async function chat(system: string, user: string): Promise<Record<string, unknown>> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -107,18 +112,50 @@ ${PLACEMENTS.map((p) => `${p.key} = ${p.label}`).join("\n")}`;
   };
 }
 
+// Typické písmená jazykov — podľa nich overíme, že preklad je naozaj
+// v cieľovom jazyku (AI občas vráti text nepreložený alebo v susednom jazyku).
+const LANG_CHARS: Record<string, RegExp> = {
+  sk: /[äôľĺŕ]/i,
+  cs: /[řěů]/i,
+  pl: /[łąęśżźń]/i,
+};
+
+function looksLike(text: string, lang: string): boolean {
+  const others = Object.keys(LANG_CHARS).filter((l) => l !== lang);
+  const foreign = others.reduce((n, l) => n + (text.match(new RegExp(LANG_CHARS[l], "gi"))?.length || 0), 0);
+  const own = text.match(new RegExp(LANG_CHARS[lang], "gi"))?.length || 0;
+  // Krátky text nemusí mať žiadne typické písmeno — vadí len prevaha cudzích.
+  return foreign === 0 || own >= foreign;
+}
+
 async function translateRecipe(recipe: Recipe, to: string): Promise<Recipe> {
-  const system = `Translate this recipe to ${LANG_NAMES[to]}. Return JSON {"title","ingredients":[{"name","amount"}],"steps":[...]}
+  const system = `Translate this recipe to ${LANG_NAMES[to]}. The source may be in any language (Slovak, Czech, Polish) —
+the output must be entirely in ${LANG_NAMES[to]}, including the title, ingredient names and all steps.
+Return JSON {"title","ingredients":[{"name","amount"}],"steps":[...]}
 with exactly the same number and order of ingredients and steps. Use natural culinary terms of the target country
 (units like "PL" → "lžíce"/"łyżki", "ČL" → "lžička"/"łyżeczka", "ks" → "ks"/"szt.").`;
-  const out = await chat(
-    system,
-    JSON.stringify({
-      title: recipe.title,
-      ingredients: recipe.ingredients.map((i) => ({ name: i.name, amount: i.amount || "" })),
-      steps: recipe.steps,
-    }),
-  );
+  // Pokyn aj v cieľovom jazyku — pri jedlách z inej krajiny (napr. sviečková)
+  // inak AI skĺzne do jazyka, z ktorého jedlo pochádza.
+  const input = `${TRANSLATE_HINT[to]}
+${JSON.stringify({
+    title: recipe.title,
+    ingredients: recipe.ingredients.map((i) => ({ name: i.name, amount: i.amount || "" })),
+    steps: recipe.steps,
+  })}`;
+  let out: Record<string, unknown> = {};
+  for (let attempt = 1; ; attempt++) {
+    out = await chat(system, input);
+    const text = [
+      out.title,
+      ...(Array.isArray(out.ingredients) ? (out.ingredients as Record<string, unknown>[]).map((i) => i?.name) : []),
+      ...(Array.isArray(out.steps) ? out.steps : []),
+    ].join(" ");
+    const unchanged = out.title === recipe.title && JSON.stringify(out.steps) === JSON.stringify(recipe.steps);
+    if (looksLike(text, to) && !unchanged) break;
+    if (attempt >= 3) {
+      throw new Error(`AI nevrátila text v jazyku ${LANG_NAMES[to]} — recept sa neuložil, skús to znova.`);
+    }
+  }
   const ti = Array.isArray(out.ingredients) ? (out.ingredients as Record<string, unknown>[]) : [];
   const ts = Array.isArray(out.steps) ? (out.steps as unknown[]) : [];
   return {

@@ -175,6 +175,10 @@ function toStored(r: Recipe) {
   };
 }
 
+type Stored = ReturnType<typeof toStored>;
+/** Preklad čakajúci na kontrolu pred uložením. */
+type ReviewItem = { c: Country; r: Stored };
+
 /** Zmenší fotku v prehliadači (max 1200 px, JPEG) pred nahraním. */
 async function shrinkImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
@@ -224,6 +228,9 @@ export default function RecipeForm({
   // Časovač: recept sa v appke ukáže (a notifikácia odíde) až v zadaný čas.
   const [scheduleOn, setScheduleOn] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
+  // Preklady na kontrolu (null = ešte nepreložené / formulár).
+  const [review, setReview] = useState<ReviewItem[] | null>(null);
+  const [reviewTab, setReviewTab] = useState<Country>("sk");
 
   const load = async () => {
     setLoading(true);
@@ -243,6 +250,7 @@ export default function RecipeForm({
 
   useEffect(() => {
     setEditing(null);
+    setReview(null);
     setMsg(null);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,6 +266,7 @@ export default function RecipeForm({
     setScheduleOn(false);
     setScheduleAt("");
     setAiText("");
+    setReview(null);
     setMsg(null);
   };
 
@@ -272,6 +281,7 @@ export default function RecipeForm({
     setScheduleOn(isScheduled(r));
     setScheduleAt(isScheduled(r) ? toLocalInput(r.publishAt!) : "");
     setAiText("");
+    setReview(null);
     setMsg(null);
   };
 
@@ -338,7 +348,7 @@ export default function RecipeForm({
     }
   };
 
-  const saveOne = async (c: Country, recipe: ReturnType<typeof toStored>) => {
+  const saveOne = async (c: Country, recipe: Stored) => {
     const res = await fetch("/api/recipes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -346,7 +356,7 @@ export default function RecipeForm({
     });
     const json = await res.json();
     if (!json.ok) throw new Error(`${c.toUpperCase()}: ${json.error}`);
-    return json.recipe as ReturnType<typeof toStored>;
+    return json.recipe as Stored;
   };
 
   const push = async (c: Country, title: string, recipeId: string) => {
@@ -401,6 +411,54 @@ export default function RecipeForm({
     return null;
   };
 
+  const translateTo = async (t: Country, src: Stored): Promise<Stored> => {
+    const res = await fetch("/api/recipes/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "translate", recipe: src, to: LANG_OF[t] }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(`Preklad ${t.toUpperCase()}: ${json.error}`);
+    return json.recipe as Stored;
+  };
+
+  /** 1. krok uloženia: AI preloží recept a preklady sa ukážu na kontrolu. */
+  const prepareReview = async () => {
+    if (!editing) return;
+    setBusy("translate");
+    setMsg(null);
+    try {
+      const src = toStored(editing);
+      const out: ReviewItem[] = [];
+      for (const t of (["sk", "cz", "pl"] as Country[]).filter((t) => t !== country)) {
+        out.push({ c: t, r: await translateTo(t, src) });
+      }
+      setReview(out);
+      setReviewTab(out[0].c);
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const retranslate = async (t: Country) => {
+    if (!editing) return;
+    setBusy("translate");
+    setMsg(null);
+    try {
+      const r = await translateTo(t, toStored(editing));
+      setReview((rv) => rv && rv.map((x) => (x.c === t ? { c: t, r } : x)));
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const setReviewRecipe = (t: Country, patch: Partial<Stored>) =>
+    setReview((rv) => rv && rv.map((x) => (x.c === t ? { c: t, r: { ...x.r, ...patch } } : x)));
+
   const save = async () => {
     if (!editing) return;
     const problem = validate(editing);
@@ -416,6 +474,11 @@ export default function RecipeForm({
         return;
       }
       publishAt = new Date(t).toISOString();
+    }
+    // Preklady sa najprv ukážu na kontrolu — uloží sa až po ich potvrdení.
+    if (translate && !review) {
+      await prepareReview();
+      return;
     }
     const when = publishAt ? new Date(publishAt).toLocaleString("sk-SK") : "";
     const targets: Country[] = translate
@@ -448,15 +511,14 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
       const saved = await saveOne(country, { ...toStored(editing), publishAt });
       const done: string[] = [country.toUpperCase()];
       await notifyNow(country, saved.title, saved.id);
-      for (const t of targets.filter((t) => t !== country)) {
-        const res = await fetch("/api/recipes/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "translate", recipe: saved, to: LANG_OF[t] }),
+      // Skontrolované (prípadne ručne opravené) preklady.
+      for (const { c: t, r } of translate ? review || [] : []) {
+        const tr = await saveOne(t, {
+          ...r,
+          id: saved.id,
+          publishAt,
+          steps: r.steps.map((s) => s.trim()).filter(Boolean),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(`Preklad ${t.toUpperCase()}: ${json.error}`);
-        const tr = await saveOne(t, { ...json.recipe, id: saved.id, publishAt });
         await notifyNow(t, tr.title, tr.id);
         done.push(t.toUpperCase());
       }
@@ -468,6 +530,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
           : `Zverejnené ✅ (${done.join(", ")})${notified ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
       });
       setEditing(null);
+      setReview(null);
       await load();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) });
@@ -509,6 +572,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
     )
       return;
     setEditing(null);
+    setReview(null);
     setMsg(null);
   };
 
@@ -621,6 +685,126 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
             )}
           </div>
         )}
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------- kontrola prekladov
+  if (review) {
+    const cur = review.find((x) => x.c === reviewTab) ?? review[0];
+    const r = cur.r;
+    return (
+      <div className="space-y-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-semibold">Kontrola prekladov — „{editing.title}“</div>
+        </div>
+        <p className="text-sm opacity-80">
+          AI recept preložila. Skontroluj a prípadne oprav preklady — do appky sa nič neuložilo,
+          kým nedáš <b>Uložiť</b>. Obrázok, čas, náročnosť a zaradenia ingrediencií sú rovnaké ako v {FLAG[country]}{" "}
+          {country.toUpperCase()}.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {review.map((x) => (
+            <Chip key={x.c} active={x.c === cur.c} onClick={() => setReviewTab(x.c)}>
+              {FLAG[x.c]} {x.c.toUpperCase()}
+            </Chip>
+          ))}
+        </div>
+
+        <div>
+          <label className={labelCls}>Názov receptu {FLAG[cur.c]}</label>
+          <input
+            value={r.title}
+            onChange={(e) => setReviewRecipe(cur.c, { title: e.target.value })}
+            maxLength={80}
+            className={inputCls}
+          />
+          <div className="mt-1 text-xs opacity-60">
+            {FLAG[country]} {editing.title}
+          </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>Ingrediencie {FLAG[cur.c]}</label>
+          <div className="space-y-1.5">
+            {r.ingredients.map((ing, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_120px] gap-2">
+                <div>
+                  <input
+                    value={ing.name}
+                    onChange={(e) =>
+                      setReviewRecipe(cur.c, {
+                        ingredients: r.ingredients.map((x, n) => (n === idx ? { ...x, name: e.target.value } : x)),
+                      })
+                    }
+                    className={inputCls}
+                  />
+                  <div className="mt-0.5 text-[11px] opacity-50">
+                    {FLAG[country]} {toStored(editing).ingredients[idx]?.name}
+                  </div>
+                </div>
+                <input
+                  value={ing.amount || ""}
+                  onChange={(e) =>
+                    setReviewRecipe(cur.c, {
+                      ingredients: r.ingredients.map((x, n) => (n === idx ? { ...x, amount: e.target.value } : x)),
+                    })
+                  }
+                  placeholder="množstvo"
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>
+            Postup {FLAG[cur.c]} <span className="font-normal opacity-60">(každý krok na nový riadok)</span>
+          </label>
+          <textarea
+            value={r.steps.join("\n")}
+            onChange={(e) => setReviewRecipe(cur.c, { steps: e.target.value.split("\n") })}
+            rows={8}
+            className={`${inputCls} resize-y`}
+          />
+        </div>
+
+        {msg && <Msg {...msg} />}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setReview(null);
+              setMsg(null);
+            }}
+            disabled={busy !== ""}
+            className="rounded-xl border border-black/15 bg-[var(--surface)] px-4 py-3 text-sm font-semibold hover:border-black/30 disabled:opacity-50"
+          >
+            ← Späť upraviť recept
+          </button>
+          <button
+            type="button"
+            onClick={() => retranslate(cur.c)}
+            disabled={busy !== ""}
+            className="rounded-xl border border-violet-500/50 px-4 py-3 text-sm font-semibold text-violet-700 hover:bg-violet-500/10 disabled:opacity-50"
+          >
+            {busy === "translate" ? "AI prekladá…" : `🔄 Preložiť ${cur.c.toUpperCase()} znova`}
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy !== ""}
+            className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+          >
+            {busy === "save"
+              ? "Ukladám…"
+              : `${scheduleOn ? "⏰ Uložiť a naplánovať" : "✅ Uložiť a zverejniť"} (${[country, ...review.map((x) => x.c)]
+                  .map((c) => c.toUpperCase())
+                  .join(", ")})`}
+          </button>
+        </div>
       </div>
     );
   }
@@ -854,8 +1038,8 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
             <span className="mt-1 block text-xs opacity-75">
               {translate ? (
                 <>
-                  ✅ Zaškrtnuté: recept sa uloží v {FLAG[country]} {country.toUpperCase()} a AI z neho
-                  {isNew ? " vytvorí" : " znova vytvorí"} aj verzie pre {others(country, "pre")}.
+                  ✅ Zaškrtnuté: AI z receptu {isNew ? "vytvorí" : "znova vytvorí"} aj verzie pre{" "}
+                  {others(country, "pre")}. Pred uložením ti ich ukáže na kontrolu a opravu.
                   {!isNew && " Ak niekto v nich ručne opravoval preklad, tieto opravy sa prepíšu."}
                 </>
               ) : (
@@ -905,7 +1089,15 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
           disabled={busy !== ""}
           className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
         >
-          {busy === "save" ? "Ukladám…" : scheduleOn ? "⏰ Uložiť a naplánovať" : "✅ Uložiť a zverejniť v appke"}
+          {busy === "translate"
+            ? "AI prekladá…"
+            : busy === "save"
+              ? "Ukladám…"
+              : translate
+                ? "🌍 Preložiť a skontrolovať →"
+                : scheduleOn
+                  ? "⏰ Uložiť a naplánovať"
+                  : "✅ Uložiť a zverejniť v appke"}
         </button>
         {!isNew && (
           <button
