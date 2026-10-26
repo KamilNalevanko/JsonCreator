@@ -30,19 +30,23 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
 
-    // Keep this proxy generic: the Next app can send the same payload it previously sent to OpenAI.
-    const openAiPayload = {
-      model: body.model ?? 'gpt-4o-mini',
+    // Keep this proxy generic: the Next app can send almost the same payload it previously sent to OpenAI.
+    const openAiPayload: Record<string, unknown> = {
+      model: body.model ?? 'gpt-4.1-mini',
       messages: body.messages,
-      temperature: body.temperature ?? 0,
-      max_tokens: body.max_tokens ?? body.max_completion_tokens,
       response_format: body.response_format,
+      max_completion_tokens: body.max_completion_tokens,
+      max_tokens: body.max_tokens,
+      temperature: body.temperature,
+      top_p: body.top_p,
+      stream: body.stream,
+      reasoning_effort: body.reasoning_effort,
     };
 
     // Remove undefined fields so OpenAI does not reject the request.
     Object.keys(openAiPayload).forEach((key) => {
-      if ((openAiPayload as Record<string, unknown>)[key] === undefined) {
-        delete (openAiPayload as Record<string, unknown>)[key];
+      if (openAiPayload[key] === undefined) {
+        delete openAiPayload[key];
       }
     });
 

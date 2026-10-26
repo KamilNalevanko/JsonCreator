@@ -1,5 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  getPlacementHistory,
+  HISTORY_AUTO_MIN,
+  HISTORY_AUTO_SHARE,
+  HISTORY_SUGGEST_MIN,
+  HISTORY_SUGGEST_SHARE,
+  type PlacementHistory,
+} from "./placementHistory";
+import {
   pad2,
   fixFlyerYear,
   normalizeSkDate,
@@ -420,7 +428,8 @@ function modelTuning(
   model: string,
   maxCompletionTokens: number,
 ): Record<string, unknown> {
-  if (/^(gpt-5|o\d)/i.test(model.trim())) return {};
+  if (/^(gpt-5|o\d)/i.test(model.trim()))
+    return { max_completion_tokens: maxCompletionTokens * 2, reasoning_effort: "minimal" };
   return { temperature: 0, max_completion_tokens: maxCompletionTokens };
 }
 
@@ -437,6 +446,30 @@ type ChatCompletionResponse = {
 async function createOpenAIChatCompletion(
   payload: Record<string, unknown>,
 ): Promise<ChatCompletionResponse> {
+  // Gemini ide priamo cez OpenAI-kompatibilné rozhranie Googlu (kľúč len v
+  // .env.local ako GEMINI_API_KEY) — mimo OpenAI kreditu a Supabase funkcie.
+  if (/^gemini/i.test(String(payload.model || ""))) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Chýba GEMINI_API_KEY v .env.local.");
+    const { max_completion_tokens, ...rest } = payload;
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ ...rest, max_tokens: max_completion_tokens }),
+      },
+    );
+    const text = await res.text();
+    if (!res.ok) {
+      const error = new Error(`Gemini failed (${res.status}): ${text.slice(0, 400)}`) as Error & {
+        status?: number;
+      };
+      error.status = res.status;
+      throw error;
+    }
+    return JSON.parse(text) as ChatCompletionResponse;
+  }
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey =
@@ -508,6 +541,7 @@ export async function POST(req: Request) {
     let buffer: Uint8Array;
     let formCountry = "";
     let formShop = "";
+    let formModel = "";
 
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -549,6 +583,7 @@ export async function POST(req: Request) {
       const file = form.get("file");
       formCountry = (form.get("country") as string | null) || "";
       formShop = (form.get("shop") as string | null) || "";
+      formModel = (form.get("model") as string | null) || "";
       if (!file || !(file instanceof File)) {
         return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
       }
@@ -581,6 +616,10 @@ export async function POST(req: Request) {
     // Determine language: prefer auto-detection from PDF content, fallback to form
     const country = detectedCountry || formCountry || "sk";
     const lang = country === "pl" ? "pl" : country === "cz" ? "cz" : "sk";
+    // Porovnanie modelov (scripts/benchmark-models.mjs): model z požiadavky,
+    // len keď je zapnuté ALLOW_MODEL_OVERRIDE=1 (nikdy v bežnom editore).
+    const modelOverride =
+      process.env.ALLOW_MODEL_OVERRIDE === "1" ? formModel.trim() : "";
 
     // Render all pages to JPEG images (serially to keep memory usage stable)
     // Accuracy modes:
@@ -845,6 +884,8 @@ export async function POST(req: Request) {
     // to correct hallucinated own-brand prefixes (e.g. a false "K-Classic" on a product
     // the DB lists without an own brand).
     const shopKnownNames: string[] = [];
+    // Pamäť zaradení krajiny (kam sa rovnaké produkty zaraďovali doteraz).
+    let placementHistory: PlacementHistory | null = null;
     try {
       const supabaseUrl =
         process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -907,15 +948,27 @@ export async function POST(req: Request) {
           }
         }
 
+        if (queryCountry) {
+          try {
+            placementHistory = await getPlacementHistory(supabaseDb, queryCountry);
+          } catch (e) {
+            console.error("[history] Nepodarilo sa načítať pamäť zaradení:", e);
+          }
+        }
+
         if (pairs.length > 0) {
           // Keep the prompt compact. The full map is still kept locally for post-processing.
-          const promptPairs = pairs.slice(
-            0,
-            Number(
-              process.env.KNOWN_PRODUCTS_PROMPT_LIMIT ||
-                (isAccurateMode ? 80 : isFastMode ? 180 : 120),
-            ),
+          const promptLimit = Number(
+            process.env.KNOWN_PRODUCTS_PROMPT_LIMIT ||
+              (isAccurateMode ? 80 : isFastMode ? 180 : 120),
           );
+          // Rovnaký počet príkladov, ale najčastejšie produkty obchodu s jasným
+          // zaradením z histórie — nie prvé náhodné riadky z databázy.
+          const historyPairs = placementHistory?.topPairs(queryShop, promptLimit) || [];
+          const promptPairs =
+            historyPairs.length >= promptLimit / 2
+              ? historyPairs
+              : pairs.slice(0, promptLimit);
           knownProductsPrompt = `\n\nKNOWN PRODUCTS from this shop/country (name→placementKey). Use these only as hints for OCR correction and classification of similar visible products. Do not copy products that are not visible in the flyer pages. Do not override a clearly visible flyer/product-package name with a different database name:\n${promptPairs.join("\n")}`;
           // Populate DB known map for post-AI reclassification
           for (const p of pairs) {
@@ -1176,7 +1229,7 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
               );
 
               const visionModel = (
-                process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+                modelOverride || process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
               ).trim();
               const response = await createOpenAIChatCompletion({
                 model: visionModel,
@@ -1462,7 +1515,7 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
         try {
           const parsed = await callWithRetry(async () => {
             const coverageModel = (
-              process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+              modelOverride || process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
             ).trim();
             const response = await createOpenAIChatCompletion({
               model: coverageModel,
@@ -1759,8 +1812,51 @@ CRITICAL: never invent products and never output a variant that is not printed (
         categoryKey: parent?.categoryKey || "",
         subcategoryKey: parent?.subcategoryKey || "",
         placementKey: pk,
+        // Pamäť zaradení (vyplní sa nižšie): návrh z histórie a pôvodná voľba
+        // AI, ak ju história automaticky prepísala — editor ich ukáže.
+        historyPlacementKey: "",
+        historyCount: 0,
+        historyTotal: 0,
+        aiPlacementKey: "",
       };
     });
+
+    // ─── Pamäť zaradení ───
+    // Rovnaký produkt sa už v minulosti zaraďoval → jasná väčšina vyhráva.
+    // Bez zaradenia: doplní sa (a ušetrí sa druhé volanie AI). Iné ako AI:
+    // pri veľmi silnej zhode sa opraví, inak len návrh v editore.
+    if (placementHistory) {
+      let filled = 0;
+      let fixed = 0;
+      let suggested = 0;
+      for (const item of items) {
+        const v = placementHistory.vote(item.name);
+        if (!v || !placementLookup[v.placementKey]) continue;
+        if (v.count < HISTORY_SUGGEST_MIN || v.share < HISTORY_SUGGEST_SHARE) continue;
+        if (item.placementKey === v.placementKey) continue;
+        const parent = placementLookup[v.placementKey];
+        const strong = v.count >= HISTORY_AUTO_MIN && v.share >= HISTORY_AUTO_SHARE;
+        if (!item.placementKey || strong) {
+          if (item.placementKey) {
+            item.aiPlacementKey = item.placementKey;
+            fixed++;
+          } else {
+            filled++;
+          }
+          item.placementKey = v.placementKey;
+          item.categoryKey = parent.categoryKey;
+          item.subcategoryKey = parent.subcategoryKey;
+        } else {
+          suggested++;
+        }
+        item.historyPlacementKey = v.placementKey;
+        item.historyCount = v.count;
+        item.historyTotal = v.total;
+      }
+      console.log(
+        `[history] doplnené ${filled}, opravené ${fixed}, návrhov ${suggested} (z ${items.length})`,
+      );
+    }
 
     // ─── Post-AI reclassification: fix empty/invalid placementKey ───
     // Build a keyword reference from DB known products + correctly classified batch products
@@ -1852,6 +1948,7 @@ PLACEMENT LIST:
 ${PLACEMENTS_PROMPT}`;
 
       const classifyModel = (
+        modelOverride ||
         process.env.OPENAI_CLASSIFY_MODEL ||
         process.env.OPENAI_VISION_MODEL ||
         "gpt-4.1-mini"
@@ -1982,6 +2079,8 @@ ${PLACEMENTS_PROMPT}`;
       let siblingFixed = 0;
       for (const item of items) {
         if (!item.placementKey || !item.subcategoryKey) continue;
+        // Zaradenie potvrdené históriou nechávame — tá vie viac než zhoda slov.
+        if (item.placementKey === item.historyPlacementKey) continue;
         const siblings = siblingsBySubcat.get(item.subcategoryKey);
         if (!siblings || siblings.length < 2) continue;
 
@@ -2120,15 +2219,28 @@ ${PLACEMENTS_PROMPT}`;
     // Final token summary log
     const totalTokens =
       tokenStats.totalPromptTokens + tokenStats.totalCompletionTokens;
-    // gpt-4.1-mini pricing (as of 2025): $0.40/1M prompt, $0.10/1M cached prompt, $1.60/1M completion
+    // Približné cenníky ($ za 1M tokenov: vstup, vstup z cache, výstup).
+    // Pri neznámom modeli sa ráta ako gpt-4.1-mini.
+    const PRICES: Record<string, [number, number, number]> = {
+      "gpt-4.1-mini": [0.4, 0.1, 1.6],
+      "gpt-4.1-nano": [0.1, 0.025, 0.4],
+      "gpt-5-mini": [0.25, 0.025, 2.0],
+      "gpt-5-nano": [0.05, 0.005, 0.4],
+      "gemini-2.5-flash-lite": [0.1, 0.025, 0.4],
+      "gemini-2.5-flash": [0.3, 0.075, 2.5],
+    };
+    const usedModel = (
+      modelOverride || process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+    ).trim();
+    const [pIn, pCached, pOut] = PRICES[usedModel] || PRICES["gpt-4.1-mini"];
     const estimateCost = (
       promptTokens: number,
       cachedTokens: number,
       completionTokens: number,
     ) =>
-      ((promptTokens - cachedTokens) / 1_000_000) * 0.4 +
-      (cachedTokens / 1_000_000) * 0.1 +
-      (completionTokens / 1_000_000) * 1.6;
+      ((promptTokens - cachedTokens) / 1_000_000) * pIn +
+      (cachedTokens / 1_000_000) * pCached +
+      (completionTokens / 1_000_000) * pOut;
 
     const cachedPromptTokens = tokenStats.totalCachedTokens;
     const costUsd = estimateCost(
