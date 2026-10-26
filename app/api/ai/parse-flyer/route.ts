@@ -1,5 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  getPlacementHistory,
+  HISTORY_AUTO_MIN,
+  HISTORY_AUTO_SHARE,
+  HISTORY_SUGGEST_MIN,
+  HISTORY_SUGGEST_SHARE,
+  type PlacementHistory,
+} from "./placementHistory";
+import {
   pad2,
   fixFlyerYear,
   normalizeSkDate,
@@ -845,6 +853,8 @@ export async function POST(req: Request) {
     // to correct hallucinated own-brand prefixes (e.g. a false "K-Classic" on a product
     // the DB lists without an own brand).
     const shopKnownNames: string[] = [];
+    // Pamäť zaradení krajiny (kam sa rovnaké produkty zaraďovali doteraz).
+    let placementHistory: PlacementHistory | null = null;
     try {
       const supabaseUrl =
         process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -907,15 +917,27 @@ export async function POST(req: Request) {
           }
         }
 
+        if (queryCountry) {
+          try {
+            placementHistory = await getPlacementHistory(supabaseDb, queryCountry);
+          } catch (e) {
+            console.error("[history] Nepodarilo sa načítať pamäť zaradení:", e);
+          }
+        }
+
         if (pairs.length > 0) {
           // Keep the prompt compact. The full map is still kept locally for post-processing.
-          const promptPairs = pairs.slice(
-            0,
-            Number(
-              process.env.KNOWN_PRODUCTS_PROMPT_LIMIT ||
-                (isAccurateMode ? 80 : isFastMode ? 180 : 120),
-            ),
+          const promptLimit = Number(
+            process.env.KNOWN_PRODUCTS_PROMPT_LIMIT ||
+              (isAccurateMode ? 80 : isFastMode ? 180 : 120),
           );
+          // Rovnaký počet príkladov, ale najčastejšie produkty obchodu s jasným
+          // zaradením z histórie — nie prvé náhodné riadky z databázy.
+          const historyPairs = placementHistory?.topPairs(queryShop, promptLimit) || [];
+          const promptPairs =
+            historyPairs.length >= promptLimit / 2
+              ? historyPairs
+              : pairs.slice(0, promptLimit);
           knownProductsPrompt = `\n\nKNOWN PRODUCTS from this shop/country (name→placementKey). Use these only as hints for OCR correction and classification of similar visible products. Do not copy products that are not visible in the flyer pages. Do not override a clearly visible flyer/product-package name with a different database name:\n${promptPairs.join("\n")}`;
           // Populate DB known map for post-AI reclassification
           for (const p of pairs) {
@@ -1759,8 +1781,51 @@ CRITICAL: never invent products and never output a variant that is not printed (
         categoryKey: parent?.categoryKey || "",
         subcategoryKey: parent?.subcategoryKey || "",
         placementKey: pk,
+        // Pamäť zaradení (vyplní sa nižšie): návrh z histórie a pôvodná voľba
+        // AI, ak ju história automaticky prepísala — editor ich ukáže.
+        historyPlacementKey: "",
+        historyCount: 0,
+        historyTotal: 0,
+        aiPlacementKey: "",
       };
     });
+
+    // ─── Pamäť zaradení ───
+    // Rovnaký produkt sa už v minulosti zaraďoval → jasná väčšina vyhráva.
+    // Bez zaradenia: doplní sa (a ušetrí sa druhé volanie AI). Iné ako AI:
+    // pri veľmi silnej zhode sa opraví, inak len návrh v editore.
+    if (placementHistory) {
+      let filled = 0;
+      let fixed = 0;
+      let suggested = 0;
+      for (const item of items) {
+        const v = placementHistory.vote(item.name);
+        if (!v || !placementLookup[v.placementKey]) continue;
+        if (v.count < HISTORY_SUGGEST_MIN || v.share < HISTORY_SUGGEST_SHARE) continue;
+        if (item.placementKey === v.placementKey) continue;
+        const parent = placementLookup[v.placementKey];
+        const strong = v.count >= HISTORY_AUTO_MIN && v.share >= HISTORY_AUTO_SHARE;
+        if (!item.placementKey || strong) {
+          if (item.placementKey) {
+            item.aiPlacementKey = item.placementKey;
+            fixed++;
+          } else {
+            filled++;
+          }
+          item.placementKey = v.placementKey;
+          item.categoryKey = parent.categoryKey;
+          item.subcategoryKey = parent.subcategoryKey;
+        } else {
+          suggested++;
+        }
+        item.historyPlacementKey = v.placementKey;
+        item.historyCount = v.count;
+        item.historyTotal = v.total;
+      }
+      console.log(
+        `[history] doplnené ${filled}, opravené ${fixed}, návrhov ${suggested} (z ${items.length})`,
+      );
+    }
 
     // ─── Post-AI reclassification: fix empty/invalid placementKey ───
     // Build a keyword reference from DB known products + correctly classified batch products
@@ -1982,6 +2047,8 @@ ${PLACEMENTS_PROMPT}`;
       let siblingFixed = 0;
       for (const item of items) {
         if (!item.placementKey || !item.subcategoryKey) continue;
+        // Zaradenie potvrdené históriou nechávame — tá vie viac než zhoda slov.
+        if (item.placementKey === item.historyPlacementKey) continue;
         const siblings = siblingsBySubcat.get(item.subcategoryKey);
         if (!siblings || siblings.length < 2) continue;
 

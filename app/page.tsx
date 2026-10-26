@@ -89,6 +89,24 @@ type AiExtractItem = {
   placementKey?: string;
   requiresCard?: boolean;
   requiresCoupon?: boolean;
+  /** Pamäť zaradení: kam sa produkt zaraďoval doteraz (count z total). */
+  historyPlacementKey?: string;
+  historyCount?: number;
+  historyTotal?: number;
+  /** Pôvodná voľba AI, ak ju história automaticky opravila. */
+  aiPlacementKey?: string;
+};
+
+/** Kategória a podkategória k zaradeniu (podľa hierarchie). */
+const placementPath = (pk: string) => {
+  for (const c of hierarchy) {
+    for (const sub of c["Podkategórie"] || []) {
+      if ((sub["Zaradenia"] || []).some((z) => z["Zaradenie"] === pk)) {
+        return { categoryKey: c["Kategória"], subcategoryKey: sub["Podkategória"], placementKey: pk };
+      }
+    }
+  }
+  return null;
 };
 
 type AiExtractMeta = {
@@ -140,6 +158,10 @@ const normalizeAiExtractItem = (item: unknown): AiExtractItem => {
     placementKey: toText(src.placementKey),
     requiresCard: src.requiresCard === true,
     requiresCoupon: src.requiresCoupon === true,
+    historyPlacementKey: toText(src.historyPlacementKey),
+    historyCount: typeof src.historyCount === "number" ? src.historyCount : 0,
+    historyTotal: typeof src.historyTotal === "number" ? src.historyTotal : 0,
+    aiPlacementKey: toText(src.aiPlacementKey),
   };
 };
 
@@ -3255,6 +3277,32 @@ export default function Home() {
                           {aiPlacements.map(p => <option key={p["Zaradenie"]} value={p["Zaradenie"]}>{locLabelFor(p["Zaradenie"])}</option>)}
                         </select>
                       </div>
+                      {/* Pamäť zaradení: oprava alebo návrh z histórie */}
+                      {(() => {
+                        const hk = item.historyPlacementKey || "";
+                        const setPk = (pk: string) => {
+                          const path = placementPath(pk);
+                          if (path) setAiExtracted(prev => prev.map((it, i) => i === idx ? { ...it, ...path } : it));
+                        };
+                        const vars = { count: String(item.historyCount || 0), total: String(item.historyTotal || 0) };
+                        if (item.aiPlacementKey && item.placementKey === hk) {
+                          return (
+                            <div className="flex items-center gap-2 rounded-md bg-sky-50 px-2 py-1 text-[11px] text-sky-800">
+                              <span>{t("ai_history_fixed", { ...vars, ai: locLabelFor(item.aiPlacementKey) })}</span>
+                              <button tabIndex={-1} onClick={() => setPk(item.aiPlacementKey || "")} className="rounded bg-white px-1.5 py-0.5 font-semibold hover:bg-sky-100">{t("ai_history_undo")}</button>
+                            </div>
+                          );
+                        }
+                        if (hk && hk !== item.placementKey) {
+                          return (
+                            <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+                              <span>{t("ai_history_suggest", { ...vars, label: locLabelFor(hk) })}</span>
+                              <button tabIndex={-1} onClick={() => setPk(hk)} className="rounded bg-white px-1.5 py-0.5 font-semibold hover:bg-amber-100">{t("ai_history_use")}</button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       {/* R5: Karta / kupón (AI predvyplní, človek skontroluje) + Ďalšia akcia + Duplikovať */}
                       <div className="flex items-center justify-end gap-2 border-t border-black/[0.05] pt-1">
                         <label
