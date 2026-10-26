@@ -428,7 +428,8 @@ function modelTuning(
   model: string,
   maxCompletionTokens: number,
 ): Record<string, unknown> {
-  if (/^(gpt-5|o\d)/i.test(model.trim())) return {};
+  if (/^(gpt-5|o\d)/i.test(model.trim()))
+    return { max_completion_tokens: maxCompletionTokens * 2, reasoning_effort: "minimal" };
   return { temperature: 0, max_completion_tokens: maxCompletionTokens };
 }
 

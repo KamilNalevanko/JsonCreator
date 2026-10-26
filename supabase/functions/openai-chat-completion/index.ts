@@ -31,11 +31,18 @@ Deno.serve(async (req) => {
     const body = await req.json();
 
     // Keep this proxy generic: the Next app can send the same payload it previously sent to OpenAI.
+    const model = body.model ?? 'gpt-4o-mini';
+    // GPT-5 / o-modely: iná teplota ako 1 a max_tokens odmietajú, chcú
+    // max_completion_tokens; reasoning_effort „minimal“ = najlacnejšie.
+    // Pri starších modeloch ostáva všetko ako doteraz.
+    const reasoning = /^(gpt-5|o\d)/i.test(model);
     const openAiPayload = {
-      model: body.model ?? 'gpt-4o-mini',
+      model,
       messages: body.messages,
-      temperature: body.temperature ?? 0,
-      max_tokens: body.max_tokens ?? body.max_completion_tokens,
+      temperature: reasoning ? undefined : (body.temperature ?? 0),
+      max_tokens: reasoning ? undefined : (body.max_tokens ?? body.max_completion_tokens),
+      max_completion_tokens: reasoning ? (body.max_completion_tokens ?? body.max_tokens) : undefined,
+      reasoning_effort: reasoning ? (body.reasoning_effort ?? 'minimal') : undefined,
       response_format: body.response_format,
     };
 
