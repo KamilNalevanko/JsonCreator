@@ -445,6 +445,30 @@ type ChatCompletionResponse = {
 async function createOpenAIChatCompletion(
   payload: Record<string, unknown>,
 ): Promise<ChatCompletionResponse> {
+  // Gemini ide priamo cez OpenAI-kompatibilné rozhranie Googlu (kľúč len v
+  // .env.local ako GEMINI_API_KEY) — mimo OpenAI kreditu a Supabase funkcie.
+  if (/^gemini/i.test(String(payload.model || ""))) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Chýba GEMINI_API_KEY v .env.local.");
+    const { max_completion_tokens, ...rest } = payload;
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ ...rest, max_tokens: max_completion_tokens }),
+      },
+    );
+    const text = await res.text();
+    if (!res.ok) {
+      const error = new Error(`Gemini failed (${res.status}): ${text.slice(0, 400)}`) as Error & {
+        status?: number;
+      };
+      error.status = res.status;
+      throw error;
+    }
+    return JSON.parse(text) as ChatCompletionResponse;
+  }
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey =
@@ -516,6 +540,7 @@ export async function POST(req: Request) {
     let buffer: Uint8Array;
     let formCountry = "";
     let formShop = "";
+    let formModel = "";
 
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -557,6 +582,7 @@ export async function POST(req: Request) {
       const file = form.get("file");
       formCountry = (form.get("country") as string | null) || "";
       formShop = (form.get("shop") as string | null) || "";
+      formModel = (form.get("model") as string | null) || "";
       if (!file || !(file instanceof File)) {
         return Response.json({ error: "Chýba PDF súbor." }, { status: 400 });
       }
@@ -589,6 +615,10 @@ export async function POST(req: Request) {
     // Determine language: prefer auto-detection from PDF content, fallback to form
     const country = detectedCountry || formCountry || "sk";
     const lang = country === "pl" ? "pl" : country === "cz" ? "cz" : "sk";
+    // Porovnanie modelov (scripts/benchmark-models.mjs): model z požiadavky,
+    // len keď je zapnuté ALLOW_MODEL_OVERRIDE=1 (nikdy v bežnom editore).
+    const modelOverride =
+      process.env.ALLOW_MODEL_OVERRIDE === "1" ? formModel.trim() : "";
 
     // Render all pages to JPEG images (serially to keep memory usage stable)
     // Accuracy modes:
@@ -1198,7 +1228,7 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
               );
 
               const visionModel = (
-                process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+                modelOverride || process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
               ).trim();
               const response = await createOpenAIChatCompletion({
                 model: visionModel,
@@ -1484,7 +1514,7 @@ Use ONLY the key before ":". Dates may be null. "page" must match the page marke
         try {
           const parsed = await callWithRetry(async () => {
             const coverageModel = (
-              process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+              modelOverride || process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
             ).trim();
             const response = await createOpenAIChatCompletion({
               model: coverageModel,
@@ -1917,6 +1947,7 @@ PLACEMENT LIST:
 ${PLACEMENTS_PROMPT}`;
 
       const classifyModel = (
+        modelOverride ||
         process.env.OPENAI_CLASSIFY_MODEL ||
         process.env.OPENAI_VISION_MODEL ||
         "gpt-4.1-mini"
@@ -2187,15 +2218,28 @@ ${PLACEMENTS_PROMPT}`;
     // Final token summary log
     const totalTokens =
       tokenStats.totalPromptTokens + tokenStats.totalCompletionTokens;
-    // gpt-4.1-mini pricing (as of 2025): $0.40/1M prompt, $0.10/1M cached prompt, $1.60/1M completion
+    // Približné cenníky ($ za 1M tokenov: vstup, vstup z cache, výstup).
+    // Pri neznámom modeli sa ráta ako gpt-4.1-mini.
+    const PRICES: Record<string, [number, number, number]> = {
+      "gpt-4.1-mini": [0.4, 0.1, 1.6],
+      "gpt-4.1-nano": [0.1, 0.025, 0.4],
+      "gpt-5-mini": [0.25, 0.025, 2.0],
+      "gpt-5-nano": [0.05, 0.005, 0.4],
+      "gemini-2.5-flash-lite": [0.1, 0.025, 0.4],
+      "gemini-2.5-flash": [0.3, 0.075, 2.5],
+    };
+    const usedModel = (
+      modelOverride || process.env.OPENAI_VISION_MODEL || "gpt-4.1-mini"
+    ).trim();
+    const [pIn, pCached, pOut] = PRICES[usedModel] || PRICES["gpt-4.1-mini"];
     const estimateCost = (
       promptTokens: number,
       cachedTokens: number,
       completionTokens: number,
     ) =>
-      ((promptTokens - cachedTokens) / 1_000_000) * 0.4 +
-      (cachedTokens / 1_000_000) * 0.1 +
-      (completionTokens / 1_000_000) * 1.6;
+      ((promptTokens - cachedTokens) / 1_000_000) * pIn +
+      (cachedTokens / 1_000_000) * pCached +
+      (completionTokens / 1_000_000) * pOut;
 
     const cachedPromptTokens = tokenStats.totalCachedTokens;
     const costUsd = estimateCost(
