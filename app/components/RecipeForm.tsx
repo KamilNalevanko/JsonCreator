@@ -402,6 +402,17 @@ export default function RecipeForm({
     if (!json.ok) throw new Error(`Naplánovanie notifikácie ${c.toUpperCase()}: ${json.error}`);
   };
 
+  /** Upravený recept: čakajúca notifikácia sa len presunie, nová nevznikne. */
+  const moveScheduledPush = async (c: Country, title: string, recipeId: string, sendAt: string) => {
+    const res = await fetch("/api/schedule-notification", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ country: c, title, recipeId, send_at: sendAt }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(`Naplánovaná notifikácia ${c.toUpperCase()}: ${json.error}`);
+  };
+
   const canNotify = RECIPE_PUSH_TO_ALL || !!testToken;
 
   const validate = (r: Recipe): string | null => {
@@ -497,12 +508,16 @@ export default function RecipeForm({
       ? (["sk", "cz", "pl"] as Country[])
       : [country];
     const who = testToken ? "len na tvoj telefón (test)" : "VŠETKÝM používateľom";
+    // Notifikácia ide len pri novom recepte, úprava recept iba aktualizuje.
+    const sendNotification = isNew && notify && canNotify;
     if (
       !window.confirm(
-        (publishAt
+        (!isNew && !publishAt
+          ? `Uložiť úpravu receptu „${editing.title}“ v appke (${targets.map((t) => t.toUpperCase()).join(", ")})? Notifikácia sa nepošle.`
+          : publishAt
           ? `Naplánovať recept „${editing.title}“ — v appke sa ukáže ${when} (${targets.map((t) => t.toUpperCase()).join(", ")})?`
           : `Zverejniť recept „${editing.title}“ v appke (${targets.map((t) => t.toUpperCase()).join(", ")})?`) +
-          (notify && canNotify
+          (sendNotification
             ? `
 
 ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
@@ -512,7 +527,12 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
       return;
 
     const notifyNow = async (c: Country, title: string, id: string) => {
-      if (!(notify && canNotify)) return;
+      if (!isNew) {
+        // Bez čakajúcej notifikácie (recept už vonku) sa nič nestane.
+        await moveScheduledPush(c, title, id, publishAt || new Date().toISOString());
+        return;
+      }
+      if (!sendNotification) return;
       if (publishAt) await schedulePush(c, title, id, publishAt);
       else await push(c, title, id);
     };
@@ -534,10 +554,12 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
         await notifyNow(t, tr.title, tr.id);
         done.push(t.toUpperCase());
       }
-      const notified = notify && canNotify;
+      const notified = sendNotification;
       setMsg({
         ok: true,
-        text: publishAt
+        text: !isNew && !publishAt
+          ? `Upravené ✅ (${done.join(", ")}) — bez novej notifikácie. V appke sa zmena ukáže do pár minút.`
+          : publishAt
           ? `Naplánované ⏰ (${done.join(", ")}) — v appke sa ukáže ${when}${notified ? " a vtedy odíde aj notifikácia" : ""}.`
           : `Zverejnené ✅ (${done.join(", ")})${notified ? " + notifikácia odoslaná" : ""}. V appke sa ukáže do pár minút.`,
       });
@@ -1031,7 +1053,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
             <b>⏰ Naplánovať zverejnenie</b>
             <span className="mt-1 block text-xs opacity-75">
               {scheduleOn
-                ? "Recept sa uloží hneď, ale v appke sa ukáže až v zadaný čas. Ak je zaškrtnutá notifikácia, odíde v ten istý čas (pošle ju server, editor nemusí bežať)."
+                ? "Recept sa uloží hneď, ale v appke sa ukáže až v zadaný čas. Notifikácia, ak je nastavená, odíde v ten istý čas (pošle ju server, editor nemusí bežať)."
                 : "Nezaškrtnuté: recept sa v appke ukáže hneď po uložení."}
             </span>
             {scheduleOn && (
@@ -1070,7 +1092,12 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
             </span>
           </span>
         </label>
-        <label className={`flex items-start gap-2 ${canNotify ? "cursor-pointer" : "opacity-60"}`}>
+        {!isNew && (
+          <p className="text-xs opacity-75">
+            📣 Úprava receptu sa v appke len aktualizuje, nová notifikácia sa neposiela.
+          </p>
+        )}
+        {isNew && <label className={`flex items-start gap-2 ${canNotify ? "cursor-pointer" : "opacity-60"}`}>
           <input
             type="checkbox"
             checked={notify && canNotify}
@@ -1088,7 +1115,7 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
               </span>
             )}
           </span>
-        </label>
+        </label>}
       </div>
 
       {msg && <Msg {...msg} />}

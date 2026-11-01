@@ -120,6 +120,51 @@ export async function GET() {
   }
 }
 
+// PATCH — upravený recept: čakajúca notifikácia sa len posunie na nový čas a
+// dostane nový názov, nová sa nevytvára.
+export async function PATCH(req: Request) {
+  try {
+    const supabase = getClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { ok: false, error: "Missing SUPABASE env." },
+        { status: 500 },
+      );
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const country = (body?.country || "").toString().toLowerCase().trim();
+    const recipeId = (body?.recipeId || "").toString().trim();
+    const title = (body?.title || "").toString().trim();
+    const when = new Date((body?.send_at || "").toString());
+    if (!country || !recipeId || !title || isNaN(when.getTime())) {
+      return NextResponse.json(
+        { ok: false, error: "Chýba krajina, recept, názov alebo čas." },
+        { status: 400 },
+      );
+    }
+
+    const { error } = await supabase
+      .from("scheduled_notifications")
+      .update({ title, send_at: when.toISOString() })
+      .eq("country", country)
+      .eq("sent", false)
+      .eq("data->>recipeId", recipeId);
+
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+}
+
 // DELETE — zruš naplánovanú notifikáciu (len ak ešte nebola odoslaná).
 export async function DELETE(req: Request) {
   try {
