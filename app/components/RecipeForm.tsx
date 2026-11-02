@@ -587,6 +587,12 @@ ${publishAt ? `O ${when} sa` : "Pošle sa"} aj notifikácia ${who}.`
         if (json.ok) deleted.push(c.toUpperCase());
         else if (res.status !== 404) throw new Error(`${c.toUpperCase()}: ${json.error}`);
       }
+      // Čakajúca notifikácia by inak odišla na recept, ktorý už neexistuje.
+      const cancel = await fetch(`/api/schedule-notification?recipeId=${encodeURIComponent(r.id)}`, {
+        method: "DELETE",
+      });
+      const cancelJson = await cancel.json();
+      if (!cancelJson.ok) throw new Error(`Recept je zmazaný, ale naplánovaná notifikácia ostala: ${cancelJson.error}`);
       setEditing(null);
       setMsg({ ok: true, text: `Recept zmazaný (${deleted.join(", ")}).` });
       await load();
