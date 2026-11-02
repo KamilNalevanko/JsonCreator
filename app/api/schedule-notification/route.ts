@@ -166,6 +166,7 @@ export async function PATCH(req: Request) {
 }
 
 // DELETE — zruš naplánovanú notifikáciu (len ak ešte nebola odoslaná).
+// ?id=... jednu, ?recipeId=... všetky k zmazanému receptu (vo všetkých krajinách).
 export async function DELETE(req: Request) {
   try {
     const supabase = getClient();
@@ -178,18 +179,21 @@ export async function DELETE(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const id = (searchParams.get("id") || "").trim();
-    if (!id) {
+    const recipeId = (searchParams.get("recipeId") || "").trim();
+    if (!id && !recipeId) {
       return NextResponse.json(
         { ok: false, error: "Chýba id." },
         { status: 400 },
       );
     }
 
-    const { error } = await supabase
+    const query = supabase
       .from("scheduled_notifications")
       .delete()
-      .eq("id", id)
       .eq("sent", false);
+    const { error } = await (id
+      ? query.eq("id", id)
+      : query.eq("data->>recipeId", recipeId));
 
     if (error) {
       return NextResponse.json(
