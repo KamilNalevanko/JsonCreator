@@ -100,10 +100,9 @@ const SECTIONS: { key: string; label: string; categories: { key: string; label: 
   ] },
 ];
 
-// Kým nie je vonku verzia appky so sekciou Recepty, staršie appky by
-// notifikáciu s receptom nevedeli otvoriť — push ide len na testovací telefón.
-// Po vydaní appky prepnúť na true.
-const RECIPE_PUSH_TO_ALL = false;
+// Recepty sú od 1.0.93 zapnuté všetkým, notifikácia ide všetkým používateľom.
+// false = push len na testovací telefón.
+const RECIPE_PUSH_TO_ALL = true;
 
 const PUSH_TEXT: Record<Lang, string> = {
   sk: "🍲 Nový recept — pozri si ho v appke",
